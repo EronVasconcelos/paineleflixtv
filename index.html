@@ -9,13 +9,12 @@
     <meta name="apple-mobile-web-app-capable" content="yes">
     <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
     <meta name="apple-mobile-web-app-title" content="EFLIXTV">
-    <link rel="apple-touch-icon" href="https://cdn-icons-png.sh/512/5977/5977591.png">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/5977/5977591.png">
     <link rel="manifest" href="./manifest.json">
     <title>EFLIXTV - IPTV Manager</title>
     
-    <!-- Tailwind CLI warning is ignored as this is a managed build, but the script is kept for simplicity -->
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700;900&display=swap" rel="stylesheet">
     
     <style>
         body { 
@@ -32,9 +31,14 @@
         }
     </style>
 
-    <!-- Shim to prevent white screen due to process.env being undefined in browser -->
     <script>
-        window.process = { env: { API_KEY: "" } };
+        // Safer shim for process.env
+        if (!window.process) window.process = { env: {} };
+        if (!window.process.env) window.process.env = {};
+        // Default to empty string if not provided by host
+        if (typeof window.process.env.API_KEY === 'undefined') {
+            window.process.env.API_KEY = "";
+        }
     </script>
 
     <script type="importmap">
@@ -45,15 +49,14 @@
     "react-dom/client": "https://esm.sh/react-dom@19.0.0/client",
     "@google/genai": "https://esm.sh/@google/genai@1.34.0",
     "lucide-react": "https://esm.sh/lucide-react@0.475.0",
-    "react/": "https://esm.sh/react@^19.2.3/",
-    "react-dom/": "https://esm.sh/react-dom@^19.2.3/"
+    "react-dom/": "https://esm.sh/react-dom@^19.2.3/",
+    "react/": "https://esm.sh/react@^19.2.3/"
   }
 }
 </script>
 </head>
 <body class="bg-slate-50 text-slate-900 overflow-hidden">
     <div id="root"></div>
-    <!-- Explicitly importing the entry point -->
     <script type="module" src="./index.tsx"></script>
 </body>
 </html>
