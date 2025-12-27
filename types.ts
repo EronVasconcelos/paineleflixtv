@@ -2,6 +2,14 @@
 export type ClientStatus = 'active' | 'blocked' | 'expired' | 'pending';
 export type PaymentStatus = 'paid' | 'pending';
 
+export interface PaymentRecord {
+  id: string;
+  amount: number;
+  date: string;
+  monthsPaid: number;
+  method: string;
+}
+
 export interface Package {
   id: string;
   name: string;
@@ -16,13 +24,12 @@ export interface MessageTemplate {
   body: string;
 }
 
-export interface ScheduledMessage {
+export interface MessageRule {
   id: string;
-  clientId: string;
+  type: 'before' | 'on_day' | 'after';
+  days: number;
+  time: string;
   templateId: string;
-  startDate: string; // ISO string containing date and time
-  intervalDays: number; // 0 for one-time, >0 for recurring
-  lastSentAt?: string;
   isActive: boolean;
 }
 
@@ -36,29 +43,13 @@ export interface Client {
   phone: string;
   packageName: string;
   packageId?: string;
-  months: number;
   price: number;
-  discount: number;
   expenses: number;
   notes: string;
   appName?: string;
   macKey?: string;
   createdAt: string;
   expiresAt: string;
-  lastPaymentDate: string;
-}
-
-export interface FinancialStats {
-  totalRevenue: number;
-  totalExpenses: number;
-  totalDiscounts: number;
-  netBalance: number;
-}
-
-export interface DashboardStats {
-  activeCount: number;
-  blockedCount: number;
-  expiredCount: number;
-  expiringSoonCount: number;
-  totalClients: number;
+  paymentHistory: PaymentRecord[];
+  totalPaid: number;
 }
