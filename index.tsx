@@ -8,13 +8,14 @@ if (!rootElement) {
   throw new Error("Could not find root element to mount to");
 }
 
-// Registro do Service Worker para PWA
+// Registro do Service Worker otimizado para produção
 if ('serviceWorker' in navigator) {
   window.addEventListener('load', () => {
-    navigator.serviceWorker.register('/sw.js').then(registration => {
-      console.log('SW registrado com sucesso:', registration.scope);
+    // Usando caminho relativo para funcionar no Netlify/Vercel
+    navigator.serviceWorker.register('./sw.js').then(registration => {
+      console.log('EFLIXTV PWA: Registrado com sucesso', registration.scope);
     }).catch(error => {
-      console.log('Falha ao registrar o SW:', error);
+      console.error('EFLIXTV PWA: Falha no registro', error);
     });
   });
 }
