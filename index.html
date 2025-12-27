@@ -3,12 +3,34 @@
 <html lang="pt-BR">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <meta name="theme-color" content="#2563eb">
+    <meta name="apple-mobile-web-app-capable" content="yes">
+    <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+    <meta name="apple-mobile-web-app-title" content="EFLIXTV">
+    <link rel="apple-touch-icon" href="https://cdn-icons-png.flaticon.com/512/5977/5977591.png">
+    <link rel="manifest" href="manifest.json">
     <title>EFLIXTV - IPTV Manager</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <link href="https://fonts.googleapis.com/css2?family=Roboto:wght@300;400;500;700&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Roboto', sans-serif; }
+        body { 
+            font-family: 'Roboto', sans-serif; 
+            -webkit-tap-highlight-color: transparent;
+            overscroll-behavior-y: contain;
+        }
+        .hide-scrollbar::-webkit-scrollbar { display: none; }
+        .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
+        
+        /* Ajuste para telas com notch/iPhone */
+        @supports (padding: env(safe-area-inset-bottom)) {
+            .pb-safe {
+                padding-bottom: calc(4.5rem + env(safe-area-inset-bottom));
+            }
+            .pt-safe {
+                padding-top: env(safe-area-inset-top);
+            }
+        }
     </style>
 <script type="importmap">
 {
@@ -23,7 +45,7 @@
 }
 </script>
 </head>
-<body class="bg-slate-50 text-slate-900">
+<body class="bg-slate-50 text-slate-900 overflow-hidden">
     <div id="root"></div>
 </body>
 </html>
