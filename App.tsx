@@ -40,7 +40,13 @@ import {
   Save,
   Check,
   ChevronDown,
-  UserPlus
+  UserPlus,
+  Download,
+  Upload,
+  Database,
+  ShieldAlert,
+  Bell,
+  BellOff
 } from 'lucide-react';
 import { Client, Package, MessageTemplate, MessageRule, ClientStatus, PaymentStatus } from './types';
 import { geminiService } from './services/geminiService';
@@ -55,15 +61,12 @@ export default function App() {
     return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   });
 
-  const [view, setView] = useState<'dashboard' | 'clients' | 'history' | 'add' | 'packages' | 'messages' | 'scheduling'>('dashboard');
+  const [view, setView] = useState<'dashboard' | 'clients' | 'history' | 'add' | 'packages' | 'messages' | 'scheduling' | 'database'>('dashboard');
   const [selectedClientForMsg, setSelectedClientForMsg] = useState<Client | null>(null);
   const [selectedClientForRenewal, setSelectedClientForRenewal] = useState<Client | null>(null);
   const [selectedClientDetails, setSelectedClientDetails] = useState<Client | null>(null);
   const [selectedClientForEdit, setSelectedClientForEdit] = useState<Client | null>(null);
   
-  const [inlineEditingDate, setInlineEditingDate] = useState<string | null>(null);
-  const [inlineEditingPlan, setInlineEditingPlan] = useState<string | null>(null);
-
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
   
@@ -73,6 +76,10 @@ export default function App() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   
   const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
+
+  // Sistema de Notificações
+  const [notificationsEnabled, setNotificationsEnabled] = useState(Notification.permission === 'granted');
+  const notifiedIds = useRef<Set<string>>(new Set());
 
   const [clients, setClients] = useState<Client[]>(() => {
     const saved = localStorage.getItem('iptv_clients_v4');
@@ -118,8 +125,124 @@ export default function App() {
     }
   }, [theme]);
 
+  // Lógica de Notificações Ativas
+  useEffect(() => {
+    const checkNotifications = () => {
+      if (!notificationsEnabled) return;
+
+      const now = new Date();
+      const todayStr = now.toLocaleDateString('pt-BR');
+      const currentTimeStr = now.toTimeString().slice(0, 5); // "HH:mm"
+
+      clients.forEach(client => {
+        const expiryDate = new Date(client.expiresAt);
+        const expiryStr = expiryDate.toLocaleDateString('pt-BR');
+
+        // 1. Alerta de Vencimento no Dia
+        if (expiryStr === todayStr) {
+          const notifyId = `expiry-${client.id}-${todayStr}`;
+          if (!notifiedIds.current.has(notifyId)) {
+            sendNotification('🚨 Vencimento Hoje!', `O cliente ${client.name} vence hoje.`);
+            notifiedIds.current.add(notifyId);
+          }
+        }
+
+        // 2. Alerta de Mensagens Agendadas (Próximos 5 minutos)
+        rules.forEach(rule => {
+          if (!rule.isActive) return;
+
+          let targetDate = new Date(expiryDate);
+          if (rule.type === 'before') targetDate.setDate(targetDate.getDate() - rule.days);
+          else if (rule.type === 'after') targetDate.setDate(targetDate.getDate() + rule.days);
+
+          if (targetDate.toLocaleDateString('pt-BR') === todayStr) {
+            const [ruleH, ruleM] = rule.time.split(':').map(Number);
+            const ruleDate = new Date(now);
+            ruleDate.setHours(ruleH, ruleM, 0, 0);
+
+            const diffMinutes = (ruleDate.getTime() - now.getTime()) / (1000 * 60);
+
+            if (diffMinutes > 0 && diffMinutes <= 5) {
+              const notifyId = `rule-${rule.id}-${client.id}-${todayStr}-${rule.time}`;
+              if (!notifiedIds.current.has(notifyId)) {
+                sendNotification('📩 Mensagem Próxima!', `Enviar lembrete para ${client.name} em ${Math.ceil(diffMinutes)} min.`);
+                notifiedIds.current.add(notifyId);
+              }
+            }
+          }
+        });
+      });
+    };
+
+    const interval = setInterval(checkNotifications, 60000); // Checa a cada minuto
+    checkNotifications(); // Checa ao montar
+    return () => clearInterval(interval);
+  }, [clients, rules, notificationsEnabled]);
+
+  const requestPermission = async () => {
+    const permission = await Notification.requestPermission();
+    setNotificationsEnabled(permission === 'granted');
+    if (permission === 'granted') {
+      sendNotification('🔔 Notificações Ativas!', 'Você receberá alertas de vencimento e agendamentos.');
+    }
+  };
+
+  const sendNotification = (title: string, body: string) => {
+    if (Notification.permission === 'granted') {
+      new Notification(title, {
+        body,
+        icon: 'https://cdn-icons-png.flaticon.com/512/5977/5977591.png'
+      });
+    }
+  };
+
   const toggleTheme = () => setTheme(prev => prev === 'light' ? 'dark' : 'light');
   const isExpired = (date: string) => new Date(date) < new Date();
+
+  const handleExportData = () => {
+    const data = {
+      clients,
+      packages,
+      templates,
+      rules,
+      exportedAt: new Date().toISOString(),
+      version: "4.0"
+    };
+    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `backup_eflixtv_${new Date().toISOString().split('T')[0]}.json`;
+    link.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImportData = (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (e) => {
+      try {
+        const data = JSON.parse(e.target?.result as string);
+        if (data.clients && Array.isArray(data.clients)) {
+          if (confirm('Atenção: Isso irá substituir todos os dados atuais. Deseja continuar?')) {
+            setClients(data.clients);
+            if (data.packages) setPackages(data.packages);
+            if (data.templates) setTemplates(data.templates);
+            if (data.rules) setRules(data.rules);
+            alert('Dados restaurados com sucesso!');
+            setView('dashboard');
+          }
+        } else {
+          alert('Arquivo de backup inválido.');
+        }
+      } catch (err) {
+        alert('Erro ao ler o arquivo de backup.');
+      }
+    };
+    reader.readAsText(file);
+  };
 
   const stats = useMemo(() => {
     return clients.reduce((acc, c) => {
@@ -284,6 +407,7 @@ export default function App() {
           <div className="pt-6 pb-2 px-5 text-[10px] font-bold text-slate-500 uppercase tracking-widest">Ajustes & Config</div>
           <SidebarItem icon={<Layers size={20} />} label="Planos & Preços" active={view === 'packages'} onClick={() => setView('packages')} />
           <SidebarItem icon={<MessageSquare size={20} />} label="Modelos Mensagem" active={view === 'messages'} onClick={() => setView('messages')} />
+          <SidebarItem icon={<Database size={20} />} label="Banco de Dados" active={view === 'database'} onClick={() => setView('database')} />
         </nav>
 
         <div className="p-4 border-t border-slate-800">
@@ -297,15 +421,21 @@ export default function App() {
       {/* Main Container */}
       <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
         <header className={`px-4 py-4 flex items-center justify-between pt-safe shrink-0 border-b z-20 transition-colors ${theme === 'dark' ? 'bg-slate-900/50 border-slate-800 backdrop-blur-md' : 'bg-white/80 border-slate-200 backdrop-blur-md'}`}>
-          <h2 className={`text-base font-bold uppercase tracking-tight ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
-            {view === 'dashboard' && 'Visão Geral'}
-            {view === 'history' && 'Matriz Mensal'}
-            {view === 'clients' && 'Lista de Clientes'}
-            {view === 'scheduling' && 'Alertas Automáticos'}
-            {view === 'add' && 'Adicionar Cliente'}
-            {view === 'packages' && 'Meus Planos'}
-            {view === 'messages' && 'Modelos WhatsApp'}
-          </h2>
+          <div className="flex items-center gap-3">
+             <h2 className={`text-base font-bold uppercase tracking-tight ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
+              {view === 'dashboard' && 'Visão Geral'}
+              {view === 'history' && 'Matriz Mensal'}
+              {view === 'clients' && 'Lista de Clientes'}
+              {view === 'scheduling' && 'Alertas Automáticos'}
+              {view === 'add' && 'Adicionar Cliente'}
+              {view === 'packages' && 'Meus Planos'}
+              {view === 'messages' && 'Modelos WhatsApp'}
+              {view === 'database' && 'Gestão de Dados'}
+            </h2>
+            <button onClick={notificationsEnabled ? () => {} : requestPermission} className={`p-1.5 rounded-md transition-colors ${notificationsEnabled ? 'text-emerald-500 bg-emerald-500/10' : 'text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
+              {notificationsEnabled ? <Bell size={18}/> : <BellOff size={18}/>}
+            </button>
+          </div>
           
           <button onClick={() => geminiService.analyzeBusiness(clients).then(setAiAnalysis)} className="p-2.5 text-blue-600 bg-blue-50 dark:bg-blue-900/30 dark:text-blue-400 rounded-lg border border-blue-100 dark:border-blue-800/50 hover:bg-blue-100 transition-all shadow-sm">
             <TrendingUp size={20} />
@@ -389,58 +519,6 @@ export default function App() {
                   </div>
                 </div>
 
-                {/* Tabela Desktop */}
-                <div className="hidden md:block rounded-lg border shadow-md overflow-hidden bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
-                  <table className="w-full text-left border-collapse">
-                    <thead className={`border-b ${theme === 'dark' ? 'bg-slate-900/50 border-slate-800' : 'bg-slate-50 border-slate-100'}`}>
-                      <tr>
-                        <th className="px-5 py-4 text-[11px] font-bold text-slate-400 uppercase tracking-widest">Cliente</th>
-                        <th className="px-5 py-4 text-[11px] font-bold text-slate-400 uppercase tracking-widest text-center">Vencimento</th>
-                        <th className="px-5 py-4 text-[11px] font-bold text-slate-400 uppercase tracking-widest text-center">Plano</th>
-                        <th className="px-5 py-4 text-[11px] font-bold text-slate-400 uppercase tracking-widest text-center">Sinal</th>
-                        <th className="px-5 py-4 text-[11px] font-bold text-slate-400 uppercase tracking-widest text-center">Pagto</th>
-                        <th className="px-5 py-4 text-[11px] font-bold text-slate-400 uppercase tracking-widest text-right">Ações</th>
-                      </tr>
-                    </thead>
-                    <tbody className={`divide-y ${theme === 'dark' ? 'divide-slate-800' : 'divide-slate-100'}`}>
-                      {filteredClients.map(c => {
-                        const expired = isExpired(c.expiresAt);
-                        return (
-                          <tr key={c.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
-                            <td className="px-5 py-4">
-                              <div className="flex flex-col">
-                                <span className="font-bold text-[14px]">{c.name}</span>
-                                <span className="text-[10px] opacity-50 font-bold uppercase">{c.username}</span>
-                              </div>
-                            </td>
-                            <td className="px-5 py-4 text-center">
-                              <div className={`text-[12px] font-bold ${expired && c.status === 'active' ? 'text-red-500' : ''}`}>{new Date(c.expiresAt).toLocaleDateString('pt-BR')}</div>
-                            </td>
-                            <td className="px-5 py-4 text-center">
-                              <div className="text-[12px] font-bold uppercase">{c.packageName}</div>
-                            </td>
-                            <td className="px-5 py-4 text-center">
-                              <button onClick={() => handleToggleStatus(c)} className={`px-3 py-1 rounded-lg text-[9px] font-bold uppercase border shadow-sm ${c.status === 'blocked' ? 'bg-slate-100 text-slate-400 border-slate-200 dark:bg-slate-800' : expired ? 'bg-red-500 text-white border-red-600' : 'bg-emerald-500 text-white border-emerald-600'}`}>{c.status === 'blocked' ? 'Block' : expired ? 'Venc' : 'On'}</button>
-                            </td>
-                            <td className="px-5 py-4 text-center">
-                              <button onClick={() => handleTogglePayment(c)} className={`px-3 py-1 rounded-lg text-[9px] font-bold uppercase border shadow-sm ${c.paymentStatus === 'paid' ? 'bg-emerald-50 text-emerald-600 border-emerald-200 dark:bg-emerald-900/20' : 'bg-amber-50 text-amber-600 border-amber-200 dark:bg-amber-900/20'}`}>{c.paymentStatus === 'paid' ? 'Pago' : 'Pnd'}</button>
-                            </td>
-                            <td className="px-5 py-4 text-right">
-                              <div className="flex gap-2 justify-end">
-                                <ActionButton onClick={() => setSelectedClientDetails(c)} theme={theme} color="blue" icon={<Eye size={18}/>} />
-                                <ActionButton onClick={() => setSelectedClientForEdit(c)} theme={theme} color="blue" icon={<Pencil size={18}/>} />
-                                <ActionButton onClick={() => setSelectedClientForMsg(c)} theme={theme} color="emerald" icon={<MessageSquare size={18}/>} />
-                                <ActionButton onClick={() => setSelectedClientForRenewal(c)} theme={theme} color="amber" icon={<RefreshCw size={18}/>} />
-                              </div>
-                            </td>
-                          </tr>
-                        );
-                      })}
-                    </tbody>
-                  </table>
-                </div>
-
-                {/* Grid Mobile Otimizado */}
                 <div className="md:hidden space-y-4">
                   {filteredClients.map(c => {
                     const expired = isExpired(c.expiresAt);
@@ -478,6 +556,54 @@ export default function App() {
                       </div>
                     );
                   })}
+                </div>
+
+                <div className="hidden md:block rounded-lg border shadow-md overflow-hidden bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+                  <table className="w-full text-left border-collapse">
+                    <thead className={`border-b ${theme === 'dark' ? 'bg-slate-900/50 border-slate-800' : 'bg-slate-50 border-slate-100'}`}>
+                      <tr>
+                        <th className="px-5 py-4 text-[11px] font-bold text-slate-400 uppercase tracking-widest">Cliente</th>
+                        <th className="px-5 py-4 text-[11px] font-bold text-slate-400 uppercase tracking-widest text-center">Vencimento</th>
+                        <th className="px-5 py-4 text-[11px] font-bold text-slate-400 uppercase tracking-widest text-center">Plano</th>
+                        <th className="px-5 py-4 text-[11px] font-bold text-slate-400 uppercase tracking-widest text-center">Sinal</th>
+                        <th className="px-5 py-4 text-[11px] font-bold text-slate-400 uppercase tracking-widest text-center">Pagto</th>
+                        <th className="px-5 py-4 text-[11px] font-bold text-slate-400 uppercase tracking-widest text-right">Ações</th>
+                      </tr>
+                    </thead>
+                    <tbody className={`divide-y ${theme === 'dark' ? 'divide-slate-800' : 'divide-slate-100'}`}>
+                      {filteredClients.map(c => {
+                        const expired = isExpired(c.expiresAt);
+                        return (
+                          <tr key={c.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+                            <td className="px-5 py-4">
+                              <div className="flex flex-col">
+                                <span className="font-bold text-[14px]">{c.name}</span>
+                                <span className="text-[10px] opacity-50 font-bold uppercase">{c.username}</span>
+                              </div>
+                            </td>
+                            <td className="px-5 py-4 text-center">
+                              <div className={`text-[12px] font-bold ${expired && c.status === 'active' ? 'text-red-500' : ''}`}>{new Date(c.expiresAt).toLocaleDateString('pt-BR')}</div>
+                            </td>
+                            <td className="px-5 py-4 text-center text-[12px] font-bold uppercase">{c.packageName}</td>
+                            <td className="px-5 py-4 text-center">
+                              <button onClick={() => handleToggleStatus(c)} className={`px-3 py-1 rounded-lg text-[9px] font-bold uppercase border shadow-sm ${c.status === 'blocked' ? 'bg-slate-100 text-slate-400 border-slate-200 dark:bg-slate-800' : expired ? 'bg-red-500 text-white border-red-600' : 'bg-emerald-500 text-white border-emerald-600'}`}>{c.status === 'blocked' ? 'Block' : expired ? 'Venc' : 'On'}</button>
+                            </td>
+                            <td className="px-5 py-4 text-center">
+                              <button onClick={() => handleTogglePayment(c)} className={`px-3 py-1 rounded-lg text-[9px] font-bold uppercase border shadow-sm ${c.paymentStatus === 'paid' ? 'bg-emerald-50 text-emerald-600 border-emerald-200 dark:bg-emerald-900/20' : 'bg-amber-50 text-amber-600 border-amber-200 dark:bg-amber-900/20'}`}>{c.paymentStatus === 'paid' ? 'Pago' : 'Pnd'}</button>
+                            </td>
+                            <td className="px-5 py-4 text-right">
+                              <div className="flex gap-2 justify-end">
+                                <ActionButton onClick={() => setSelectedClientDetails(c)} theme={theme} color="blue" icon={<Eye size={18}/>} />
+                                <ActionButton onClick={() => setSelectedClientForEdit(c)} theme={theme} color="blue" icon={<Pencil size={18}/>} />
+                                <ActionButton onClick={() => setSelectedClientForMsg(c)} theme={theme} color="emerald" icon={<MessageSquare size={18}/>} />
+                                <ActionButton onClick={() => setSelectedClientForRenewal(c)} theme={theme} color="amber" icon={<RefreshCw size={18}/>} />
+                              </div>
+                            </td>
+                          </tr>
+                        );
+                      })}
+                    </tbody>
+                  </table>
                 </div>
               </div>
             )}
@@ -569,6 +695,63 @@ export default function App() {
               </div>
             )}
 
+            {view === 'database' && (
+              <div className="max-w-xl mx-auto space-y-6 animate-in fade-in">
+                <div className={`p-8 rounded-lg border shadow-xl ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
+                  <div className="flex items-center gap-4 mb-8">
+                    <div className="p-3 bg-blue-600 rounded-lg text-white shadow-lg"><Database size={32}/></div>
+                    <div>
+                      <h3 className="text-xl font-bold uppercase tracking-tight">Gestão de Dados</h3>
+                      <p className="text-xs text-slate-400 font-medium uppercase tracking-wider">Segurança e Portabilidade</p>
+                    </div>
+                  </div>
+
+                  <div className="p-4 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-lg flex gap-4 mb-8">
+                    <ShieldAlert className="text-amber-500 shrink-0" size={24}/>
+                    <p className="text-[13px] text-amber-800 dark:text-amber-300 font-medium">
+                      O Painel EFLIXTV armazena seus dados localmente no navegador. Ative as notificações para receber alertas críticos em tempo real.
+                    </p>
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4">
+                    <button onClick={notificationsEnabled ? () => {} : requestPermission} className={`flex items-center justify-between p-5 rounded-lg border-2 transition-all group active:scale-[0.98] ${notificationsEnabled ? 'border-emerald-600/20 bg-emerald-50 dark:bg-emerald-900/10' : 'border-slate-200 bg-slate-50 dark:bg-slate-800/10'}`}>
+                       <div className="flex items-center gap-4">
+                        <Bell className={notificationsEnabled ? 'text-emerald-600' : 'text-slate-400'} size={24}/>
+                        <div className="text-left">
+                          <div className={`font-bold text-[14px] uppercase ${notificationsEnabled ? 'text-emerald-600' : 'text-slate-400'}`}>{notificationsEnabled ? 'Notificações Ativas' : 'Ativar Notificações'}</div>
+                          <div className="text-[11px] opacity-60 font-bold uppercase">{notificationsEnabled ? 'Você receberá alertas' : 'Permitir alertas no navegador'}</div>
+                        </div>
+                      </div>
+                      <ChevronRight size={20} className="opacity-50"/>
+                    </button>
+
+                    <button onClick={handleExportData} className="flex items-center justify-between p-5 rounded-lg border-2 border-blue-600/20 hover:border-blue-600 bg-blue-50 dark:bg-blue-900/10 transition-all group active:scale-[0.98]">
+                      <div className="flex items-center gap-4">
+                        <Download className="text-blue-600" size={24}/>
+                        <div className="text-left">
+                          <div className="font-bold text-[14px] uppercase text-blue-600">Exportar Backup</div>
+                          <div className="text-[11px] opacity-60 font-bold uppercase">Baixar arquivo .json</div>
+                        </div>
+                      </div>
+                      <ChevronRight size={20} className="text-blue-600 opacity-50 group-hover:opacity-100"/>
+                    </button>
+
+                    <label className="flex items-center justify-between p-5 rounded-lg border-2 border-emerald-600/20 hover:border-emerald-600 bg-emerald-50 dark:bg-emerald-900/10 transition-all group cursor-pointer active:scale-[0.98]">
+                      <div className="flex items-center gap-4">
+                        <Upload className="text-emerald-600" size={24}/>
+                        <div className="text-left">
+                          <div className="font-bold text-[14px] uppercase text-emerald-600">Restaurar Backup</div>
+                          <div className="text-[11px] opacity-60 font-bold uppercase">Carregar arquivo .json</div>
+                        </div>
+                      </div>
+                      <input type="file" accept=".json" className="hidden" onChange={handleImportData} />
+                      <ChevronRight size={20} className="text-emerald-600 opacity-50 group-hover:opacity-100"/>
+                    </label>
+                  </div>
+                </div>
+              </div>
+            )}
+
             {view === 'packages' && (
               <div className="max-w-xl mx-auto space-y-6">
                 <div className={`p-6 rounded-lg border shadow-lg ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
@@ -627,7 +810,7 @@ export default function App() {
                 ))}
               </div>
             )}
-            
+
             {view === 'scheduling' && (
               <div className="max-w-xl mx-auto space-y-6">
                 <div className={`p-6 rounded-lg border shadow-lg ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
@@ -639,7 +822,7 @@ export default function App() {
                      e.currentTarget.reset();
                    }}>
                      <FormInput theme={theme} name="days" label="Dias antes/depois" type="number" defaultValue="0" />
-                     <FormInput theme={theme} name="time" label="Horário Alerta" type="time" defaultValue="09:00" />
+                     <FormInput theme={theme} name="time" label="Hora Alerta" type="time" defaultValue="09:00" />
                      <button type="submit" className="col-span-2 bg-blue-600 text-white p-4 rounded-lg font-bold uppercase text-[12px] mt-3 active:scale-95 transition-all shadow-md">Ativar Regra</button>
                    </form>
                 </div>
@@ -671,10 +854,11 @@ export default function App() {
           <BottomNavItem icon={<History size={26}/>} label="Matriz" active={view === 'history'} onClick={() => setView('history')} />
           
           <div className="relative flex flex-col items-center justify-center">
-             <BottomNavItem icon={<MoreHorizontal size={26}/>} label="Mais" active={['scheduling', 'packages', 'messages'].includes(view)} onClick={() => setShowMobileMenu(!showMobileMenu)} />
+             <BottomNavItem icon={<MoreHorizontal size={26}/>} label="Mais" active={['scheduling', 'packages', 'messages', 'database'].includes(view)} onClick={() => setShowMobileMenu(!showMobileMenu)} />
              {showMobileMenu && (
                <div className="absolute bottom-16 right-2 bg-slate-900 rounded-lg shadow-2xl p-2 w-52 flex flex-col z-[110] border border-slate-800 animate-in slide-in-from-bottom-2">
-                 <MobileSubItem icon={<BellRing size={20} className="text-blue-500"/>} label="Agenda Zap" onClick={() => { setView('scheduling'); setShowMobileMenu(false); }} />
+                 <MobileSubItem icon={<Database size={20} className="text-blue-500"/>} label="Banco de Dados" onClick={() => { setView('database'); setShowMobileMenu(false); }} />
+                 <MobileSubItem icon={<BellRing size={20} className="text-emerald-500"/>} label="Agenda Zap" onClick={() => { setView('scheduling'); setShowMobileMenu(false); }} />
                  <MobileSubItem icon={<Layers size={20} className="text-amber-500"/>} label="Config Planos" onClick={() => { setView('packages'); setShowMobileMenu(false); }} />
                  <MobileSubItem icon={<MessageSquare size={20} className="text-purple-500"/>} label="Modelos Zap" onClick={() => { setView('messages'); setShowMobileMenu(false); }} />
                  <div className="h-px bg-slate-800 my-2"></div>
