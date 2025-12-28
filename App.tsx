@@ -49,10 +49,17 @@ import {
   BellOff,
   FileText,
   Wallet,
-  Edit3
+  Edit3,
+  Loader2,
+  LogOut,
+  Lock,
+  Mail,
+  User
 } from 'lucide-react';
+import { Session } from '@supabase/supabase-js';
 import { Client, Package, MessageTemplate, MessageRule, ClientStatus, PaymentStatus } from './types';
 import { geminiService } from './services/geminiService';
+import { supabase } from './services/supabaseClient';
 
 const PANEL_NAME = "EFLIXTV";
 const MONTHS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
@@ -159,6 +166,138 @@ const FormInput = ({ theme, label, ...props }: any) => (
   </div>
 );
 
+// Componente de Tela de Autenticação
+const AuthScreen = ({ theme }: { theme: 'light' | 'dark' }) => {
+  const [isLogin, setIsLogin] = useState(true);
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [name, setName] = useState('');
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+
+  const handleAuth = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setLoading(true);
+    setError(null);
+
+    try {
+      if (isLogin) {
+        const { error } = await supabase.auth.signInWithPassword({ email, password });
+        if (error) throw error;
+      } else {
+        const { error } = await supabase.auth.signUp({ 
+          email, 
+          password,
+          options: {
+            data: {
+              full_name: name
+            }
+          }
+        });
+        if (error) throw error;
+        else alert("Cadastro realizado! Verifique seu email se necessário ou faça login.");
+      }
+    } catch (err: any) {
+      setError(err.message || "Ocorreu um erro. Tente novamente.");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div className={`min-h-screen flex items-center justify-center p-4 transition-colors ${theme === 'dark' ? 'bg-slate-950 text-white' : 'bg-slate-50 text-slate-900'}`}>
+      <div className={`w-full max-w-md p-8 rounded-2xl shadow-xl border ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
+        <div className="flex flex-col items-center mb-8">
+          <div className="bg-blue-600 p-3 rounded-xl mb-4 shadow-lg shadow-blue-600/20">
+            <Activity size={32} className="text-white" />
+          </div>
+          <h1 className="text-2xl font-black tracking-tight uppercase">{PANEL_NAME}</h1>
+          <p className="text-sm text-slate-400 font-medium">Gerenciador Premium IPTV</p>
+        </div>
+
+        <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg mb-6">
+          <button 
+            onClick={() => { setIsLogin(true); setError(null); }}
+            className={`flex-1 py-2 text-xs font-bold uppercase rounded-md transition-all ${isLogin ? 'bg-white dark:bg-slate-700 shadow-sm text-blue-600' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'}`}
+          >
+            Entrar
+          </button>
+          <button 
+            onClick={() => { setIsLogin(false); setError(null); }}
+            className={`flex-1 py-2 text-xs font-bold uppercase rounded-md transition-all ${!isLogin ? 'bg-white dark:bg-slate-700 shadow-sm text-blue-600' : 'text-slate-400 hover:text-slate-600 dark:hover:text-slate-200'}`}
+          >
+            Cadastrar
+          </button>
+        </div>
+
+        <form onSubmit={handleAuth} className="space-y-4">
+          {!isLogin && (
+            <div className="space-y-1">
+               <label className="text-[10px] font-bold text-slate-400 uppercase ml-1 tracking-wider">Nome Completo</label>
+               <div className={`flex items-center px-3 py-2.5 rounded-md border ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
+                 <User size={16} className="text-slate-400 mr-2"/>
+                 <input 
+                   type="text" 
+                   required={!isLogin}
+                   value={name}
+                   onChange={(e) => setName(e.target.value)}
+                   className="bg-transparent border-none outline-none text-[13px] font-medium w-full"
+                   placeholder="Seu Nome"
+                 />
+               </div>
+            </div>
+          )}
+          
+          <div className="space-y-1">
+             <label className="text-[10px] font-bold text-slate-400 uppercase ml-1 tracking-wider">Email</label>
+             <div className={`flex items-center px-3 py-2.5 rounded-md border ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
+               <Mail size={16} className="text-slate-400 mr-2"/>
+               <input 
+                 type="email" 
+                 required
+                 value={email}
+                 onChange={(e) => setEmail(e.target.value)}
+                 className="bg-transparent border-none outline-none text-[13px] font-medium w-full"
+                 placeholder="seu@email.com"
+               />
+             </div>
+          </div>
+
+          <div className="space-y-1">
+             <label className="text-[10px] font-bold text-slate-400 uppercase ml-1 tracking-wider">Senha</label>
+             <div className={`flex items-center px-3 py-2.5 rounded-md border ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
+               <Lock size={16} className="text-slate-400 mr-2"/>
+               <input 
+                 type="password" 
+                 required
+                 value={password}
+                 onChange={(e) => setPassword(e.target.value)}
+                 className="bg-transparent border-none outline-none text-[13px] font-medium w-full"
+                 placeholder="******"
+               />
+             </div>
+          </div>
+
+          {error && (
+            <div className="p-3 rounded-md bg-red-50 dark:bg-red-900/20 border border-red-200 dark:border-red-800 text-red-600 dark:text-red-300 text-xs font-medium flex items-center gap-2">
+              <AlertCircle size={16} />
+              {error}
+            </div>
+          )}
+
+          <button 
+            type="submit" 
+            disabled={loading}
+            className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-lg font-bold uppercase text-xs tracking-wide shadow-lg shadow-blue-600/20 transition-all active:scale-[0.98] disabled:opacity-70 disabled:cursor-not-allowed flex justify-center items-center gap-2"
+          >
+            {loading ? <Loader2 size={16} className="animate-spin" /> : (isLogin ? 'Acessar Painel' : 'Criar Conta')}
+          </button>
+        </form>
+      </div>
+    </div>
+  );
+};
+
 export default function App() {
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     const saved = localStorage.getItem('eflixtv_theme');
@@ -166,6 +305,7 @@ export default function App() {
     return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   });
 
+  const [session, setSession] = useState<Session | null>(null);
   const [view, setView] = useState<'dashboard' | 'clients' | 'history' | 'add' | 'packages' | 'messages' | 'scheduling' | 'database'>('dashboard');
   const [selectedClientForMsg, setSelectedClientForMsg] = useState<Client | null>(null);
   const [selectedClientForRenewal, setSelectedClientForRenewal] = useState<Client | null>(null);
@@ -181,6 +321,7 @@ export default function App() {
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   
   const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
 
   const [addFormValues, setAddFormValues] = useState({
     price: '',
@@ -191,40 +332,80 @@ export default function App() {
   const [notificationsEnabled, setNotificationsEnabled] = useState(Notification.permission === 'granted');
   const notifiedIds = useRef<Set<string>>(new Set());
 
-  const [clients, setClients] = useState<Client[]>(() => {
-    const saved = localStorage.getItem('iptv_clients_v4');
-    return saved ? JSON.parse(saved) : [];
-  });
+  // Estado Inicial agora é vazio, carregado via Supabase
+  const [clients, setClients] = useState<Client[]>([]);
+  const [packages, setPackages] = useState<Package[]>([]);
+  const [templates, setTemplates] = useState<MessageTemplate[]>([]);
+  const [rules, setRules] = useState<MessageRule[]>([]);
 
-  const [packages, setPackages] = useState<Package[]>(() => {
-    const saved = localStorage.getItem('iptv_packages_v4');
-    return saved ? JSON.parse(saved) : [
-      { id: 'p1', name: 'Básico SD/HD', price: 25, cost: 8, months: 1 },
-      { id: 'p2', name: 'Completo 4K', price: 35, cost: 12, months: 1 },
-      { id: 'p3', name: 'Trimestral Promo', price: 90, cost: 36, months: 3 }
-    ];
-  });
-
-  const [templates, setTemplates] = useState<MessageTemplate[]>(() => {
-    const saved = localStorage.getItem('iptv_templates_v4');
-    return saved ? JSON.parse(saved) : [
-      { id: 't1', title: 'BOAS-VINDAS', body: 'Olá {{nome}}! Seus dados: User: {{usuario}} / Pass: {{senha}}' }
-    ];
-  });
-
-  const [rules, setRules] = useState<MessageRule[]>(() => {
-    const saved = localStorage.getItem('iptv_rules_v4');
-    return saved ? JSON.parse(saved) : [
-      { id: 'r1', type: 'before', days: 3, time: '09:00', templateId: 't1', isActive: true }
-    ];
-  });
-
+  // Gestão da Sessão e Carregamento de Dados
   useEffect(() => {
-    localStorage.setItem('iptv_clients_v4', JSON.stringify(clients));
-    localStorage.setItem('iptv_packages_v4', JSON.stringify(packages));
-    localStorage.setItem('iptv_templates_v4', JSON.stringify(templates));
-    localStorage.setItem('iptv_rules_v4', JSON.stringify(rules));
-  }, [clients, packages, templates, rules]);
+    supabase.auth.getSession().then(({ data: { session } }) => {
+      setSession(session);
+      if (session) fetchAllData();
+      else setIsLoading(false); // Stop loading if no session
+    });
+
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((_event, session) => {
+      setSession(session);
+      if (session) {
+        fetchAllData();
+      } else {
+        setClients([]);
+        setPackages([]);
+        setTemplates([]);
+        setRules([]);
+        setIsLoading(false);
+      }
+    });
+
+    return () => subscription.unsubscribe();
+  }, []);
+
+  const fetchAllData = async () => {
+    setIsLoading(true);
+    try {
+      // O Supabase filtra automaticamente pelo usuário se RLS estiver ativo,
+      // mas por segurança e boa prática, podemos assumir que o backend cuida disso
+      // ou filtrar explicitamente se as políticas forem públicas (não recomendado).
+      // Aqui, assumimos que RLS filtra ou tabela é compartilhada e filtramos manualmente.
+      // NOTA: Para segurança real, ative RLS no Supabase. O código abaixo envia o user_id na criação.
+      
+      const { data: sessionData } = await supabase.auth.getSession();
+      const userId = sessionData.session?.user.id;
+      
+      if (!userId) return;
+
+      const { data: clientsData } = await supabase.from('clients').select('*').eq('user_id', userId);
+      if (clientsData) setClients(clientsData);
+
+      const { data: packagesData } = await supabase.from('packages').select('*').eq('user_id', userId);
+      if (packagesData) setPackages(packagesData);
+      else {
+         const initialPackages = [
+          { id: 'p1', user_id: userId, name: 'Básico SD/HD', price: 25, cost: 8, months: 1 },
+          { id: 'p2', user_id: userId, name: 'Completo 4K', price: 35, cost: 12, months: 1 },
+          { id: 'p3', user_id: userId, name: 'Trimestral Promo', price: 90, cost: 36, months: 3 }
+         ];
+         setPackages(initialPackages);
+      }
+
+      const { data: templatesData } = await supabase.from('templates').select('*').eq('user_id', userId);
+      if (templatesData) setTemplates(templatesData);
+      else setTemplates([{ id: 't1', user_id: userId, title: 'BOAS-VINDAS', body: 'Olá {{nome}}! Seus dados: User: {{usuario}} / Pass: {{senha}}' }]);
+
+      const { data: rulesData } = await supabase.from('rules').select('*').eq('user_id', userId);
+      if (rulesData) setRules(rulesData);
+      else setRules([{ id: 'r1', user_id: userId, type: 'before', days: 3, time: '09:00', templateId: 't1', isActive: true }]);
+
+    } catch (error) {
+      console.error("Erro ao carregar dados do Supabase:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
 
   useEffect(() => {
     localStorage.setItem('eflixtv_theme', theme);
@@ -235,10 +416,10 @@ export default function App() {
     }
   }, [theme]);
 
+  // Lógica de Notificações
   useEffect(() => {
     const checkNotifications = () => {
       if (!notificationsEnabled) return;
-
       const now = new Date();
       const todayStr = now.toLocaleDateString('pt-BR');
       
@@ -256,7 +437,6 @@ export default function App() {
 
         rules.forEach(rule => {
           if (!rule.isActive) return;
-
           let targetDate = new Date(expiryDate);
           if (rule.type === 'before') targetDate.setDate(targetDate.getDate() - rule.days);
           else if (rule.type === 'after') targetDate.setDate(targetDate.getDate() + rule.days);
@@ -265,7 +445,6 @@ export default function App() {
             const [ruleH, ruleM] = rule.time.split(':').map(Number);
             const ruleDate = new Date(now);
             ruleDate.setHours(ruleH, ruleM, 0, 0);
-
             const diffMinutes = (ruleDate.getTime() - now.getTime()) / (1000 * 60);
 
             if (diffMinutes > 0 && diffMinutes <= 5) {
@@ -279,7 +458,6 @@ export default function App() {
         });
       });
     };
-
     const interval = setInterval(checkNotifications, 60000);
     checkNotifications();
     return () => clearInterval(interval);
@@ -293,40 +471,160 @@ export default function App() {
 
   const toggleTheme = () => setTheme(prev => prev === 'light' ? 'dark' : 'light');
   const isExpired = (date: string) => new Date(date) < new Date();
+  
+  const handleLogout = async () => {
+    await supabase.auth.signOut();
+  };
 
-  const handleExportData = () => {
-    const data = { clients, packages, templates, rules, exportedAt: new Date().toISOString(), version: "4.0" };
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `backup_eflixtv_${new Date().toISOString().split('T')[0]}.json`;
-    link.click();
-    URL.revokeObjectURL(url);
-  };
-  
-  const handleImportData = (event: React.ChangeEvent<HTMLInputElement>) => {
-    const file = event.target.files?.[0];
-    if (!file) return;
-    const reader = new FileReader();
-    reader.onload = (e) => {
+  // Função genérica de atualização de cliente no Supabase
+  const updateClientInSupabase = async (clientId: string, updates: Partial<Client>) => {
+      // Optimistic Update
+      setClients(prev => prev.map(c => c.id === clientId ? { ...c, ...updates } : c));
+      
       try {
-        const data = JSON.parse(e.target?.result as string);
-        if (data.clients && Array.isArray(data.clients)) {
-          if (confirm('Atenção: Isso irá substituir todos os dados atuais. Deseja continuar?')) {
-            setClients(data.clients);
-            if (data.packages) setPackages(data.packages);
-            if (data.templates) setTemplates(data.templates);
-            if (data.rules) setRules(data.rules);
-            alert('Dados restaurados com sucesso!');
-            setView('dashboard');
-          }
-        } else { alert('Arquivo de backup inválido.'); }
-      } catch (err) { alert('Erro ao ler o arquivo de backup.'); }
-    };
-    reader.readAsText(file);
+          const { error } = await supabase.from('clients').update(updates).eq('id', clientId);
+          if(error) throw error;
+      } catch (err) {
+          console.error("Erro ao atualizar cliente:", err);
+          alert("Erro ao salvar alterações no servidor.");
+      }
   };
-  
+
+  const handleToggleStatus = (client: Client) => updateClientInSupabase(client.id, { status: client.status === 'active' ? 'blocked' : 'active' });
+  const handleTogglePayment = (client: Client) => updateClientInSupabase(client.id, { paymentStatus: client.paymentStatus === 'paid' ? 'pending' : 'paid' });
+
+  const handleAddClient = async (form: any) => {
+    if (!session) return;
+    
+    const pkg = packages.find(p => p.id === form.packageId);
+    const expiryDate = new Date(`${form.expiryDate}T${form.expiryTime || '00:00'}`);
+    const newClient: Client = {
+      id: Math.random().toString(36).substr(2, 9),
+      user_id: session.user.id,
+      name: form.name,
+      username: form.username,
+      password: form.password,
+      status: 'active',
+      paymentStatus: form.isPaid ? 'paid' : 'pending',
+      phone: form.phone,
+      packageName: pkg?.name || 'Personalizado',
+      packageId: form.packageId,
+      price: Number(form.price) || 0,
+      expenses: Number(form.expenses) || 0,
+      notes: form.notes || '',
+      appName: form.appName || '',
+      macKey: form.macKey || '',
+      createdAt: new Date().toISOString(),
+      expiresAt: expiryDate.toISOString(),
+      paymentHistory: form.isPaid ? [{ id: Math.random().toString(36).substr(2,5), amount: Number(form.price), date: new Date().toISOString(), monthsPaid: pkg?.months || 1, method: 'Cadastro' }] : [],
+      totalPaid: form.isPaid ? Number(form.price) : 0
+    };
+
+    setClients(prev => [...prev, newClient]);
+    setView('clients');
+    setAddFormValues({ price: '', expenses: '' });
+
+    try {
+        const { error } = await supabase.from('clients').insert([newClient]);
+        if (error) throw error;
+    } catch(err) {
+        console.error(err);
+        alert("Erro ao criar cliente no banco de dados.");
+    }
+  };
+
+  const handleDeleteClient = async (id: string) => {
+      if(!confirm('Excluir cliente permanentemente?')) return;
+      setClients(prev => prev.filter(c => c.id !== id));
+      try {
+          await supabase.from('clients').delete().eq('id', id);
+      } catch(err) { console.error(err); }
+  };
+
+  const handleEditClient = async (form: any) => {
+    const pkg = packages.find(p => p.id === form.packageId);
+    const expiryDate = new Date(`${form.expiryDate}T${form.expiryTime || '00:00'}`);
+    const updates = {
+      name: form.name, phone: form.phone, username: form.username, password: form.password,
+      packageName: pkg?.name || 'Personalizado', packageId: form.packageId, price: Number(form.price),
+      expenses: Number(form.expenses), expiresAt: expiryDate.toISOString(), appName: form.appName, macKey: form.macKey, notes: form.notes
+    };
+    
+    updateClientInSupabase(selectedClientForEdit!.id, updates);
+    setSelectedClientForEdit(null);
+  };
+
+  const registerRenewal = async (clientId: string, packageId: string) => {
+    const pkg = packages.find(p => p.id === packageId);
+    if (!pkg) return;
+    
+    const client = clients.find(c => c.id === clientId);
+    if(!client) return;
+
+    const baseDate = isExpired(client.expiresAt) ? new Date() : new Date(client.expiresAt);
+    const newExpiry = new Date(baseDate);
+    newExpiry.setMonth(newExpiry.getMonth() + pkg.months);
+    const newRecord = { id: Math.random().toString(36).substr(2,5), amount: pkg.price, date: new Date().toISOString(), monthsPaid: pkg.months, method: 'Renovação' };
+    
+    const updates = { 
+        expiresAt: newExpiry.toISOString(), 
+        paymentStatus: 'paid' as PaymentStatus, 
+        totalPaid: client.totalPaid + pkg.price, 
+        paymentHistory: [newRecord, ...client.paymentHistory], 
+        packageName: pkg.name, 
+        price: pkg.price, 
+        expenses: pkg.cost 
+    };
+
+    updateClientInSupabase(clientId, updates);
+    setSelectedClientForRenewal(null);
+  };
+
+  // Funções de CRUD para Planos, Modelos e Regras
+  const handleSavePackage = async (pkg: Package) => {
+      if (!session) return;
+      const pkgWithUser = { ...pkg, user_id: session.user.id };
+      
+      if(editingPackage) {
+          setPackages(prev => prev.map(p => p.id === pkg.id ? pkgWithUser : p));
+          await supabase.from('packages').update(pkgWithUser).eq('id', pkg.id);
+          setEditingPackage(null);
+      } else {
+          setPackages(prev => [...prev, pkgWithUser]);
+          await supabase.from('packages').insert([pkgWithUser]);
+      }
+  };
+
+  const handleDeletePackage = async (id: string) => {
+      if(!confirm('Excluir plano?')) return;
+      setPackages(prev => prev.filter(p => p.id !== id));
+      await supabase.from('packages').delete().eq('id', id);
+  };
+
+  const handleSaveTemplate = async (tpl: MessageTemplate) => {
+      if (!session) return;
+      const tplWithUser = { ...tpl, user_id: session.user.id };
+      setTemplates(prev => [...prev, tplWithUser]);
+      await supabase.from('templates').insert([tplWithUser]);
+  };
+
+  const handleDeleteTemplate = async (id: string) => {
+      setTemplates(prev => prev.filter(t => t.id !== id));
+      await supabase.from('templates').delete().eq('id', id);
+  };
+
+  const handleSaveRule = async (rule: MessageRule) => {
+      if (!session) return;
+      const ruleWithUser = { ...rule, user_id: session.user.id };
+      setRules(prev => [...prev, ruleWithUser]);
+      await supabase.from('rules').insert([ruleWithUser]);
+  };
+
+  const handleDeleteRule = async (id: string) => {
+      setRules(prev => prev.filter(r => r.id !== id));
+      await supabase.from('rules').delete().eq('id', id);
+  };
+
   const requestPermission = async () => {
       const permission = await Notification.requestPermission();
       setNotificationsEnabled(permission === 'granted');
@@ -334,9 +632,9 @@ export default function App() {
 
   const stats = useMemo(() => {
     return clients.reduce((acc, c) => {
-      acc.totalLTV += c.totalPaid;
-      acc.monthlyRevenue += c.price;
-      acc.monthlyCosts += c.expenses;
+      acc.totalLTV += c.totalPaid || 0;
+      acc.monthlyRevenue += c.price || 0;
+      acc.monthlyCosts += c.expenses || 0;
       const expired = isExpired(c.expiresAt);
       if (c.status === 'blocked') acc.blockedCount++;
       else if (expired) acc.expiredCount++;
@@ -368,69 +666,26 @@ export default function App() {
     });
   }, [clients, searchTerm, statusFilter, paymentFilter, sortOrder]);
 
-  const handleUpdateClient = (clientId: string, updates: Partial<Client>) => setClients(prev => prev.map(c => c.id === clientId ? { ...c, ...updates } : c));
-  const handleToggleStatus = (client: Client) => handleUpdateClient(client.id, { status: client.status === 'active' ? 'blocked' : 'active' });
-  const handleTogglePayment = (client: Client) => handleUpdateClient(client.id, { paymentStatus: client.paymentStatus === 'paid' ? 'pending' : 'paid' });
-
-  const handleAddClient = (form: any) => {
-    const pkg = packages.find(p => p.id === form.packageId);
-    const expiryDate = new Date(`${form.expiryDate}T${form.expiryTime || '00:00'}`);
-    const newClient: Client = {
-      id: Math.random().toString(36).substr(2, 9),
-      name: form.name,
-      username: form.username,
-      password: form.password,
-      status: 'active',
-      paymentStatus: form.isPaid ? 'paid' : 'pending',
-      phone: form.phone,
-      packageName: pkg?.name || 'Personalizado',
-      packageId: form.packageId,
-      price: Number(form.price) || 0,
-      expenses: Number(form.expenses) || 0,
-      notes: form.notes || '',
-      appName: form.appName || '',
-      macKey: form.macKey || '',
-      createdAt: new Date().toISOString(),
-      expiresAt: expiryDate.toISOString(),
-      paymentHistory: form.isPaid ? [{ id: Math.random().toString(36).substr(2,5), amount: Number(form.price), date: new Date().toISOString(), monthsPaid: pkg?.months || 1, method: 'Cadastro' }] : [],
-      totalPaid: form.isPaid ? Number(form.price) : 0
-    };
-    setClients([...clients, newClient]);
-    setView('clients');
-    setAddFormValues({ price: '', expenses: '' });
-  };
-
-  const handleEditClient = (form: any) => {
-    const pkg = packages.find(p => p.id === form.packageId);
-    const expiryDate = new Date(`${form.expiryDate}T${form.expiryTime || '00:00'}`);
-    handleUpdateClient(selectedClientForEdit!.id, {
-      name: form.name, phone: form.phone, username: form.username, password: form.password,
-      packageName: pkg?.name || 'Personalizado', packageId: form.packageId, price: Number(form.price),
-      expenses: Number(form.expenses), expiresAt: expiryDate.toISOString(), appName: form.appName, macKey: form.macKey, notes: form.notes
-    });
-    setSelectedClientForEdit(null);
-  };
-
-  const registerRenewal = (clientId: string, packageId: string) => {
-    const pkg = packages.find(p => p.id === packageId);
-    if (!pkg) return;
-    setClients(prev => prev.map(c => {
-      if (c.id === clientId) {
-        const baseDate = isExpired(c.expiresAt) ? new Date() : new Date(c.expiresAt);
-        const newExpiry = new Date(baseDate);
-        newExpiry.setMonth(newExpiry.getMonth() + pkg.months);
-        const newRecord = { id: Math.random().toString(36).substr(2,5), amount: pkg.price, date: new Date().toISOString(), monthsPaid: pkg.months, method: 'Renovação' };
-        return { ...c, expiresAt: newExpiry.toISOString(), paymentStatus: 'paid', totalPaid: c.totalPaid + pkg.price, paymentHistory: [newRecord, ...c.paymentHistory], packageName: pkg.name, price: pkg.price, expenses: pkg.cost };
-      }
-      return c;
-    }));
-    setSelectedClientForRenewal(null);
-  };
-
   const sendWhatsApp = (template: MessageTemplate | string, client: Client) => {
     let body = typeof template === 'string' ? template : template.body.replace(/{{nome}}/g, client.name).replace(/{{usuario}}/g, client.username).replace(/{{senha}}/g, client.password || '***').replace(/{{vencimento}}/g, new Date(client.expiresAt).toLocaleDateString('pt-BR')).replace(/{{valor}}/g, client.price.toFixed(2));
     window.open(`https://wa.me/${client.phone.replace(/\D/g, '')}?text=${encodeURIComponent(body)}`, '_blank');
   };
+
+  if (isLoading) {
+    return (
+      <div className={`flex items-center justify-center h-screen ${theme === 'dark' ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-800'}`}>
+        <div className="flex flex-col items-center gap-4">
+            <Loader2 size={40} className="animate-spin text-blue-600"/>
+            <p className="text-sm font-bold uppercase tracking-widest animate-pulse">Carregando Sistema...</p>
+        </div>
+      </div>
+    );
+  }
+
+  // Se não houver sessão, exibe a tela de Login
+  if (!session) {
+    return <AuthScreen theme={theme} />;
+  }
 
   return (
     <div className={`flex flex-col md:flex-row h-screen overflow-hidden font-normal transition-colors duration-300 ${theme === 'dark' ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-800'}`}>
@@ -455,10 +710,15 @@ export default function App() {
           <SidebarItem icon={<Database size={18} />} label="Backup Dados" active={view === 'database'} onClick={() => setView('database')} />
         </nav>
 
-        <div className="p-3 border-t border-slate-200 dark:border-slate-800">
+        <div className="p-3 border-t border-slate-200 dark:border-slate-800 space-y-2">
           <button onClick={toggleTheme} className="w-full flex items-center justify-between px-3 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-md transition-all">
             <span className="text-[10px] font-bold uppercase">{theme === 'dark' ? 'Tema Escuro' : 'Tema Claro'}</span>
             {theme === 'dark' ? <Moon size={14} className="text-blue-400" /> : <Sun size={14} className="text-amber-400" />}
+          </button>
+          
+          <button onClick={handleLogout} className="w-full flex items-center gap-3 px-3 py-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-all">
+            <LogOut size={16} />
+            <span className="text-[11px] font-bold uppercase">Sair</span>
           </button>
         </div>
       </aside>
@@ -482,9 +742,14 @@ export default function App() {
             </button>
           </div>
           
-          <button onClick={() => geminiService.analyzeBusiness(clients).then(setAiAnalysis)} className="p-2 text-blue-600 bg-blue-50 dark:bg-blue-900/30 dark:text-blue-400 rounded-md border border-blue-100 dark:border-blue-800/50 hover:bg-blue-100 transition-all shadow-sm">
-            <TrendingUp size={16} />
-          </button>
+          <div className="flex items-center gap-2">
+            <span className="hidden md:block text-[10px] font-bold uppercase text-slate-400">
+               {session.user.user_metadata.full_name || session.user.email}
+            </span>
+            <button onClick={() => geminiService.analyzeBusiness(clients).then(setAiAnalysis)} className="p-2 text-blue-600 bg-blue-50 dark:bg-blue-900/30 dark:text-blue-400 rounded-md border border-blue-100 dark:border-blue-800/50 hover:bg-blue-100 transition-all shadow-sm">
+              <TrendingUp size={16} />
+            </button>
+          </div>
         </header>
 
         <main className="flex-1 overflow-y-auto pb-32 p-4 md:p-6 hide-scrollbar bg-slate-50/50 dark:bg-slate-950">
@@ -531,7 +796,7 @@ export default function App() {
                       ))}
                     </div>
                   </div>
-                  <RecentActivityCard title="Últimas Entradas" theme={theme} items={clients.flatMap(c => c.paymentHistory.map(h => ({...h, clientName: c.name}))).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 5)} />
+                  <RecentActivityCard title="Últimas Entradas" theme={theme} items={clients.flatMap(c => c.paymentHistory?.map(h => ({...h, clientName: c.name})) || []).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 5)} />
                 </div>
               </div>
             )}
@@ -587,7 +852,7 @@ export default function App() {
                              <ActionButton onClick={() => setSelectedClientForMsg(c)} theme={theme} color="emerald" icon={<MessageSquare size={16}/>} />
                              <ActionButton onClick={() => setSelectedClientForRenewal(c)} theme={theme} color="amber" icon={<RefreshCw size={16}/>} />
                           </div>
-                          <ActionButton onClick={() => { if(confirm('Excluir cliente?')) setClients(prev => prev.filter(cl => cl.id !== c.id)) }} theme={theme} color="red" icon={<Trash2 size={16}/>} />
+                          <ActionButton onClick={() => handleDeleteClient(c.id)} theme={theme} color="red" icon={<Trash2 size={16}/>} />
                         </div>
                       </div>
                     );
@@ -753,7 +1018,7 @@ export default function App() {
                               </td>
                             );
                           })}
-                          <td className="px-4 py-2.5 text-right text-[11px] font-bold text-emerald-600">R$ {c.totalPaid.toFixed(2)}</td>
+                          <td className="px-4 py-2.5 text-right text-[11px] font-bold text-emerald-600">R$ {(c.totalPaid || 0).toFixed(2)}</td>
                         </tr>
                       ))}
                     </tbody>
@@ -769,9 +1034,14 @@ export default function App() {
                    <form className="grid grid-cols-2 gap-3" onSubmit={(e) => {
                      e.preventDefault();
                      const fd = new FormData(e.currentTarget);
-                     const pkgData = { name: (fd.get('name') as string).toUpperCase(), price: Number(fd.get('price')), cost: Number(fd.get('cost')), months: Number(fd.get('months')) };
-                     if (editingPackage) { setPackages(prev => prev.map(p => p.id === editingPackage.id ? { ...p, ...pkgData } : p)); setEditingPackage(null); } 
-                     else { setPackages([...packages, { id: Math.random().toString(36).substr(2,9), ...pkgData }]); }
+                     const pkgData = { 
+                         id: editingPackage ? editingPackage.id : Math.random().toString(36).substr(2,9),
+                         name: (fd.get('name') as string).toUpperCase(), 
+                         price: Number(fd.get('price')), 
+                         cost: Number(fd.get('cost')), 
+                         months: Number(fd.get('months')) 
+                     };
+                     handleSavePackage(pkgData);
                      e.currentTarget.reset();
                    }}>
                      <div className="col-span-2"><FormInput theme={theme} name="name" label="Nome do Plano" placeholder="Ex: MENSAL 4K" required defaultValue={editingPackage?.name} /></div>
@@ -792,7 +1062,7 @@ export default function App() {
                     </div>
                     <div className="flex gap-1.5">
                       <button onClick={() => setEditingPackage(p)} className="p-2 text-blue-500 bg-blue-50 dark:bg-blue-900/20 rounded-md"><Pencil size={16}/></button>
-                      <button onClick={() => { if(confirm('Excluir plano?')) setPackages(packages.filter(x => x.id !== p.id)) }} className="p-2 text-red-500 bg-red-50 dark:bg-red-900/20 rounded-md"><Trash2 size={16}/></button>
+                      <button onClick={() => handleDeletePackage(p.id)} className="p-2 text-red-500 bg-red-50 dark:bg-red-900/20 rounded-md"><Trash2 size={16}/></button>
                     </div>
                   </div>
                 ))}
@@ -806,7 +1076,7 @@ export default function App() {
                    <form className="space-y-3" onSubmit={(e) => {
                      e.preventDefault();
                      const fd = new FormData(e.currentTarget);
-                     setTemplates([...templates, { id: Math.random().toString(36).substr(2,9), title: (fd.get('title') as string).toUpperCase(), body: fd.get('body') as string }]);
+                     handleSaveTemplate({ id: Math.random().toString(36).substr(2,9), title: (fd.get('title') as string).toUpperCase(), body: fd.get('body') as string });
                      e.currentTarget.reset();
                    }}>
                      <FormInput theme={theme} name="title" label="Título Identificador" required />
@@ -816,7 +1086,7 @@ export default function App() {
                 </div>
                  {templates.map(t => (
                   <div key={t.id} className={`p-4 rounded-lg border relative shadow-sm ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
-                    <button onClick={() => setTemplates(templates.filter(x => x.id !== t.id))} className="absolute top-3 right-3 text-red-300 hover:text-red-500"><Trash2 size={16}/></button>
+                    <button onClick={() => handleDeleteTemplate(t.id)} className="absolute top-3 right-3 text-red-300 hover:text-red-500"><Trash2 size={16}/></button>
                     <span className="text-[11px] font-bold uppercase text-blue-500 block mb-2">{t.title}</span>
                     <p className="text-[12px] italic opacity-70 leading-relaxed pr-6 line-clamp-2">"{t.body}"</p>
                   </div>
@@ -830,50 +1100,23 @@ export default function App() {
                   <div className="flex items-center gap-3 mb-6">
                     <div className="p-2 bg-blue-600 rounded-md text-white shadow-sm"><Database size={20}/></div>
                     <div>
-                      <h3 className="text-base font-bold uppercase tracking-tight">Gestão de Dados</h3>
-                      <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider">Segurança e Portabilidade</p>
+                      <h3 className="text-base font-bold uppercase tracking-tight">Banco de Dados Cloud</h3>
+                      <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider">Conectado ao Supabase</p>
                     </div>
                   </div>
 
-                  <div className="p-3 bg-amber-50 dark:bg-amber-900/20 border border-amber-200 dark:border-amber-800 rounded-md flex gap-3 mb-6">
-                    <ShieldAlert className="text-amber-500 shrink-0" size={18}/>
-                    <p className="text-[11px] text-amber-800 dark:text-amber-300 font-medium leading-snug">
-                      Os dados são salvos apenas neste navegador. Faça backups regulares.
+                  <div className="p-3 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-md flex gap-3 mb-6">
+                    <CheckCircle className="text-emerald-500 shrink-0" size={18}/>
+                    <p className="text-[11px] text-emerald-800 dark:text-emerald-300 font-medium leading-snug">
+                      Seus dados estão sendo salvos automaticamente na nuvem. Você pode acessar de qualquer dispositivo.
                     </p>
                   </div>
+                  
+                  {/* Botão para forçar recarga caso necessário */}
+                  <button onClick={() => window.location.reload()} className="w-full py-3 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-bold uppercase text-[11px] rounded-md hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+                      Sincronizar Agora
+                  </button>
 
-                  <div className="grid grid-cols-1 gap-3">
-                    <button onClick={notificationsEnabled ? () => {} : requestPermission} className={`flex items-center justify-between p-4 rounded-md border transition-all group active:scale-[0.98] ${notificationsEnabled ? 'border-emerald-600/20 bg-emerald-50 dark:bg-emerald-900/10' : 'border-slate-200 bg-slate-50 dark:bg-slate-800/10'}`}>
-                       <div className="flex items-center gap-3">
-                        <Bell className={notificationsEnabled ? 'text-emerald-600' : 'text-slate-400'} size={18}/>
-                        <div className="text-left">
-                          <div className={`font-bold text-[12px] uppercase ${notificationsEnabled ? 'text-emerald-600' : 'text-slate-400'}`}>{notificationsEnabled ? 'Notificações Ativas' : 'Ativar Notificações'}</div>
-                        </div>
-                      </div>
-                      <ChevronRight size={16} className="opacity-50"/>
-                    </button>
-
-                    <button onClick={handleExportData} className="flex items-center justify-between p-4 rounded-md border border-blue-600/20 hover:border-blue-600 bg-blue-50 dark:bg-blue-900/10 transition-all group active:scale-[0.98]">
-                      <div className="flex items-center gap-3">
-                        <Download className="text-blue-600" size={18}/>
-                        <div className="text-left">
-                          <div className="font-bold text-[12px] uppercase text-blue-600">Exportar Backup</div>
-                        </div>
-                      </div>
-                      <ChevronRight size={16} className="text-blue-600 opacity-50 group-hover:opacity-100"/>
-                    </button>
-
-                    <label className="flex items-center justify-between p-4 rounded-md border border-emerald-600/20 hover:border-emerald-600 bg-emerald-50 dark:bg-emerald-900/10 transition-all group cursor-pointer active:scale-[0.98]">
-                      <div className="flex items-center gap-3">
-                        <Upload className="text-emerald-600" size={18}/>
-                        <div className="text-left">
-                          <div className="font-bold text-[12px] uppercase text-emerald-600">Restaurar Backup</div>
-                        </div>
-                      </div>
-                      <input type="file" accept=".json" className="hidden" onChange={handleImportData} />
-                      <ChevronRight size={16} className="text-emerald-600 opacity-50 group-hover:opacity-100"/>
-                    </label>
-                  </div>
                 </div>
               </div>
             )}
@@ -885,14 +1128,14 @@ export default function App() {
                    <form className="space-y-3" onSubmit={(e) => {
                      e.preventDefault();
                      const fd = new FormData(e.currentTarget);
-                     setRules([...rules, { 
+                     handleSaveRule({ 
                        id: Math.random().toString(36).substr(2,9), 
                        type: fd.get('type') as any,
                        days: Number(fd.get('days')),
                        time: fd.get('time') as string,
                        templateId: fd.get('templateId') as string,
                        isActive: true
-                     }]);
+                     });
                      e.currentTarget.reset();
                    }}>
                      <div className="grid grid-cols-2 gap-3">
@@ -925,7 +1168,7 @@ export default function App() {
                       </div>
                       <div className="text-[10px] text-slate-400 font-medium uppercase mt-0.5">Modelo: {templates.find(t => t.id === r.templateId)?.title || 'Desconhecido'}</div>
                     </div>
-                    <button onClick={() => setRules(rules.filter(x => x.id !== r.id))} className="text-red-300 hover:text-red-500"><Trash2 size={16}/></button>
+                    <button onClick={() => handleDeleteRule(r.id)} className="text-red-300 hover:text-red-500"><Trash2 size={16}/></button>
                   </div>
                 ))}
               </div>
@@ -954,6 +1197,7 @@ export default function App() {
                  <MobileSubItem icon={<MessageSquare size={16} className="text-purple-500"/>} label="Modelos Zap" onClick={() => { setView('messages'); setShowMobileMenu(false); }} />
                  <div className="h-px bg-slate-800 my-1"></div>
                  <MobileSubItem icon={theme === 'dark' ? <Sun size={16} className="text-amber-400"/> : <Moon size={16}/>} label="Alternar Tema" onClick={() => { toggleTheme(); setShowMobileMenu(false); }} />
+                 <MobileSubItem icon={<LogOut size={16} className="text-red-500"/>} label="Sair" onClick={() => { handleLogout(); setShowMobileMenu(false); }} />
                </div>
              )}
           </div>

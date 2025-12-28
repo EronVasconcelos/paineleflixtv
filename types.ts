@@ -12,6 +12,7 @@ export interface PaymentRecord {
 
 export interface Package {
   id: string;
+  user_id?: string;
   name: string;
   price: number;
   cost: number;
@@ -20,12 +21,14 @@ export interface Package {
 
 export interface MessageTemplate {
   id: string;
+  user_id?: string;
   title: string;
   body: string;
 }
 
 export interface MessageRule {
   id: string;
+  user_id?: string;
   type: 'before' | 'on_day' | 'after';
   days: number;
   time: string;
@@ -35,6 +38,7 @@ export interface MessageRule {
 
 export interface Client {
   id: string;
+  user_id?: string;
   name: string;
   username: string;
   password?: string;
