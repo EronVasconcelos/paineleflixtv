@@ -57,7 +57,7 @@ import { geminiService } from './services/geminiService';
 const PANEL_NAME = "EFLIXTV";
 const MONTHS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 
-/* COMPONENTES DE UI MENORES E MAIS COMPACTOS */
+/* COMPONENTES DE UI */
 
 const SidebarItem = ({ icon, label, active, onClick }: { icon: React.ReactNode, label: string, active: boolean, onClick: () => void }) => (
   <button onClick={onClick} className={`w-full flex items-center gap-3 px-3 py-2 rounded-md mb-0.5 transition-all group ${active ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-200/50 dark:hover:bg-slate-800 dark:text-slate-400 dark:hover:text-white'}`}>
@@ -235,7 +235,6 @@ export default function App() {
     }
   }, [theme]);
 
-  // Lógica de Notificações Ativas
   useEffect(() => {
     const checkNotifications = () => {
       if (!notificationsEnabled) return;
@@ -351,13 +350,16 @@ export default function App() {
     return clients.filter(c => {
       const matchesSearch = c.name.toLowerCase().includes(searchTerm.toLowerCase()) || c.username.toLowerCase().includes(searchTerm.toLowerCase()) || (c.macKey || '').toLowerCase().includes(searchTerm.toLowerCase());
       const expired = isExpired(c.expiresAt);
+      
       let matchesStatus = statusFilter === 'all';
       if (statusFilter === 'active') matchesStatus = c.status === 'active' && !expired;
       else if (statusFilter === 'expired') matchesStatus = c.status === 'active' && expired;
       else if (statusFilter === 'blocked') matchesStatus = c.status === 'blocked';
+
       let matchesPayment = paymentFilter === 'all';
       if (paymentFilter === 'paid') matchesPayment = c.paymentStatus === 'paid';
       else if (paymentFilter === 'pending') matchesPayment = c.paymentStatus === 'pending';
+
       return matchesSearch && matchesStatus && matchesPayment;
     }).sort((a, b) => {
       const dateA = new Date(a.expiresAt).getTime();
@@ -543,10 +545,13 @@ export default function App() {
                   </div>
                   
                   <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-1">
-                    <FilterChip active={statusFilter === 'all'} label="Todos" theme={theme} onClick={() => setStatusFilter('all')} />
+                    <FilterChip active={statusFilter === 'all' && paymentFilter === 'all'} label="Todos" theme={theme} onClick={() => { setStatusFilter('all'); setPaymentFilter('all'); }} />
                     <FilterChip active={statusFilter === 'active'} label="Ativos" theme={theme} onClick={() => setStatusFilter('active')} />
                     <FilterChip active={statusFilter === 'expired'} label="Vencidos" theme={theme} onClick={() => setStatusFilter('expired')} />
                     <FilterChip active={statusFilter === 'blocked'} label="Blocks" theme={theme} onClick={() => setStatusFilter('blocked')} />
+                    <div className="w-px h-6 bg-slate-200 dark:bg-slate-700 mx-1 self-center"></div>
+                    <FilterChip active={paymentFilter === 'paid'} label="Pagos" theme={theme} onClick={() => setPaymentFilter(paymentFilter === 'paid' ? 'all' : 'paid')} />
+                    <FilterChip active={paymentFilter === 'pending'} label="Pendentes" theme={theme} onClick={() => setPaymentFilter(paymentFilter === 'pending' ? 'all' : 'pending')} />
                   </div>
                 </div>
 
@@ -711,7 +716,6 @@ export default function App() {
               </div>
             )}
 
-            {/* Mantido o restante com ajustes de estilo para consistência */}
             {view === 'history' && (
               <div className={`rounded-lg border shadow-sm overflow-hidden ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
                  <div className="p-3 flex items-center justify-between border-b dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
@@ -735,7 +739,6 @@ export default function App() {
                         <tr key={c.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
                           <td className={`px-4 py-2.5 text-[12px] font-medium sticky left-0 z-10 transition-colors ${theme === 'dark' ? 'bg-slate-900' : 'bg-white'}`}>{c.name}</td>
                           {MONTHS.map((_, i) => {
-                             {/* Logic same as before */}
                              const monthEnd = new Date(currentYear, i + 1, 0);
                              const expiry = new Date(c.expiresAt);
                              const created = new Date(c.createdAt);
@@ -759,7 +762,6 @@ export default function App() {
               </div>
             )}
 
-            {/* Settings Views Adjusted for Compactness */}
             {view === 'packages' && (
               <div className="max-w-lg mx-auto space-y-4">
                 <div className={`p-5 rounded-lg border shadow-sm ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
@@ -958,7 +960,7 @@ export default function App() {
         </nav>
       </div>
       
-      {/* Modals remain mostly same but ensure they use compact padding/text */}
+      {/* Modals */}
       {selectedClientForRenewal && <RenewalModal theme={theme} client={selectedClientForRenewal} packages={packages} onRenew={registerRenewal} onClose={() => setSelectedClientForRenewal(null)} />}
       {selectedClientForMsg && <MessageModal theme={theme} client={selectedClientForMsg} templates={templates} onSend={sendWhatsApp} onClose={() => setSelectedClientForMsg(null)} />}
       {selectedClientDetails && <ClientDetailsModal theme={theme} client={selectedClientDetails} onClose={() => setSelectedClientDetails(null)} />}
@@ -967,7 +969,7 @@ export default function App() {
   );
 }
 
-// Helper Components Adjusted for Compactness
+// Helper Components
 function BottomNavItem({ icon, label, active, onClick }: any) {
   return (
     <button onClick={onClick} className={`flex flex-col items-center justify-center gap-1 min-w-[50px] transition-colors active:scale-95 ${active ? 'text-blue-600' : 'text-slate-400'}`}>
@@ -985,7 +987,7 @@ function MobileSubItem({ icon, label, onClick }: any) {
   );
 }
 
-/* Modals with Reduced Padding */
+/* Modals */
 function ClientDetailsModal({ client, onClose, theme }: any) {
   const profit = client.price - client.expenses;
   return (
