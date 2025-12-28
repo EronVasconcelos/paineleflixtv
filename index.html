@@ -34,7 +34,7 @@
             font-family: 'Inter', sans-serif; 
             -webkit-tap-highlight-color: transparent;
             overscroll-behavior-y: contain;
-            font-size: 14px;
+            font-size: 12px; /* Reduzido para 12px para maior harmonia e densidade de informação */
         }
         .hide-scrollbar::-webkit-scrollbar { display: none; }
         .hide-scrollbar { -ms-overflow-style: none; scrollbar-width: none; }
@@ -51,9 +51,13 @@
 
         /* Animações suaves de fade */
         .animate-in {
-            animation-duration: 0.3s;
-            animation-timing-function: ease-out;
+            animation-duration: 0.25s;
+            animation-timing-function: cubic-bezier(0.16, 1, 0.3, 1);
             animation-fill-mode: both;
+        }
+        
+        input[type="date"], input[type="time"] {
+            min-height: 42px; /* Garante altura uniforme */
         }
     </style>
 
