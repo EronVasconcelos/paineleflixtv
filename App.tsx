@@ -677,13 +677,18 @@ const SubscriptionContent = ({ theme, onLogout, isBlocking }: { theme: 'light' |
   const [selectedPlanId, setSelectedPlanId] = useState('monthly');
 
   const plans = [
-    { id: 'monthly', name: 'Mensal', price: '29,90', period: '/mês', link: STRIPE_LINKS.monthly, badge: null },
-    { id: 'quarterly', name: 'Trimestral', price: '69,90', period: '/3 meses', link: STRIPE_LINKS.quarterly, badge: 'Recomendado' },
-    { id: 'semiannual', name: 'Semestral', price: '119,90', period: '/6 meses', link: STRIPE_LINKS.semiannual, badge: '-30% OFF' },
-    { id: 'annual', name: 'Anual', price: '199,90', period: '/ano', link: STRIPE_LINKS.annual, badge: 'Melhor Valor' },
+    { id: 'monthly', name: 'Mensal', price: '29,90', period: '/mês', link: STRIPE_LINKS.monthly, badge: null, months: 1 },
+    { id: 'quarterly', name: 'Trimestral', price: '69,90', period: '/3 meses', link: STRIPE_LINKS.quarterly, badge: 'Recomendado', months: 3 },
+    { id: 'semiannual', name: 'Semestral', price: '119,90', period: '/6 meses', link: STRIPE_LINKS.semiannual, badge: '-30% OFF', months: 6 },
+    { id: 'annual', name: 'Anual', price: '199,90', period: '/ano', link: STRIPE_LINKS.annual, badge: 'Melhor Valor', months: 12 },
   ];
 
   const selectedPlan = plans.find(p => p.id === selectedPlanId) || plans[0];
+
+  const handlePaymentClick = () => {
+      // Salva a duração do plano escolhido no localStorage para ser recuperado após o retorno do Stripe
+      localStorage.setItem('pending_plan_months', selectedPlan.months.toString());
+  };
 
   return (
     <div className={`w-full max-w-5xl rounded-3xl shadow-2xl overflow-hidden flex flex-col md:flex-row min-h-[600px] border-4 ${theme === 'dark' ? 'border-slate-800 bg-slate-900' : 'border-white bg-white'}`}>
@@ -771,6 +776,7 @@ const SubscriptionContent = ({ theme, onLogout, isBlocking }: { theme: 'light' |
                   href={selectedPlan.link} 
                   target="_blank" 
                   rel="noopener noreferrer"
+                  onClick={handlePaymentClick}
                   className="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-lg font-bold uppercase text-sm shadow-lg shadow-blue-600/20 flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
               >
                   <CreditCard size={18}/> Continuar para Pagamento
@@ -850,11 +856,14 @@ export default function App() {
             // Exibe modal de sucesso
             setShowSuccessModal(true);
             
-            // Atualiza assinatura no banco (Adiciona 30 dias)
+            // Recupera a duração do plano escolhido
+            const pendingMonths = parseInt(localStorage.getItem('pending_plan_months') || '1');
+            
+            // Atualiza assinatura no banco (Adiciona os meses correspondentes)
             // OBS: Em produção real, isso deve ser feito via Webhook seguro no backend
             try {
                 const newExpiry = new Date();
-                newExpiry.setDate(newExpiry.getDate() + 30);
+                newExpiry.setMonth(newExpiry.getMonth() + pendingMonths);
                 
                 const { error } = await supabase.from('profiles').update({
                     subscription_ends_at: newExpiry.toISOString(),
@@ -865,7 +874,10 @@ export default function App() {
                 
                 // Atualiza estado local
                 setUserProfile(prev => prev ? ({ ...prev, subscription_ends_at: newExpiry.toISOString() }) : null);
-                showToast("Assinatura renovada com sucesso!");
+                showToast(`Assinatura renovada por ${pendingMonths} mês(es) com sucesso!`);
+                
+                // Limpa o storage
+                localStorage.removeItem('pending_plan_months');
                 
             } catch (err) {
                 console.error("Erro ao ativar assinatura:", err);
