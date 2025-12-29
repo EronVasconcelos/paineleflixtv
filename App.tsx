@@ -63,7 +63,9 @@ import {
   Star,
   Zap,
   ShieldCheck,
-  CheckSquare
+  CheckSquare,
+  Circle,
+  Minus
 } from 'lucide-react';
 import { Session } from '@supabase/supabase-js';
 import { Client, Package, MessageTemplate, MessageRule, ClientStatus, PaymentStatus, Server, CreditTransaction, UserProfile } from './types';
@@ -71,20 +73,33 @@ import { geminiService } from './services/geminiService';
 import { supabase } from './services/supabaseClient';
 
 const PANEL_NAME = "STREAM MANAGER";
-const MONTHS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+const MONTHS = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'];
 
 // --- INTEGRAÇÃO STRIPE ---
-// 1. Crie seus produtos no painel da Stripe (Mensal, Trimestral, etc.)
-// 2. Gere um "Link de Pagamento" para cada um.
-// 3. Cole os links abaixo:
+// Links de Pagamento configurados
 const STRIPE_LINKS = {
-  monthly: "https://buy.stripe.com/seu_link_mensal_aqui",     // Ex: https://buy.stripe.com/test_...
-  quarterly: "https://buy.stripe.com/seu_link_trimestral_aqui",
-  semiannual: "https://buy.stripe.com/seu_link_semestral_aqui",
-  annual: "https://buy.stripe.com/seu_link_anual_aqui"
+  monthly: "https://buy.stripe.com/test_00waEWgqsbZWfD5azM4ZG00",
+  quarterly: "https://buy.stripe.com/test_3cI28q8Y07JG0Ib8rE4ZG01",
+  semiannual: "https://buy.stripe.com/test_5kQ6oG1vybZW4Yr9vI4ZG02",
+  annual: "https://buy.stripe.com/test_7sYcN42zCggcgH9eQ24ZG03"
 };
 
 /* COMPONENTES DE UI */
+
+// Componente de Toast (Pop-up de Confirmação)
+const Toast = ({ message, onClose, type = 'success' }: { message: string, onClose: () => void, type?: 'success' | 'error' }) => {
+  useEffect(() => {
+    const timer = setTimeout(onClose, 3000);
+    return () => clearTimeout(timer);
+  }, [onClose]);
+
+  return (
+    <div className={`fixed top-4 right-4 z-[300] flex items-center gap-3 px-4 py-3 rounded-lg shadow-xl animate-in slide-in-from-top-2 fade-in duration-300 ${type === 'success' ? 'bg-emerald-500 text-white' : 'bg-red-500 text-white'}`}>
+      {type === 'success' ? <CheckCircle size={20} className="stroke-[3]" /> : <AlertCircle size={20} />}
+      <span className="font-bold text-sm">{message}</span>
+    </div>
+  );
+};
 
 const SidebarItem = ({ icon, label, active, onClick }: { icon: React.ReactNode, label: string, active: boolean, onClick: () => void }) => (
   <button onClick={onClick} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md mb-1 transition-all group ${active ? 'bg-slate-100 dark:bg-slate-800 shadow-sm border border-slate-200 dark:border-slate-700' : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'}`}>
@@ -599,9 +614,9 @@ const SubscriptionContent = ({ theme, onLogout, isBlocking }: { theme: 'light' |
 
         <div className="relative z-10">
           <div className="mb-8">
-             <span className="inline-block px-3 py-1 bg-white/20 rounded-full text-[10px] font-bold uppercase tracking-widest mb-3 border border-white/20">Plano Premium</span>
-             <h2 className="text-3xl md:text-4xl font-black tracking-tight mb-2">Assinatura Pro</h2>
-             <p className="text-sm opacity-80 leading-relaxed font-medium">Desbloqueie todo o potencial do seu negócio com ferramentas avançadas de gestão e automação.</p>
+             <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center mb-6 shadow-lg border border-white/20"><Tv size={28}/></div>
+             <h2 className="text-3xl md:text-4xl font-black tracking-tight mb-2">Plano Premium</h2>
+             <p className="text-sm opacity-80 leading-relaxed font-medium">Desbloqueie todo o potencial do seu negócio com ferramentas avançadas de gestão.</p>
           </div>
 
           <div className="space-y-5">
@@ -612,10 +627,6 @@ const SubscriptionContent = ({ theme, onLogout, isBlocking }: { theme: 'light' |
               <div className="flex items-center gap-4">
                   <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center shrink-0 border border-white/10"><Check size={16} strokeWidth={3}/></div>
                   <span className="font-bold text-sm">Clientes Ilimitados</span>
-              </div>
-              <div className="flex items-center gap-4">
-                  <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center shrink-0 border border-white/10"><Check size={16} strokeWidth={3}/></div>
-                  <span className="font-bold text-sm">Automação de WhatsApp com IA</span>
               </div>
               <div className="flex items-center gap-4">
                   <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center shrink-0 border border-white/10"><Check size={16} strokeWidth={3}/></div>
@@ -717,6 +728,9 @@ export default function App() {
   
   const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+
+  // Estado para Toast
+  const [toast, setToast] = useState<{message: string, type: 'success' | 'error'} | null>(null);
 
   const [addFormValues, setAddFormValues] = useState({
     price: '',
@@ -841,30 +855,43 @@ export default function App() {
 
   // Lógica de Notificações
   useEffect(() => {
+    // Tenta ativar notificações no carregamento se já permitido ou pergunta (dependendo do navegador)
+    if (Notification.permission === 'default') {
+        Notification.requestPermission().then(p => setNotificationsEnabled(p === 'granted'));
+    }
+
     const checkNotifications = () => {
-      if (!notificationsEnabled) return;
       const now = new Date();
       const todayStr = now.toLocaleDateString('pt-BR');
       
-      clients.forEach(client => {
-        const expiryDate = new Date(client.expiresAt);
-        const expiryStr = expiryDate.toLocaleDateString('pt-BR');
-
-        if (expiryStr === todayStr) {
-          const notifyId = `expiry-${client.id}-${todayStr}`;
-          if (!notifiedIds.current.has(notifyId)) {
-            sendNotification('🚨 Vencimento Hoje!', `O cliente ${client.name} vence hoje.`);
-            notifiedIds.current.add(notifyId);
+      // 1. Notificação de Vencimento do App (Trial ou Assinatura)
+      if (userProfile && notificationsEnabled) {
+          const trialEnd = new Date(userProfile.trial_ends_at);
+          const subEnd = userProfile.subscription_ends_at ? new Date(userProfile.subscription_ends_at) : null;
+          const expiryDate = subEnd && subEnd > trialEnd ? subEnd : trialEnd;
+          
+          const diffTime = expiryDate.getTime() - now.getTime();
+          const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+          
+          if (diffDays === 1) {
+             const notifyId = `app-expiry-1day-${todayStr}`;
+             if (!notifiedIds.current.has(notifyId)) {
+                sendNotification('⚠️ Assinatura do Painel', 'Sua licença expira em 1 dia. Renove para evitar bloqueio.');
+                notifiedIds.current.add(notifyId);
+             }
           }
-        }
+      }
 
+      // 2. Notificações de Clientes
+      clients.forEach(client => {
+        // Regras de Automação
         rules.forEach(rule => {
           if (!rule.isActive) return;
+          const expiryDate = new Date(client.expiresAt);
           let targetDate = new Date(expiryDate);
           
           if (rule.type === 'before') targetDate.setDate(targetDate.getDate() - rule.days);
           else if (rule.type === 'after') targetDate.setDate(targetDate.getDate() + rule.days);
-          // if type is 'on_day', targetDate stays as expiryDate
           
           if (targetDate.toLocaleDateString('pt-BR') === todayStr) {
             const [ruleH, ruleM] = rule.time.split(':').map(Number);
@@ -872,10 +899,11 @@ export default function App() {
             ruleDate.setHours(ruleH, ruleM, 0, 0);
             const diffMinutes = (ruleDate.getTime() - now.getTime()) / (1000 * 60);
 
+            // Notifica se faltar 5 minutos ou menos para o horário da regra
             if (diffMinutes > 0 && diffMinutes <= 5) {
               const notifyId = `rule-${rule.id}-${client.id}-${todayStr}-${rule.time}`;
               if (!notifiedIds.current.has(notifyId)) {
-                sendNotification('📩 Mensagem Próxima!', `Enviar lembrete para ${client.name} em ${Math.ceil(diffMinutes)} min.`);
+                sendNotification('📩 Enviar Mensagem Agora!', `Faltam 5 min para enviar lembrete a ${client.name}.`);
                 notifiedIds.current.add(notifyId);
               }
             }
@@ -883,15 +911,19 @@ export default function App() {
         });
       });
     };
-    const interval = setInterval(checkNotifications, 60000);
+    const interval = setInterval(checkNotifications, 30000); // Checa a cada 30s
     checkNotifications();
     return () => clearInterval(interval);
-  }, [clients, rules, notificationsEnabled]);
+  }, [clients, rules, notificationsEnabled, userProfile]);
 
   const sendNotification = (title: string, body: string) => {
     if (Notification.permission === 'granted') {
       new Notification(title, { body, icon: 'https://cdn-icons-png.flaticon.com/512/5977/5977591.png' });
     }
+  };
+
+  const showToast = (msg: string, type: 'success' | 'error' = 'success') => {
+      setToast({ message: msg, type });
   };
 
   const toggleTheme = () => setTheme(prev => prev === 'light' ? 'dark' : 'light');
@@ -911,11 +943,18 @@ export default function App() {
           if(error) throw error;
       } catch (err) {
           console.error("Erro ao atualizar cliente:", err);
-          alert("Erro ao salvar alterações no servidor.");
+          showToast("Erro ao salvar alterações.", "error");
       }
   };
 
-  const handleToggleStatus = (client: Client) => updateClientInSupabase(client.id, { status: client.status === 'active' ? 'blocked' : 'active' });
+  const handleToggleStatus = (client: Client) => {
+      const newStatus = client.status === 'active' ? 'blocked' : 'active';
+      updateClientInSupabase(client.id, { status: newStatus });
+      if (newStatus === 'blocked') {
+          sendNotification("🚫 Cliente Bloqueado", `${client.name} foi bloqueado.`);
+      }
+  };
+
   const handleTogglePayment = (client: Client) => updateClientInSupabase(client.id, { paymentStatus: client.paymentStatus === 'paid' ? 'pending' : 'paid' });
 
   const handleAddClient = async (form: any) => {
@@ -948,13 +987,14 @@ export default function App() {
     setClients(prev => [...prev, newClient]);
     setView('clients');
     setAddFormValues({ price: '', expenses: '' });
+    showToast("Cliente cadastrado com sucesso!");
 
     try {
         const { error } = await supabase.from('clients').insert([newClient]);
         if (error) throw error;
     } catch(err) {
         console.error(err);
-        alert("Erro ao criar cliente no banco de dados.");
+        showToast("Erro ao sincronizar dados.", "error");
     }
   };
 
@@ -1003,6 +1043,7 @@ export default function App() {
 
     updateClientInSupabase(clientId, updates);
     setSelectedClientForRenewal(null);
+    showToast("Renovação realizada com sucesso!");
   };
 
   // Funções de CRUD para Planos, Modelos e Regras
@@ -1018,6 +1059,7 @@ export default function App() {
           setPackages(prev => [...prev, pkgWithUser]);
           await supabase.from('packages').insert([pkgWithUser]);
       }
+      showToast("Plano salvo com sucesso!");
   };
 
   const handleDeletePackage = async (id: string) => {
@@ -1043,6 +1085,7 @@ export default function App() {
       const ruleWithUser = { ...rule, user_id: session.user.id };
       setRules(prev => [...prev, ruleWithUser]);
       await supabase.from('rules').insert([ruleWithUser]);
+      showToast("Regra de automação salva!");
   };
 
   const handleDeleteRule = async (id: string) => {
@@ -1161,7 +1204,41 @@ export default function App() {
 
   const sendWhatsApp = (template: MessageTemplate | string, client: Client) => {
     let body = typeof template === 'string' ? template : template.body.replace(/{{nome}}/g, client.name).replace(/{{usuario}}/g, client.username).replace(/{{senha}}/g, client.password || '***').replace(/{{vencimento}}/g, new Date(client.expiresAt).toLocaleDateString('pt-BR')).replace(/{{valor}}/g, client.price.toFixed(2));
+    showToast("Redirecionando para WhatsApp...");
+    setSelectedClientForMsg(null); // Fecha o modal
     window.open(`https://wa.me/${client.phone.replace(/\D/g, '')}?text=${encodeURIComponent(body)}`, '_blank');
+  };
+
+  // Helper para verificar status do mês no histórico
+  const getMonthStatus = (client: Client, monthIndex: number, year: number) => {
+    // 1. Verifica se está pago
+    const isPaid = client.paymentHistory.some(payment => {
+        const payDate = new Date(payment.date);
+        const payMonth = payDate.getMonth();
+        const payYear = payDate.getFullYear();
+        
+        // Converte para meses absolutos para facilitar cálculo de intervalo
+        const startAbsolute = payYear * 12 + payMonth;
+        const endAbsolute = startAbsolute + payment.monthsPaid;
+        const targetAbsolute = year * 12 + monthIndex;
+        
+        return targetAbsolute >= startAbsolute && targetAbsolute < endAbsolute;
+    });
+
+    if (isPaid) return 'paid';
+
+    // Datas de comparação
+    const targetDate = new Date(year, monthIndex, 1);
+    const createdDate = new Date(client.createdAt);
+    // Normaliza para o início do mês para comparação justa
+    const createdNorm = new Date(createdDate.getFullYear(), createdDate.getMonth(), 1);
+    
+    const now = new Date();
+    const nowNorm = new Date(now.getFullYear(), now.getMonth(), 1);
+
+    if (targetDate < createdNorm) return 'none'; // Antes do cadastro
+    if (targetDate < nowNorm) return 'late'; // Passado e não pago
+    return 'pending'; // Futuro ou atual e não pago
   };
 
   // CHECK ACCESS LEVEL
@@ -1211,6 +1288,9 @@ export default function App() {
   return (
     <div className={`flex flex-col md:flex-row h-screen overflow-hidden font-normal transition-colors duration-300 ${theme === 'dark' ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-800'}`}>
       
+      {/* TOAST NOTIFICATION CONTAINER */}
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+
       {/* Desktop Sidebar */}
       <aside className="w-56 bg-slate-50 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 hidden md:flex flex-col shrink-0">
         <div className="p-5 flex items-center gap-3">
@@ -1256,7 +1336,7 @@ export default function App() {
           <div className="flex items-center gap-3">
              <h2 className={`text-sm font-bold uppercase tracking-tight ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
               {view === 'dashboard' && 'Dashboard'}
-              {view === 'history' && 'Histórico Financeiro'}
+              {view === 'history' && 'Histórico Anual'}
               {view === 'clients' && 'Gestão de Clientes'}
               {view === 'scheduling' && 'Automação'}
               {view === 'add' && 'Cadastrar Cliente'}
@@ -1532,96 +1612,6 @@ export default function App() {
               </div>
             )}
 
-            {view === 'database' && (
-              <div className="max-w-lg mx-auto space-y-6 animate-in fade-in">
-                <div className={`p-6 rounded-lg border shadow-lg ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
-                  <div className="flex items-center gap-3 mb-6">
-                    <div className="p-2 bg-blue-600 rounded-md text-white shadow-sm"><Database size={20}/></div>
-                    <div>
-                      <h3 className="text-base font-bold uppercase tracking-tight">Banco de Dados Cloud</h3>
-                      <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider">Conectado ao Supabase</p>
-                    </div>
-                  </div>
-
-                  <div className="p-3 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-md flex gap-3 mb-6">
-                    <CheckCircle className="text-emerald-500 shrink-0" size={18}/>
-                    <p className="text-[11px] text-emerald-800 dark:text-emerald-300 font-medium leading-snug">
-                      Seus dados estão sendo salvos automaticamente na nuvem. Você pode acessar de qualquer dispositivo.
-                    </p>
-                  </div>
-                  
-                  {/* Botão para forçar recarga caso necessário */}
-                  <button onClick={() => window.location.reload()} className="w-full py-3 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-bold uppercase text-[11px] rounded-md hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
-                      Sincronizar Agora
-                  </button>
-
-                </div>
-              </div>
-            )}
-
-            {view === 'add' && (
-               <div className="max-w-xl mx-auto space-y-4">
-                 <div className={`p-6 rounded-lg border shadow-sm ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
-                   <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-100 dark:border-slate-800">
-                     <div className="p-2 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-md border border-blue-200 dark:border-blue-800/50">
-                        <UserPlus size={20}/>
-                     </div>
-                     <h3 className="text-sm font-bold uppercase tracking-tight text-slate-800 dark:text-white">Novo Cliente</h3>
-                   </div>
-                   
-                   <form className="space-y-4" onSubmit={(e) => {
-                     e.preventDefault();
-                     const fd = new FormData(e.currentTarget);
-                     handleAddClient(Object.fromEntries(fd.entries()));
-                     e.currentTarget.reset();
-                   }}>
-                     <FormInput theme={theme} name="name" label="Nome Completo" placeholder="Ex: João Silva" required />
-                     <div className="grid grid-cols-2 gap-4">
-                       <FormInput theme={theme} name="username" label="Usuário IPTV" required />
-                       <FormInput theme={theme} name="password" label="Senha IPTV" />
-                     </div>
-                     <FormInput theme={theme} name="phone" label="WhatsApp" placeholder="(00) 00000-0000" required />
-                     
-                     <div className="space-y-1">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase ml-1 tracking-wider">Plano</label>
-                      <select 
-                        name="packageId" 
-                        className={`w-full px-3 py-2.5 rounded-md border text-[13px] font-medium outline-none ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50 border-slate-200 shadow-sm'}`}
-                        onChange={(e) => {
-                           const pkg = packages.find(p => p.id === e.target.value);
-                           if(pkg) setAddFormValues({ price: pkg.price.toString(), expenses: pkg.cost.toString() });
-                        }}
-                      >
-                        <option value="">Personalizado</option>
-                        {packages.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                      </select>
-                     </div>
-
-                     <div className="grid grid-cols-2 gap-4">
-                         <FormInput theme={theme} name="price" label="Preço (R$)" type="number" step="0.01" value={addFormValues.price} onChange={(e: any) => setAddFormValues({...addFormValues, price: e.target.value})} required />
-                         <FormInput theme={theme} name="expenses" label="Custo (R$)" type="number" step="0.01" value={addFormValues.expenses} onChange={(e: any) => setAddFormValues({...addFormValues, expenses: e.target.value})} required />
-                     </div>
-
-                     <div className="grid grid-cols-2 gap-4">
-                         <FormInput theme={theme} name="expiryDate" label="Vencimento Data" type="date" required />
-                         <FormInput theme={theme} name="expiryTime" label="Hora" type="time" defaultValue="23:59" />
-                     </div>
-
-                     <div className="p-3 rounded-md bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 flex items-center gap-3">
-                        <input type="checkbox" name="isPaid" id="isPaid" className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" defaultChecked />
-                        <label htmlFor="isPaid" className="text-[11px] font-bold uppercase cursor-pointer select-none">Pagamento já realizado?</label>
-                     </div>
-
-                     <FormInput theme={theme} name="notes" label="Observações (Opcional)" placeholder="Ex: TV Box Sala" />
-                     
-                     <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3.5 rounded-md font-bold uppercase text-[12px] shadow-lg shadow-blue-600/20 mt-2 transition-all active:scale-[0.99]">
-                         Cadastrar Cliente
-                     </button>
-                   </form>
-                 </div>
-               </div>
-            )}
-
             {view === 'packages' && (
               <div className="max-w-lg mx-auto space-y-4">
                  <div className={`p-5 rounded-lg border shadow-sm ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
@@ -1721,38 +1711,158 @@ export default function App() {
               </div>
             )}
 
+            {view === 'database' && (
+              <div className="max-w-lg mx-auto space-y-6 animate-in fade-in">
+                <div className={`p-6 rounded-lg border shadow-lg ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
+                  <div className="flex items-center gap-3 mb-6">
+                    <div className="p-2 bg-blue-600 rounded-md text-white shadow-sm"><Database size={20}/></div>
+                    <div>
+                      <h3 className="text-base font-bold uppercase tracking-tight">Banco de Dados Cloud</h3>
+                      <p className="text-[10px] text-slate-400 font-medium uppercase tracking-wider">Conectado ao Supabase</p>
+                    </div>
+                  </div>
+
+                  <div className="p-3 bg-emerald-50 dark:bg-emerald-900/20 border border-emerald-200 dark:border-emerald-800 rounded-md flex gap-3 mb-6">
+                    <CheckCircle className="text-emerald-500 shrink-0" size={18}/>
+                    <p className="text-[11px] text-emerald-800 dark:text-emerald-300 font-medium leading-snug">
+                      Seus dados estão sendo salvos automaticamente na nuvem. Você pode acessar de qualquer dispositivo.
+                    </p>
+                  </div>
+                  
+                  {/* Botão para forçar recarga caso necessário */}
+                  <button onClick={() => window.location.reload()} className="w-full py-3 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-bold uppercase text-[11px] rounded-md hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+                      Sincronizar Agora
+                  </button>
+
+                </div>
+              </div>
+            )}
+
+            {view === 'add' && (
+               <div className="max-w-xl mx-auto space-y-4">
+                 <div className={`p-6 rounded-lg border shadow-sm ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
+                   <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-100 dark:border-slate-800">
+                     <div className="p-2 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-md border border-blue-200 dark:border-blue-800/50">
+                        <UserPlus size={20}/>
+                     </div>
+                     <h3 className="text-sm font-bold uppercase tracking-tight text-slate-800 dark:text-white">Novo Cliente</h3>
+                   </div>
+                   
+                   <form className="space-y-4" onSubmit={(e) => {
+                     e.preventDefault();
+                     const fd = new FormData(e.currentTarget);
+                     handleAddClient(Object.fromEntries(fd.entries()));
+                     e.currentTarget.reset();
+                   }}>
+                     <FormInput theme={theme} name="name" label="Nome Completo" placeholder="Ex: João Silva" required />
+                     <div className="grid grid-cols-2 gap-4">
+                       <FormInput theme={theme} name="username" label="Usuário IPTV" required />
+                       <FormInput theme={theme} name="password" label="Senha IPTV" />
+                     </div>
+                     <FormInput theme={theme} name="phone" label="WhatsApp" placeholder="(00) 00000-0000" required />
+                     
+                     <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase ml-1 tracking-wider">Plano</label>
+                      <select 
+                        name="packageId" 
+                        className={`w-full px-3 py-2.5 rounded-md border text-[13px] font-medium outline-none ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50 border-slate-200 shadow-sm'}`}
+                        onChange={(e) => {
+                           const pkg = packages.find(p => p.id === e.target.value);
+                           if(pkg) setAddFormValues({ price: pkg.price.toString(), expenses: pkg.cost.toString() });
+                        }}
+                      >
+                        <option value="">Personalizado</option>
+                        {packages.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                      </select>
+                     </div>
+
+                     <div className="grid grid-cols-2 gap-4">
+                         <FormInput theme={theme} name="price" label="Preço (R$)" type="number" step="0.01" value={addFormValues.price} onChange={(e: any) => setAddFormValues({...addFormValues, price: e.target.value})} required />
+                         <FormInput theme={theme} name="expenses" label="Custo (R$)" type="number" step="0.01" value={addFormValues.expenses} onChange={(e: any) => setAddFormValues({...addFormValues, expenses: e.target.value})} required />
+                     </div>
+
+                     <div className="grid grid-cols-2 gap-4">
+                         <FormInput theme={theme} name="expiryDate" label="Vencimento Data" type="date" required />
+                         <FormInput theme={theme} name="expiryTime" label="Hora" type="time" defaultValue="23:59" />
+                     </div>
+
+                     <div className="p-3 rounded-md bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 flex items-center gap-3">
+                        <input type="checkbox" name="isPaid" id="isPaid" className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" defaultChecked />
+                        <label htmlFor="isPaid" className="text-[11px] font-bold uppercase cursor-pointer select-none">Pagamento já realizado?</label>
+                     </div>
+
+                     <FormInput theme={theme} name="notes" label="Observações (Opcional)" placeholder="Ex: TV Box Sala" />
+                     
+                     <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3.5 rounded-md font-bold uppercase text-[12px] shadow-lg shadow-blue-600/20 mt-2 transition-all active:scale-[0.99]">
+                         Cadastrar Cliente
+                     </button>
+                   </form>
+                 </div>
+               </div>
+            )}
+
             {view === 'history' && (
               <div className="space-y-4">
-                  <div className={`p-5 rounded-lg border shadow-sm ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
-                    <h3 className="text-sm font-bold uppercase tracking-tight mb-4 flex items-center gap-2"><History size={18} className="text-blue-500"/> Histórico Completo de Pagamentos</h3>
+                  <div className={`p-0 rounded-lg border shadow-sm overflow-hidden flex flex-col ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
+                    <div className="p-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 flex justify-between items-center">
+                        <h3 className="text-sm font-bold uppercase tracking-tight flex items-center gap-2"><History size={18} className="text-blue-500"/> Histórico Anual</h3>
+                        <div className="flex items-center gap-2 bg-white dark:bg-slate-900 rounded-md border border-slate-200 dark:border-slate-700 px-1 py-1">
+                            <button onClick={() => setCurrentYear(currentYear - 1)} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded text-slate-500"><ChevronLeft size={16}/></button>
+                            <span className="text-xs font-bold w-12 text-center">{currentYear}</span>
+                            <button onClick={() => setCurrentYear(currentYear + 1)} className="p-1 hover:bg-slate-100 dark:hover:bg-slate-800 rounded text-slate-500"><ChevronRight size={16}/></button>
+                        </div>
+                    </div>
+                    
                     <div className="overflow-x-auto">
-                        <table className="w-full text-left border-collapse">
-                            <thead className={`border-b ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-slate-50 border-slate-100'}`}>
+                        <table className="w-full text-left border-collapse min-w-[800px]">
+                            <thead className={`${theme === 'dark' ? 'bg-slate-800/50' : 'bg-slate-50'}`}>
                                 <tr>
-                                    <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Data</th>
-                                    <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Cliente</th>
-                                    <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center">Tipo</th>
-                                    <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-right">Valor</th>
+                                    <th className={`sticky left-0 z-10 px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest border-r ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-100'}`}>Cliente</th>
+                                    {MONTHS.map(m => (
+                                        <th key={m} className="px-2 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center min-w-[40px]">{m}</th>
+                                    ))}
                                 </tr>
                             </thead>
                             <tbody className={`divide-y ${theme === 'dark' ? 'divide-slate-800' : 'divide-slate-100'}`}>
-                                {clients.flatMap(c => c.paymentHistory.map(h => ({...h, clientName: c.name}))).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map((item, i) => (
-                                    <tr key={i} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                                        <td className="px-4 py-3 text-[11px] font-medium opacity-80">{new Date(item.date).toLocaleDateString('pt-BR')} {new Date(item.date).toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'})}</td>
-                                        <td className="px-4 py-3 text-[12px] font-bold">{item.clientName}</td>
-                                        <td className="px-4 py-3 text-center"><span className="px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded text-[10px] font-bold uppercase text-slate-500">{item.method}</span></td>
-                                        <td className="px-4 py-3 text-right text-[12px] font-bold text-emerald-600">+R$ {item.amount.toFixed(2)}</td>
+                                {clients.map(client => (
+                                    <tr key={client.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                                        <td className={`sticky left-0 z-10 px-4 py-3 border-r ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-100'}`}>
+                                            <div className="font-bold text-[12px] truncate max-w-[120px]">{client.name}</div>
+                                            <div className="text-[9px] text-slate-400 truncate max-w-[120px]">{client.username}</div>
+                                        </td>
+                                        {MONTHS.map((_, index) => {
+                                            const status = getMonthStatus(client, index, currentYear);
+                                            return (
+                                                <td key={index} className="px-2 py-3 text-center">
+                                                    <div className="flex justify-center">
+                                                        {status === 'paid' && <CheckCircle size={16} className="text-emerald-500 fill-emerald-500/10"/>}
+                                                        {status === 'late' && <XCircle size={16} className="text-red-500 fill-red-500/10"/>}
+                                                        {status === 'pending' && <div className="w-3 h-3 rounded-full border-2 border-slate-200 dark:border-slate-700"></div>}
+                                                        {status === 'none' && <Minus size={12} className="text-slate-200 dark:text-slate-800"/>}
+                                                    </div>
+                                                </td>
+                                            );
+                                        })}
                                     </tr>
                                 ))}
                             </tbody>
                         </table>
-                        {clients.flatMap(c => c.paymentHistory).length === 0 && (
-                            <div className="text-center py-8 text-slate-400 text-xs uppercase font-medium">Nenhum registro encontrado</div>
+                        {clients.length === 0 && (
+                            <div className="text-center py-12 text-slate-400 text-xs uppercase font-medium">Nenhum cliente cadastrado</div>
                         )}
+                    </div>
+                    <div className="p-3 border-t border-slate-100 dark:border-slate-800 bg-slate-50/30 dark:bg-slate-800/20 flex gap-4 justify-center text-[10px] text-slate-500 uppercase font-bold tracking-wide">
+                        <span className="flex items-center gap-1.5"><CheckCircle size={12} className="text-emerald-500"/> Pago</span>
+                        <span className="flex items-center gap-1.5"><XCircle size={12} className="text-red-500"/> Pendente/Atrasado</span>
+                        <span className="flex items-center gap-1.5"><div className="w-2.5 h-2.5 rounded-full border border-slate-400"></div> Futuro</span>
                     </div>
                   </div>
               </div>
             )}
+
+            <footer className="text-center py-4 text-[10px] text-slate-400 font-bold uppercase tracking-widest opacity-50">
+               © {currentYear} {PANEL_NAME}. Todos os direitos reservados.
+            </footer>
 
           </div>
         </main>
@@ -1768,9 +1878,10 @@ export default function App() {
           </div>
           <BottomNavItem icon={<History size={22}/>} label="Histórico" active={view === 'history'} onClick={() => setView('history')} />
           <div className="relative flex flex-col items-center justify-center">
-             <BottomNavItem icon={<MoreHorizontal size={22}/>} label="Mais" active={['scheduling', 'packages', 'messages', 'database', 'servers'].includes(view)} onClick={() => setShowMobileMenu(!showMobileMenu)} />
+             <BottomNavItem icon={<MoreHorizontal size={22}/>} label="Mais" active={['scheduling', 'packages', 'messages', 'database', 'servers', 'subscription'].includes(view)} onClick={() => setShowMobileMenu(!showMobileMenu)} />
              {showMobileMenu && (
                <div className="absolute bottom-14 right-2 bg-slate-900 rounded-lg shadow-2xl p-1.5 w-48 flex flex-col z-[110] border border-slate-800 animate-in slide-in-from-bottom-2">
+                 <MobileSubItem icon={<CreditCard size={16} className="text-yellow-500"/>} label="Minha Assinatura" onClick={() => { setView('subscription'); setShowMobileMenu(false); }} />
                  <MobileSubItem icon={<ServerIcon size={16} className="text-purple-500"/>} label="Servidores" onClick={() => { setView('servers'); setShowMobileMenu(false); }} />
                  <MobileSubItem icon={<Database size={16} className="text-blue-500"/>} label="Banco de Dados" onClick={() => { setView('database'); setShowMobileMenu(false); }} />
                  <MobileSubItem icon={<BellRing size={16} className="text-emerald-500"/>} label="Automação Zap" onClick={() => { setView('scheduling'); setShowMobileMenu(false); }} />
