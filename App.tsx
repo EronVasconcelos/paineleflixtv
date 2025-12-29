@@ -105,6 +105,23 @@ const Toast = ({ message, onClose, type = 'success' }: { message: string, onClos
   );
 };
 
+const PaymentSuccessModal = ({ theme, onClose }: { theme: 'light' | 'dark', onClose: () => void }) => (
+  <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-300">
+    <div className="relative w-full max-w-sm bg-white dark:bg-slate-900 rounded-3xl shadow-2xl p-8 flex flex-col items-center text-center border border-slate-200 dark:border-slate-800 animate-in zoom-in-95">
+       <div className="w-20 h-20 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center mb-6 text-emerald-500 animate-bounce">
+          <PartyPopper size={40} />
+       </div>
+       <h2 className="text-2xl font-black uppercase text-slate-900 dark:text-white mb-2">Pagamento Confirmado!</h2>
+       <p className="text-slate-500 dark:text-slate-400 text-sm mb-8 font-medium leading-relaxed">
+         Sua assinatura foi ativada com sucesso. Você agora tem acesso total a todos os recursos Premium.
+       </p>
+       <button onClick={onClose} className="w-full py-3 bg-emerald-500 hover:bg-emerald-600 text-white font-bold uppercase rounded-xl transition-all shadow-lg shadow-emerald-500/30 active:scale-95">
+         Acessar Painel
+       </button>
+    </div>
+  </div>
+);
+
 const SidebarItem = ({ icon, label, active, onClick }: { icon: React.ReactNode, label: string, active: boolean, onClick: () => void }) => (
   <button onClick={onClick} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md mb-1 transition-all group ${active ? 'bg-slate-100 dark:bg-slate-800 shadow-sm border border-slate-200 dark:border-slate-700' : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'}`}>
     <div className={`transition-transform ${active ? 'scale-110' : 'group-hover:scale-110'}`}>{icon}</div>
@@ -783,6 +800,7 @@ export default function App() {
   const [selectedClientDetails, setSelectedClientDetails] = useState<Client | null>(null);
   const [selectedClientForEdit, setSelectedClientForEdit] = useState<Client | null>(null);
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
+  const [showSuccessModal, setShowSuccessModal] = useState(false);
   
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
@@ -820,6 +838,45 @@ export default function App() {
   const [templates, setTemplates] = useState<MessageTemplate[]>([]);
   const [rules, setRules] = useState<MessageRule[]>([]);
   const [servers, setServers] = useState<Server[]>([]);
+
+  // Lógica para verificar retorno do Stripe
+  useEffect(() => {
+    const handlePaymentReturn = async () => {
+        const urlParams = new URLSearchParams(window.location.search);
+        if (urlParams.get('payment_success') === 'true' && session) {
+            // Limpa o parametro da URL
+            window.history.replaceState({}, document.title, window.location.pathname);
+            
+            // Exibe modal de sucesso
+            setShowSuccessModal(true);
+            
+            // Atualiza assinatura no banco (Adiciona 30 dias)
+            // OBS: Em produção real, isso deve ser feito via Webhook seguro no backend
+            try {
+                const newExpiry = new Date();
+                newExpiry.setDate(newExpiry.getDate() + 30);
+                
+                const { error } = await supabase.from('profiles').update({
+                    subscription_ends_at: newExpiry.toISOString(),
+                    plan_type: 'premium'
+                }).eq('id', session.user.id);
+                
+                if (error) throw error;
+                
+                // Atualiza estado local
+                setUserProfile(prev => prev ? ({ ...prev, subscription_ends_at: newExpiry.toISOString() }) : null);
+                showToast("Assinatura renovada com sucesso!");
+                
+            } catch (err) {
+                console.error("Erro ao ativar assinatura:", err);
+            }
+        }
+    };
+
+    if (session) {
+        handlePaymentReturn();
+    }
+  }, [session]);
 
   // Gestão da Sessão e Carregamento de Dados
   useEffect(() => {
@@ -2038,6 +2095,7 @@ export default function App() {
       
       {/* Modals */}
       {showWelcomeModal && <WelcomeModal theme={theme} onClose={() => setShowWelcomeModal(false)} />}
+      {showSuccessModal && <PaymentSuccessModal theme={theme} onClose={() => setShowSuccessModal(false)} />}
       
       {selectedServerForCredit && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
