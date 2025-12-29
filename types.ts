@@ -2,6 +2,14 @@
 export type ClientStatus = 'active' | 'blocked' | 'expired' | 'pending';
 export type PaymentStatus = 'paid' | 'pending';
 
+export interface UserProfile {
+  id: string;
+  email: string;
+  trial_ends_at: string; // ISO Date
+  subscription_ends_at: string | null; // ISO Date
+  plan_type: string | null;
+}
+
 export interface PaymentRecord {
   id: string;
   amount: number;

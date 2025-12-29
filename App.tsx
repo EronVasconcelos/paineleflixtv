@@ -1,4 +1,3 @@
-
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   Users, 
@@ -6,8 +5,8 @@ import {
   PlusCircle, 
   Search, 
   ChevronRight,
-  CheckCircle,
-  XCircle,
+  CheckCircle, 
+  XCircle, 
   Clock,
   MessageSquare,
   DollarSign,
@@ -59,15 +58,31 @@ import {
   Link as LinkIcon,
   Coins,
   Tv,
-  PlayCircle
+  PlayCircle,
+  Crown,
+  Star,
+  Zap,
+  ShieldCheck,
+  CheckSquare
 } from 'lucide-react';
 import { Session } from '@supabase/supabase-js';
-import { Client, Package, MessageTemplate, MessageRule, ClientStatus, PaymentStatus, Server, CreditTransaction } from './types';
+import { Client, Package, MessageTemplate, MessageRule, ClientStatus, PaymentStatus, Server, CreditTransaction, UserProfile } from './types';
 import { geminiService } from './services/geminiService';
 import { supabase } from './services/supabaseClient';
 
 const PANEL_NAME = "STREAM MANAGER";
 const MONTHS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
+
+// --- INTEGRAÇÃO STRIPE ---
+// 1. Crie seus produtos no painel da Stripe (Mensal, Trimestral, etc.)
+// 2. Gere um "Link de Pagamento" para cada um.
+// 3. Cole os links abaixo:
+const STRIPE_LINKS = {
+  monthly: "https://buy.stripe.com/seu_link_mensal_aqui",     // Ex: https://buy.stripe.com/test_...
+  quarterly: "https://buy.stripe.com/seu_link_trimestral_aqui",
+  semiannual: "https://buy.stripe.com/seu_link_semestral_aqui",
+  annual: "https://buy.stripe.com/seu_link_anual_aqui"
+};
 
 /* COMPONENTES DE UI */
 
@@ -76,6 +91,20 @@ const SidebarItem = ({ icon, label, active, onClick }: { icon: React.ReactNode, 
     <div className={`transition-transform ${active ? 'scale-110' : 'group-hover:scale-110'}`}>{icon}</div>
     <span className={`text-[12px] font-semibold tracking-wide ${active ? 'text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400'}`}>{label}</span>
     {active && <ChevronRight size={14} className="ml-auto text-slate-400" />}
+  </button>
+);
+
+const BottomNavItem = ({ icon, label, active, onClick }: { icon: React.ReactNode, label: string, active: boolean, onClick: () => void }) => (
+  <button onClick={onClick} className={`flex flex-col items-center justify-center w-full h-full transition-colors ${active ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400 dark:text-slate-500 hover:text-slate-600 dark:hover:text-slate-300'}`}>
+    {React.cloneElement(icon as React.ReactElement<any>, { size: active ? 24 : 22, className: active ? 'mb-1' : 'mb-1 opacity-80' })}
+    <span className={`text-[9px] font-bold uppercase tracking-wide ${active ? 'opacity-100' : 'opacity-70'}`}>{label}</span>
+  </button>
+);
+
+const MobileSubItem = ({ icon, label, onClick }: { icon: React.ReactNode, label: string, onClick: () => void }) => (
+  <button onClick={onClick} className="w-full flex items-center gap-3 px-3 py-3 hover:bg-slate-800 rounded-md transition-all text-left">
+    {icon}
+    <span className="text-slate-300 text-xs font-bold uppercase tracking-wide">{label}</span>
   </button>
 );
 
@@ -93,7 +122,7 @@ const StatCard = ({ title, value, icon, color, theme }: { title: string, value: 
   return (
     <div className={`p-3.5 rounded-lg border shadow-sm flex flex-col items-center text-center ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
       <div className={`w-8 h-8 flex items-center justify-center rounded-md mb-2 border ${getColors()}`}>
-        {React.cloneElement(icon as React.ReactElement, { size: 16 })}
+        {React.cloneElement(icon as React.ReactElement<any>, { size: 16 })}
       </div>
       <div className="text-[20px] font-bold tracking-tight leading-none mb-1 text-slate-800 dark:text-slate-100">{value}</div>
       <div className="text-[9px] font-bold uppercase tracking-wider opacity-60">{title}</div>
@@ -152,7 +181,7 @@ const ActionButton = ({ onClick, theme, color, icon }: { onClick: () => void, th
   };
   return (
     <button onClick={onClick} className={`p-1.5 rounded-md border transition-all active:scale-95 ${getColors()}`}>
-      {React.cloneElement(icon as React.ReactElement, { size: 16 })}
+      {React.cloneElement(icon as React.ReactElement<any>, { size: 16 })}
     </button>
   );
 };
@@ -170,6 +199,249 @@ const FormInput = ({ theme, label, ...props }: any) => (
     />
   </div>
 );
+
+const ModalOverlay = ({ onClose, children, theme }: { onClose: () => void, children?: React.ReactNode, theme: 'light' | 'dark' }) => (
+  <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm animate-in fade-in duration-200">
+    <div className="absolute inset-0" onClick={onClose}></div>
+    <div className={`w-full max-w-md rounded-xl shadow-2xl relative overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200 ${theme === 'dark' ? 'bg-slate-900 text-white border border-slate-800' : 'bg-white text-slate-900 border border-slate-200'}`}>
+      {children}
+    </div>
+  </div>
+);
+
+const RenewalModal = ({ theme, client, packages, onRenew, onClose }: any) => {
+  const [selectedPkg, setSelectedPkg] = useState('');
+  
+  return (
+    <ModalOverlay theme={theme} onClose={onClose}>
+       <div className="p-4 border-b bg-amber-500/10 border-amber-500/20 flex justify-between items-center">
+        <h3 className="text-sm font-bold uppercase text-amber-600 dark:text-amber-400 flex items-center gap-2">
+            <RefreshCw size={16}/> Renovar Assinatura
+        </h3>
+        <button onClick={onClose} className="p-1 rounded-md hover:bg-black/5 dark:hover:bg-white/10 text-slate-500"><X size={16}/></button>
+       </div>
+       <div className="p-5 space-y-4">
+          <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-md border border-slate-100 dark:border-slate-700">
+              <span className="text-[10px] font-bold text-slate-400 uppercase">Cliente</span>
+              <div className="font-bold">{client.name}</div>
+          </div>
+          <div className="space-y-1">
+             <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Escolha o Plano de Renovação</label>
+             <select 
+               className={`w-full p-3 rounded-md border outline-none text-[13px] font-medium ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200 shadow-sm'}`}
+               value={selectedPkg}
+               onChange={(e) => setSelectedPkg(e.target.value)}
+             >
+                 <option value="">Selecione...</option>
+                 {packages.map((p: any) => <option key={p.id} value={p.id}>{p.name} - R$ {p.price.toFixed(2)}</option>)}
+             </select>
+          </div>
+          <button 
+            disabled={!selectedPkg}
+            onClick={() => onRenew(client.id, selectedPkg)}
+            className="w-full bg-amber-500 hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed text-white py-3 rounded-md font-bold uppercase text-[12px] shadow-sm transition-all"
+          >
+            Confirmar Renovação
+          </button>
+       </div>
+    </ModalOverlay>
+  );
+}
+
+const MessageModal = ({ theme, client, templates, onSend, onClose }: any) => {
+  const [msg, setMsg] = useState('');
+  const [loadingAI, setLoadingAI] = useState(false);
+
+  const handleGenerateAI = async () => {
+      setLoadingAI(true);
+      const text = await geminiService.generateRenewalMessage(client);
+      setMsg(text);
+      setLoadingAI(false);
+  };
+
+  return (
+    <ModalOverlay theme={theme} onClose={onClose}>
+       <div className="p-4 border-b bg-emerald-500/10 border-emerald-500/20 flex justify-between items-center">
+        <h3 className="text-sm font-bold uppercase text-emerald-600 dark:text-emerald-400 flex items-center gap-2">
+            <MessageSquare size={16}/> Enviar Mensagem
+        </h3>
+        <button onClick={onClose} className="p-1 rounded-md hover:bg-black/5 dark:hover:bg-white/10 text-slate-500"><X size={16}/></button>
+       </div>
+       <div className="p-5 space-y-4">
+          <div className="flex gap-2 overflow-x-auto pb-2 hide-scrollbar">
+             <button onClick={handleGenerateAI} className="whitespace-nowrap px-3 py-1.5 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-full text-[10px] font-bold uppercase border border-purple-200 dark:border-purple-800 flex items-center gap-1.5 hover:bg-purple-200 dark:hover:bg-purple-900/50 transition-colors">
+                 {loadingAI ? <Loader2 size={12} className="animate-spin"/> : <Star size={12}/>} Gerar com IA
+             </button>
+             {templates.map((t: any) => (
+                 <button key={t.id} onClick={() => setMsg(t.body.replace(/{{nome}}/g, client.name).replace(/{{usuario}}/g, client.username).replace(/{{senha}}/g, client.password || '***').replace(/{{vencimento}}/g, new Date(client.expiresAt).toLocaleDateString('pt-BR')).replace(/{{valor}}/g, client.price.toFixed(2)))} className="whitespace-nowrap px-3 py-1.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-full text-[10px] font-bold uppercase border border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+                     {t.title}
+                 </button>
+             ))}
+          </div>
+          <textarea 
+            value={msg}
+            onChange={(e) => setMsg(e.target.value)}
+            className={`w-full p-3 rounded-md border outline-none text-[13px] font-medium leading-relaxed h-40 resize-none ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-slate-50 border-slate-200'}`}
+            placeholder="Digite sua mensagem ou escolha um modelo..."
+          ></textarea>
+          <button 
+            disabled={!msg}
+            onClick={() => onSend(msg, client)}
+            className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white py-3 rounded-md font-bold uppercase text-[12px] shadow-sm flex items-center justify-center gap-2 transition-all"
+          >
+            <Send size={16}/> Enviar WhatsApp
+          </button>
+       </div>
+    </ModalOverlay>
+  );
+}
+
+const ClientDetailsModal = ({ theme, client, onClose }: any) => {
+    return (
+        <ModalOverlay theme={theme} onClose={onClose}>
+           <div className="p-4 border-b dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/50">
+            <h3 className="text-sm font-bold uppercase text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                <User size={16}/> Detalhes do Cliente
+            </h3>
+            <button onClick={onClose} className="p-1 rounded-md hover:bg-black/5 dark:hover:bg-white/10 text-slate-500"><X size={16}/></button>
+           </div>
+           <div className="p-0 overflow-y-auto">
+               <div className="p-5 space-y-4">
+                   <div className="grid grid-cols-2 gap-4">
+                       <div className="space-y-1">
+                           <span className="text-[10px] font-bold text-slate-400 uppercase">Nome</span>
+                           <div className="text-[13px] font-medium">{client.name}</div>
+                       </div>
+                       <div className="space-y-1">
+                           <span className="text-[10px] font-bold text-slate-400 uppercase">Status</span>
+                           <div className={`text-[12px] font-bold uppercase ${client.status === 'active' ? 'text-emerald-500' : 'text-red-500'}`}>{client.status === 'active' ? 'Ativo' : 'Bloqueado'}</div>
+                       </div>
+                       <div className="space-y-1">
+                           <span className="text-[10px] font-bold text-slate-400 uppercase">Usuário</span>
+                           <div className="text-[13px] font-medium">{client.username}</div>
+                       </div>
+                       <div className="space-y-1">
+                           <span className="text-[10px] font-bold text-slate-400 uppercase">Senha</span>
+                           <div className="text-[13px] font-medium">{client.password || '---'}</div>
+                       </div>
+                       <div className="space-y-1">
+                           <span className="text-[10px] font-bold text-slate-400 uppercase">Telefone</span>
+                           <div className="text-[13px] font-medium">{client.phone}</div>
+                       </div>
+                       <div className="space-y-1">
+                           <span className="text-[10px] font-bold text-slate-400 uppercase">Vencimento</span>
+                           <div className="text-[13px] font-medium">{new Date(client.expiresAt).toLocaleDateString('pt-BR')}</div>
+                       </div>
+                   </div>
+                   
+                   {client.notes && (
+                       <div className="p-3 bg-amber-50 dark:bg-amber-900/10 rounded-md border border-amber-100 dark:border-amber-800/30 text-amber-800 dark:text-amber-200">
+                           <span className="text-[10px] font-bold uppercase block mb-1 opacity-70">Observações</span>
+                           <p className="text-[12px] leading-relaxed">{client.notes}</p>
+                       </div>
+                   )}
+
+                   <div className="border-t dark:border-slate-800 pt-4">
+                       <h4 className="text-[10px] font-bold uppercase text-slate-400 mb-3 tracking-widest">Histórico Financeiro</h4>
+                       <div className="space-y-2">
+                           {client.paymentHistory?.length > 0 ? client.paymentHistory.map((h: any, i: number) => (
+                               <div key={i} className="flex justify-between items-center text-[12px] p-2 rounded-md hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                                   <div className="flex flex-col">
+                                       <span className="font-bold">R$ {h.amount.toFixed(2)}</span>
+                                       <span className="text-[10px] text-slate-400">{new Date(h.date).toLocaleDateString('pt-BR')}</span>
+                                   </div>
+                                   <span className="text-[10px] font-medium uppercase px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded-md text-slate-500">{h.method}</span>
+                               </div>
+                           )) : (
+                               <p className="text-center text-[11px] text-slate-400 py-2">Sem histórico disponível.</p>
+                           )}
+                       </div>
+                   </div>
+               </div>
+           </div>
+        </ModalOverlay>
+    );
+};
+
+const EditClientModal = ({ theme, client, packages, onEdit, onClose }: any) => {
+    const [formData, setFormData] = useState({
+        name: client.name,
+        username: client.username,
+        password: client.password,
+        phone: client.phone,
+        packageId: client.packageId || '',
+        price: client.price,
+        expenses: client.expenses,
+        expiryDate: new Date(client.expiresAt).toISOString().split('T')[0],
+        expiryTime: new Date(client.expiresAt).toTimeString().substr(0,5),
+        appName: client.appName,
+        macKey: client.macKey,
+        notes: client.notes
+    });
+
+    const handleChange = (e: any) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({ ...prev, [name]: value }));
+        
+        // Auto-fill price/cost if package changes
+        if (name === 'packageId') {
+            const pkg = packages.find((p: any) => p.id === value);
+            if (pkg) {
+                setFormData(prev => ({ ...prev, price: pkg.price, expenses: pkg.cost, packageId: value }));
+            }
+        }
+    };
+
+    return (
+        <ModalOverlay theme={theme} onClose={onClose}>
+            <div className="p-4 border-b dark:border-slate-800 flex justify-between items-center bg-blue-50/50 dark:bg-blue-900/10">
+                <h3 className="text-sm font-bold uppercase text-blue-600 dark:text-blue-400 flex items-center gap-2">
+                    <Pencil size={16}/> Editar Cliente
+                </h3>
+                <button onClick={onClose} className="p-1 rounded-md hover:bg-black/5 dark:hover:bg-white/10 text-slate-500"><X size={16}/></button>
+            </div>
+            <div className="p-0 overflow-y-auto">
+                <form className="p-5 space-y-3" onSubmit={(e) => { e.preventDefault(); onEdit(formData); }}>
+                   <FormInput theme={theme} name="name" label="Nome" value={formData.name} onChange={handleChange} required />
+                   <div className="grid grid-cols-2 gap-3">
+                       <FormInput theme={theme} name="username" label="Usuário" value={formData.username} onChange={handleChange} required />
+                       <FormInput theme={theme} name="password" label="Senha" value={formData.password} onChange={handleChange} />
+                   </div>
+                   <FormInput theme={theme} name="phone" label="Telefone" value={formData.phone} onChange={handleChange} required />
+                   
+                   <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase ml-1 tracking-wider">Plano</label>
+                    <select 
+                      name="packageId" 
+                      value={formData.packageId}
+                      onChange={handleChange}
+                      className={`w-full px-3 py-2.5 rounded-md border text-[13px] font-medium outline-none ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50 border-slate-200 shadow-sm'}`}
+                    >
+                      <option value="">Personalizado</option>
+                      {packages.map((p: any) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                    </select>
+                   </div>
+
+                   <div className="grid grid-cols-2 gap-3">
+                       <FormInput theme={theme} name="price" label="Preço (R$)" type="number" step="0.01" value={formData.price} onChange={handleChange} required />
+                       <FormInput theme={theme} name="expenses" label="Custo (R$)" type="number" step="0.01" value={formData.expenses} onChange={handleChange} required />
+                   </div>
+
+                   <div className="grid grid-cols-2 gap-3">
+                       <FormInput theme={theme} name="expiryDate" label="Vencimento Data" type="date" value={formData.expiryDate} onChange={handleChange} required />
+                       <FormInput theme={theme} name="expiryTime" label="Hora" type="time" value={formData.expiryTime} onChange={handleChange} />
+                   </div>
+
+                   <FormInput theme={theme} name="notes" label="Observações" value={formData.notes} onChange={handleChange} />
+                   
+                   <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-md font-bold uppercase text-[12px] shadow-sm mt-4 transition-all">
+                       Salvar Alterações
+                   </button>
+                </form>
+            </div>
+        </ModalOverlay>
+    );
+};
 
 // Componente de Tela de Autenticação
 const AuthScreen = ({ theme }: { theme: 'light' | 'dark' }) => {
@@ -200,7 +472,7 @@ const AuthScreen = ({ theme }: { theme: 'light' | 'dark' }) => {
           }
         });
         if (error) throw error;
-        else alert("Cadastro realizado! Verifique seu email se necessário ou faça login.");
+        else alert("Cadastro realizado! Você tem 3 dias de teste grátis.");
       }
     } catch (err: any) {
       setError(err.message || "Ocorreu um erro. Tente novamente.");
@@ -303,6 +575,123 @@ const AuthScreen = ({ theme }: { theme: 'light' | 'dark' }) => {
   );
 };
 
+// Componente de Conteúdo de Assinatura (Reutilizável)
+const SubscriptionContent = ({ theme, onLogout, isBlocking }: { theme: 'light' | 'dark', onLogout?: () => void, isBlocking?: boolean }) => {
+  const [selectedPlanId, setSelectedPlanId] = useState('monthly');
+
+  const plans = [
+    { id: 'monthly', name: 'Mensal', price: '29,90', period: '/mês', link: STRIPE_LINKS.monthly, badge: null },
+    { id: 'quarterly', name: 'Trimestral', price: '69,90', period: '/3 meses', link: STRIPE_LINKS.quarterly, badge: 'Recomendado' },
+    { id: 'semiannual', name: 'Semestral', price: '119,90', period: '/6 meses', link: STRIPE_LINKS.semiannual, badge: '-30% OFF' },
+    { id: 'annual', name: 'Anual', price: '199,90', period: '/ano', link: STRIPE_LINKS.annual, badge: 'Melhor Valor' },
+  ];
+
+  const selectedPlan = plans.find(p => p.id === selectedPlanId) || plans[0];
+
+  return (
+    <div className={`w-full max-w-5xl rounded-3xl shadow-2xl overflow-hidden flex flex-col md:flex-row min-h-[600px] border-4 ${theme === 'dark' ? 'border-slate-800 bg-slate-900' : 'border-white bg-white'}`}>
+      
+      {/* Coluna Esquerda: Benefícios */}
+      <div className="md:w-1/2 bg-gradient-to-br from-blue-600 to-emerald-500 text-white p-8 md:p-12 flex flex-col relative overflow-hidden justify-center">
+        {/* Decorative circles */}
+        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-16 -mt-16 blur-3xl"></div>
+        <div className="absolute bottom-0 left-0 w-64 h-64 bg-emerald-400/20 rounded-full -ml-16 -mb-16 blur-3xl"></div>
+
+        <div className="relative z-10">
+          <div className="mb-8">
+             <span className="inline-block px-3 py-1 bg-white/20 rounded-full text-[10px] font-bold uppercase tracking-widest mb-3 border border-white/20">Plano Premium</span>
+             <h2 className="text-3xl md:text-4xl font-black tracking-tight mb-2">Assinatura Pro</h2>
+             <p className="text-sm opacity-80 leading-relaxed font-medium">Desbloqueie todo o potencial do seu negócio com ferramentas avançadas de gestão e automação.</p>
+          </div>
+
+          <div className="space-y-5">
+              <div className="flex items-center gap-4">
+                  <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center shrink-0 border border-white/10"><Check size={16} strokeWidth={3}/></div>
+                  <span className="font-bold text-sm">Gestão Completa de Clientes</span>
+              </div>
+              <div className="flex items-center gap-4">
+                  <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center shrink-0 border border-white/10"><Check size={16} strokeWidth={3}/></div>
+                  <span className="font-bold text-sm">Clientes Ilimitados</span>
+              </div>
+              <div className="flex items-center gap-4">
+                  <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center shrink-0 border border-white/10"><Check size={16} strokeWidth={3}/></div>
+                  <span className="font-bold text-sm">Automação de WhatsApp com IA</span>
+              </div>
+              <div className="flex items-center gap-4">
+                  <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center shrink-0 border border-white/10"><Check size={16} strokeWidth={3}/></div>
+                  <span className="font-bold text-sm">Relatórios Financeiros Detalhados</span>
+              </div>
+              <div className="flex items-center gap-4">
+                  <div className="w-8 h-8 rounded-lg bg-white/20 flex items-center justify-center shrink-0 border border-white/10"><Check size={16} strokeWidth={3}/></div>
+                  <span className="font-bold text-sm">Sem fidelidade - Cancele quando quiser</span>
+              </div>
+          </div>
+        </div>
+      </div>
+
+      {/* Coluna Direita: Seleção de Planos e Ação */}
+      <div className={`md:w-1/2 p-8 md:p-12 flex flex-col ${theme === 'dark' ? 'bg-slate-900' : 'bg-white'}`}>
+          <div className="flex justify-between items-start mb-6">
+            <div>
+                <h3 className="text-xl font-bold uppercase tracking-tight text-slate-900 dark:text-white">Escolha seu Plano</h3>
+                <p className="text-xs text-slate-400 font-medium mt-1">Selecione a melhor opção para você</p>
+            </div>
+            {isBlocking && onLogout && (
+              <button onClick={onLogout} className="text-slate-400 hover:text-red-500 transition-colors flex items-center gap-1 text-[10px] font-bold uppercase tracking-widest">
+                  <LogOut size={12}/> Sair
+              </button>
+            )}
+          </div>
+
+          <div className="flex-1 space-y-3 mb-8 overflow-y-auto pr-1">
+             {plans.map(plan => (
+                 <div 
+                    key={plan.id}
+                    onClick={() => setSelectedPlanId(plan.id)}
+                    className={`relative p-4 rounded-xl border-2 cursor-pointer transition-all flex items-center justify-between group ${selectedPlanId === plan.id 
+                        ? 'border-blue-600 bg-blue-50 dark:bg-blue-900/10' 
+                        : 'border-slate-100 dark:border-slate-800 hover:border-blue-200 dark:hover:border-slate-700'}`}
+                 >
+                    {plan.badge && (
+                        <div className="absolute -top-2.5 right-4 px-2 py-0.5 bg-gradient-to-r from-blue-600 to-cyan-500 text-white text-[9px] font-bold uppercase tracking-wide rounded-full shadow-sm">
+                            {plan.badge}
+                        </div>
+                    )}
+                    <div className="flex items-center gap-3">
+                        <div className={`w-5 h-5 rounded-full border-2 flex items-center justify-center shrink-0 ${selectedPlanId === plan.id ? 'border-blue-600' : 'border-slate-300 dark:border-slate-600'}`}>
+                            {selectedPlanId === plan.id && <div className="w-2.5 h-2.5 rounded-full bg-blue-600"></div>}
+                        </div>
+                        <div>
+                            <span className={`block text-sm font-bold uppercase ${selectedPlanId === plan.id ? 'text-blue-700 dark:text-blue-400' : 'text-slate-700 dark:text-slate-300'}`}>{plan.name}</span>
+                        </div>
+                    </div>
+                    <div className="text-right">
+                        <span className={`block font-bold ${selectedPlanId === plan.id ? 'text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-500'}`}>R$ {plan.price}</span>
+                        <span className="text-[9px] font-bold uppercase text-slate-400">{plan.period}</span>
+                    </div>
+                 </div>
+             ))}
+          </div>
+
+          <div className="mt-auto">
+              <a 
+                  href={selectedPlan.link} 
+                  target="_blank" 
+                  rel="noopener noreferrer"
+                  className="w-full bg-blue-600 hover:bg-blue-700 text-white py-4 rounded-lg font-bold uppercase text-sm shadow-lg shadow-blue-600/20 flex items-center justify-center gap-2 transition-all active:scale-[0.98]"
+              >
+                  <CreditCard size={18}/> Continuar para Pagamento
+              </a>
+              
+              <p className="text-[10px] text-slate-400 text-center mt-4 mx-auto max-w-xs leading-relaxed">
+                  Pagamento seguro processado pelo Stripe. Acesso liberado imediatamente após a confirmação.
+              </p>
+          </div>
+      </div>
+    </div>
+  );
+};
+
 export default function App() {
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     const saved = localStorage.getItem('eflixtv_theme');
@@ -311,7 +700,8 @@ export default function App() {
   });
 
   const [session, setSession] = useState<Session | null>(null);
-  const [view, setView] = useState<'dashboard' | 'clients' | 'history' | 'add' | 'packages' | 'messages' | 'scheduling' | 'database' | 'servers'>('dashboard');
+  const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  const [view, setView] = useState<'dashboard' | 'clients' | 'history' | 'add' | 'packages' | 'messages' | 'scheduling' | 'database' | 'servers' | 'subscription'>('dashboard');
   const [selectedClientForMsg, setSelectedClientForMsg] = useState<Client | null>(null);
   const [selectedClientForRenewal, setSelectedClientForRenewal] = useState<Client | null>(null);
   const [selectedClientDetails, setSelectedClientDetails] = useState<Client | null>(null);
@@ -365,6 +755,7 @@ export default function App() {
         setTemplates([]);
         setRules([]);
         setServers([]);
+        setUserProfile(null);
         setIsLoading(false);
       }
     });
@@ -379,6 +770,23 @@ export default function App() {
       const userId = sessionData.session?.user.id;
       
       if (!userId) return;
+
+      // Fetch User Profile (Subscription Status)
+      const { data: profileData } = await supabase.from('profiles').select('*').eq('id', userId).single();
+      if (profileData) {
+          setUserProfile(profileData);
+      } else {
+          // Fallback se não existir perfil (ex: usuários antigos antes da migration)
+          // Cria um perfil temporário com trial ativo para não bloquear imediatamente
+          const tempProfile: UserProfile = {
+              id: userId,
+              email: sessionData.session?.user.email || '',
+              trial_ends_at: new Date(Date.now() + 86400000).toISOString(), // +1 dia de cortesia se falhar
+              subscription_ends_at: null,
+              plan_type: null
+          };
+          setUserProfile(tempProfile);
+      }
 
       const { data: clientsData } = await supabase.from('clients').select('*').eq('user_id', userId);
       if (clientsData) setClients(clientsData);
@@ -756,6 +1164,25 @@ export default function App() {
     window.open(`https://wa.me/${client.phone.replace(/\D/g, '')}?text=${encodeURIComponent(body)}`, '_blank');
   };
 
+  // CHECK ACCESS LEVEL
+  const isAccessBlocked = useMemo(() => {
+      if (!userProfile) return false;
+      
+      const now = new Date();
+      const trialEnd = new Date(userProfile.trial_ends_at);
+      const subEnd = userProfile.subscription_ends_at ? new Date(userProfile.subscription_ends_at) : null;
+
+      // Se tiver assinatura ativa, não bloqueia
+      if (subEnd && subEnd > now) return false;
+      
+      // Se não tem assinatura, verifica o trial
+      if (trialEnd > now) return false;
+
+      // Se passou trial e não tem assinatura ativa = Bloqueado
+      return true;
+  }, [userProfile]);
+
+
   if (isLoading) {
     return (
       <div className={`flex items-center justify-center h-screen ${theme === 'dark' ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-800'}`}>
@@ -770,6 +1197,15 @@ export default function App() {
   // Se não houver sessão, exibe a tela de Login
   if (!session) {
     return <AuthScreen theme={theme} />;
+  }
+
+  // Se tiver sessão, mas estiver bloqueado, exibe Paywall (Bloqueio total)
+  if (isAccessBlocked) {
+      return (
+        <div className={`fixed inset-0 z-[500] flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-md overflow-y-auto`}>
+           <SubscriptionContent theme={theme} onLogout={handleLogout} isBlocking={true} />
+        </div>
+      );
   }
 
   return (
@@ -793,6 +1229,7 @@ export default function App() {
           <SidebarItem icon={<History size={18} className="text-red-500"/>} label="Histórico" active={view === 'history'} onClick={() => setView('history')} />
           <SidebarItem icon={<ServerIcon size={18} className="text-purple-500"/>} label="Servidores" active={view === 'servers'} onClick={() => setView('servers')} />
           <SidebarItem icon={<CalendarDays size={18} className="text-emerald-500"/>} label="Automação Zap" active={view === 'scheduling'} onClick={() => setView('scheduling')} />
+          <SidebarItem icon={<CreditCard size={18} className="text-yellow-500"/>} label="Assinatura" active={view === 'subscription'} onClick={() => setView('subscription')} />
           
           <div className="pt-6 pb-2 px-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Configurações</div>
           <SidebarItem icon={<Layers size={18} className="text-indigo-500"/>} label="Planos e Preços" active={view === 'packages'} onClick={() => setView('packages')} />
@@ -827,10 +1264,21 @@ export default function App() {
               {view === 'messages' && 'Modelos de Mensagem'}
               {view === 'database' && 'Segurança'}
               {view === 'servers' && 'Meus Servidores'}
+              {view === 'subscription' && 'Minha Assinatura'}
             </h2>
-            <button onClick={notificationsEnabled ? () => {} : requestPermission} className={`p-1.5 rounded-md transition-colors ${notificationsEnabled ? 'text-emerald-500 bg-emerald-500/10' : 'text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
-              {notificationsEnabled ? <Bell size={16}/> : <BellOff size={16}/>}
-            </button>
+            <div className="flex items-center gap-2">
+                 {userProfile && !isAccessBlocked && (
+                     <div className="hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                         <Crown size={12} />
+                         <span className="text-[9px] font-bold uppercase">
+                             {userProfile.subscription_ends_at ? 'Premium' : `Teste: Restam ${Math.max(0, Math.ceil((new Date(userProfile.trial_ends_at).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)))} dias`}
+                         </span>
+                     </div>
+                 )}
+                <button onClick={notificationsEnabled ? () => {} : requestPermission} className={`p-1.5 rounded-md transition-colors ${notificationsEnabled ? 'text-emerald-500 bg-emerald-500/10' : 'text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
+                  {notificationsEnabled ? <Bell size={16}/> : <BellOff size={16}/>}
+                </button>
+            </div>
           </div>
           
           <div className="flex items-center gap-2">
@@ -852,6 +1300,12 @@ export default function App() {
                 <h4 className="font-bold text-[10px] mb-1 uppercase tracking-widest opacity-80">Insight IA:</h4>
                 <p className="text-xs leading-relaxed font-medium">{aiAnalysis}</p>
               </div>
+            )}
+
+            {view === 'subscription' && (
+               <div className="flex items-center justify-center min-h-[500px]">
+                  <SubscriptionContent theme={theme} />
+               </div>
             )}
 
             {view === 'dashboard' && (
@@ -1053,166 +1507,6 @@ export default function App() {
               </div>
             )}
 
-            {view === 'add' && (
-              <div className={`p-5 rounded-lg border shadow-lg max-w-lg mx-auto animate-in zoom-in-95 ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
-                <h3 className="text-lg font-bold uppercase mb-6 flex items-center gap-2"><PlusCircle size={22}/> Novo Cadastro</h3>
-                <form className="grid grid-cols-1 sm:grid-cols-2 gap-4" onSubmit={(e) => {
-                  e.preventDefault();
-                  handleAddClient(Object.fromEntries(new FormData(e.currentTarget)));
-                }}>
-                  <FormInput theme={theme} name="name" label="Nome do Cliente" placeholder="Ex: João da Silva" required />
-                  <FormInput theme={theme} name="phone" label="Zap (Ex: 55119...)" required />
-                  <FormInput theme={theme} name="username" label="Login Usuário" required />
-                  <FormInput theme={theme} name="password" label="Senha Painel" />
-                  <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase ml-1 tracking-wider">Plano Base</label>
-                    <select 
-                      name="packageId" 
-                      onChange={(e) => {
-                        const pkg = packages.find(p => p.id === e.target.value);
-                        if (pkg) {
-                          setAddFormValues({ price: pkg.price.toString(), expenses: pkg.cost.toString() });
-                        } else {
-                          setAddFormValues({ price: '', expenses: '' });
-                        }
-                      }}
-                      className={`w-full px-3 py-2.5 rounded-md border text-[13px] font-medium outline-none ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50 border-slate-200 shadow-sm'}`}
-                    >
-                      <option value="">Selecione um plano...</option>
-                      {packages.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                    </select>
-                  </div>
-                  <div className="grid grid-cols-2 gap-3">
-                    <FormInput 
-                      theme={theme} 
-                      name="price" 
-                      label="Valor Venda" 
-                      type="number" 
-                      step="0.01" 
-                      required 
-                      value={addFormValues.price}
-                      onChange={(e: any) => setAddFormValues(prev => ({...prev, price: e.target.value}))}
-                    />
-                    <FormInput 
-                      theme={theme} 
-                      name="expenses" 
-                      label="Custo Painel" 
-                      type="number" 
-                      step="0.01" 
-                      required 
-                      value={addFormValues.expenses}
-                      onChange={(e: any) => setAddFormValues(prev => ({...prev, expenses: e.target.value}))}
-                    />
-                  </div>
-                  
-                  {/* DATA E HORA EM GRID 2 COLUNAS LADO A LADO */}
-                  <div className="col-span-1 sm:col-span-2 grid grid-cols-2 gap-4">
-                     <FormInput theme={theme} name="expiryDate" label="Data de Vencimento" type="date" required />
-                     <FormInput theme={theme} name="expiryTime" label="Hora" type="time" defaultValue="23:59" />
-                  </div>
-                  
-                  <FormInput theme={theme} name="appName" label="App em Uso" />
-                  <FormInput theme={theme} name="macKey" label="ID / MAC / Key" />
-                  <div className="sm:col-span-2">
-                     <FormInput theme={theme} name="notes" label="Observações" />
-                  </div>
-                  <div className="sm:col-span-2 p-3 bg-emerald-50 dark:bg-emerald-900/10 rounded-md border border-emerald-100 dark:border-emerald-800/30 flex items-center gap-3 shadow-sm">
-                    <input type="checkbox" name="isPaid" id="isPaid" className="w-5 h-5 accent-emerald-600 rounded cursor-pointer" />
-                    <label htmlFor="isPaid" className="text-[12px] font-bold text-emerald-700 dark:text-emerald-400 uppercase cursor-pointer">Marcar como Pago</label>
-                  </div>
-                  <button type="submit" className="sm:col-span-2 bg-blue-600 text-white py-3 rounded-md font-bold uppercase text-[13px] shadow-sm hover:bg-blue-700 transition-all">Salvar Cadastro</button>
-                </form>
-              </div>
-            )}
-
-            {view === 'history' && (
-              <div className={`rounded-lg border shadow-sm overflow-hidden ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
-                 <div className="p-3 flex items-center justify-between border-b dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
-                  <div className="flex items-center gap-3">
-                    <button onClick={() => setCurrentYear(y => y-1)} className="p-2 border rounded-md dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm"><ChevronLeft size={16}/></button>
-                    <span className="font-bold text-base">{currentYear}</span>
-                    <button onClick={() => setCurrentYear(y => y+1)} className="p-2 border rounded-md dark:border-slate-800 bg-white dark:bg-slate-900 shadow-sm"><ChevronRight size={16}/></button>
-                  </div>
-                </div>
-                <div className="overflow-x-auto w-full">
-                  <table className="w-full text-left border-collapse min-w-[850px]">
-                    <thead className="bg-slate-50/80 dark:bg-slate-800/80">
-                      <tr>
-                        <th className={`px-4 py-3 text-[10px] font-bold text-slate-400 uppercase sticky left-0 z-20 ${theme === 'dark' ? 'bg-slate-900' : 'bg-slate-50'}`}>Cliente</th>
-                        {MONTHS.map(m => <th key={m} className="px-1 py-3 text-[10px] font-bold text-slate-400 uppercase text-center">{m}</th>)}
-                        <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase text-right">Faturado</th>
-                      </tr>
-                    </thead>
-                    <tbody className="divide-y dark:divide-slate-800">
-                      {clients.map(c => (
-                        <tr key={c.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
-                          <td className={`px-4 py-2.5 text-[12px] font-medium sticky left-0 z-10 transition-colors ${theme === 'dark' ? 'bg-slate-900' : 'bg-white'}`}>{c.name}</td>
-                          {MONTHS.map((_, i) => {
-                             const monthEnd = new Date(currentYear, i + 1, 0);
-                             const expiry = new Date(c.expiresAt);
-                             const created = new Date(c.createdAt);
-                             let status = 'none';
-                             if (monthEnd >= created) status = expiry >= monthEnd ? 'paid' : 'overdue';
-                            return (
-                              <td key={i} className="px-1 py-2.5 text-center">
-                                <div className={`w-6 h-6 mx-auto rounded-md flex items-center justify-center ${status === 'paid' ? 'bg-emerald-500 text-white' : status === 'overdue' ? 'bg-red-500 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-300 dark:text-slate-600'}`}>
-                                  {status === 'paid' && <Check size={14}/>}
-                                  {status === 'overdue' && <X size={14}/>}
-                                </div>
-                              </td>
-                            );
-                          })}
-                          <td className="px-4 py-2.5 text-right text-[11px] font-bold text-emerald-600">R$ {(c.totalPaid || 0).toFixed(2)}</td>
-                        </tr>
-                      ))}
-                    </tbody>
-                  </table>
-                </div>
-              </div>
-            )}
-
-            {view === 'packages' && (
-              <div className="max-w-lg mx-auto space-y-4">
-                <div className={`p-5 rounded-lg border shadow-sm ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
-                   <h4 className="font-bold text-[13px] uppercase mb-4 text-blue-500 tracking-wide">{editingPackage ? 'Editar Plano' : 'Novo Plano'}</h4>
-                   <form className="grid grid-cols-2 gap-3" onSubmit={(e) => {
-                     e.preventDefault();
-                     const fd = new FormData(e.currentTarget);
-                     const pkgData = { 
-                         id: editingPackage ? editingPackage.id : Math.random().toString(36).substr(2,9),
-                         name: (fd.get('name') as string).toUpperCase(), 
-                         price: Number(fd.get('price')), 
-                         cost: Number(fd.get('cost')), 
-                         months: Number(fd.get('months')) 
-                     };
-                     handleSavePackage(pkgData);
-                     e.currentTarget.reset();
-                   }}>
-                     <div className="col-span-2"><FormInput theme={theme} name="name" label="Nome do Plano" placeholder="Ex: MENSAL 4K" required defaultValue={editingPackage?.name} /></div>
-                     <FormInput theme={theme} name="price" label="Preço Venda" type="number" step="0.01" required defaultValue={editingPackage?.price} />
-                     <FormInput theme={theme} name="cost" label="Custo Painel" type="number" step="0.01" required defaultValue={editingPackage?.cost} />
-                     <FormInput theme={theme} name="months" label="Meses" type="number" required defaultValue={editingPackage?.months || 1} />
-                     <div className="col-span-2 flex gap-2 mt-2">
-                       {editingPackage && <button type="button" onClick={() => { setEditingPackage(null); document.querySelector('form')?.reset(); }} className="flex-1 bg-slate-100 text-slate-500 rounded-md font-bold uppercase text-[11px] py-3">Cancelar</button>}
-                       <button type="submit" className="flex-[2] bg-blue-600 text-white rounded-md font-bold uppercase text-[11px] py-3 hover:bg-blue-700">{editingPackage ? 'Atualizar' : 'Salvar'}</button>
-                     </div>
-                   </form>
-                </div>
-                {packages.map(p => (
-                  <div key={p.id} className={`p-3.5 rounded-lg border flex justify-between items-center shadow-sm ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-100'}`}>
-                    <div>
-                      <div className="font-bold text-[13px]">{p.name}</div>
-                      <div className="text-[10px] text-slate-400 font-medium uppercase mt-0.5">Venda: R$ {p.price.toFixed(2)} • Custo: R$ {p.cost.toFixed(2)}</div>
-                    </div>
-                    <div className="flex gap-1.5">
-                      <button onClick={() => setEditingPackage(p)} className="p-2 text-blue-500 bg-blue-50 dark:bg-blue-900/20 rounded-md"><Pencil size={16}/></button>
-                      <button onClick={() => handleDeletePackage(p.id)} className="p-2 text-red-500 bg-red-50 dark:bg-red-900/20 rounded-md"><Trash2 size={16}/></button>
-                    </div>
-                  </div>
-                ))}
-              </div>
-            )}
-            
             {view === 'messages' && (
               <div className="max-w-lg mx-auto space-y-4">
                  <div className={`p-5 rounded-lg border shadow-sm ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
@@ -1262,6 +1556,113 @@ export default function App() {
                   </button>
 
                 </div>
+              </div>
+            )}
+
+            {view === 'add' && (
+               <div className="max-w-xl mx-auto space-y-4">
+                 <div className={`p-6 rounded-lg border shadow-sm ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
+                   <div className="flex items-center gap-3 mb-6 pb-4 border-b border-slate-100 dark:border-slate-800">
+                     <div className="p-2 bg-blue-100 dark:bg-blue-900/30 text-blue-600 dark:text-blue-400 rounded-md border border-blue-200 dark:border-blue-800/50">
+                        <UserPlus size={20}/>
+                     </div>
+                     <h3 className="text-sm font-bold uppercase tracking-tight text-slate-800 dark:text-white">Novo Cliente</h3>
+                   </div>
+                   
+                   <form className="space-y-4" onSubmit={(e) => {
+                     e.preventDefault();
+                     const fd = new FormData(e.currentTarget);
+                     handleAddClient(Object.fromEntries(fd.entries()));
+                     e.currentTarget.reset();
+                   }}>
+                     <FormInput theme={theme} name="name" label="Nome Completo" placeholder="Ex: João Silva" required />
+                     <div className="grid grid-cols-2 gap-4">
+                       <FormInput theme={theme} name="username" label="Usuário IPTV" required />
+                       <FormInput theme={theme} name="password" label="Senha IPTV" />
+                     </div>
+                     <FormInput theme={theme} name="phone" label="WhatsApp" placeholder="(00) 00000-0000" required />
+                     
+                     <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase ml-1 tracking-wider">Plano</label>
+                      <select 
+                        name="packageId" 
+                        className={`w-full px-3 py-2.5 rounded-md border text-[13px] font-medium outline-none ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50 border-slate-200 shadow-sm'}`}
+                        onChange={(e) => {
+                           const pkg = packages.find(p => p.id === e.target.value);
+                           if(pkg) setAddFormValues({ price: pkg.price.toString(), expenses: pkg.cost.toString() });
+                        }}
+                      >
+                        <option value="">Personalizado</option>
+                        {packages.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                      </select>
+                     </div>
+
+                     <div className="grid grid-cols-2 gap-4">
+                         <FormInput theme={theme} name="price" label="Preço (R$)" type="number" step="0.01" value={addFormValues.price} onChange={(e: any) => setAddFormValues({...addFormValues, price: e.target.value})} required />
+                         <FormInput theme={theme} name="expenses" label="Custo (R$)" type="number" step="0.01" value={addFormValues.expenses} onChange={(e: any) => setAddFormValues({...addFormValues, expenses: e.target.value})} required />
+                     </div>
+
+                     <div className="grid grid-cols-2 gap-4">
+                         <FormInput theme={theme} name="expiryDate" label="Vencimento Data" type="date" required />
+                         <FormInput theme={theme} name="expiryTime" label="Hora" type="time" defaultValue="23:59" />
+                     </div>
+
+                     <div className="p-3 rounded-md bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 flex items-center gap-3">
+                        <input type="checkbox" name="isPaid" id="isPaid" className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" defaultChecked />
+                        <label htmlFor="isPaid" className="text-[11px] font-bold uppercase cursor-pointer select-none">Pagamento já realizado?</label>
+                     </div>
+
+                     <FormInput theme={theme} name="notes" label="Observações (Opcional)" placeholder="Ex: TV Box Sala" />
+                     
+                     <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3.5 rounded-md font-bold uppercase text-[12px] shadow-lg shadow-blue-600/20 mt-2 transition-all active:scale-[0.99]">
+                         Cadastrar Cliente
+                     </button>
+                   </form>
+                 </div>
+               </div>
+            )}
+
+            {view === 'packages' && (
+              <div className="max-w-lg mx-auto space-y-4">
+                 <div className={`p-5 rounded-lg border shadow-sm ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
+                   <h4 className="font-bold text-[13px] uppercase mb-4 text-indigo-500 tracking-wide">{editingPackage ? 'Editar Plano' : 'Novo Plano'}</h4>
+                   <form className="space-y-3" onSubmit={(e) => {
+                     e.preventDefault();
+                     const fd = new FormData(e.currentTarget);
+                     handleSavePackage({ 
+                         id: editingPackage ? editingPackage.id : Math.random().toString(36).substr(2,9), 
+                         name: fd.get('name') as string, 
+                         price: Number(fd.get('price')), 
+                         cost: Number(fd.get('cost')),
+                         months: Number(fd.get('months')) 
+                     });
+                     e.currentTarget.reset();
+                   }}>
+                     <FormInput theme={theme} name="name" label="Nome do Plano" defaultValue={editingPackage?.name} required />
+                     <div className="grid grid-cols-2 gap-3">
+                         <FormInput theme={theme} name="price" label="Preço Venda (R$)" type="number" step="0.01" defaultValue={editingPackage?.price} required />
+                         <FormInput theme={theme} name="cost" label="Custo Crédito (R$)" type="number" step="0.01" defaultValue={editingPackage?.cost} required />
+                     </div>
+                     <FormInput theme={theme} name="months" label="Duração (Meses)" type="number" defaultValue={editingPackage?.months || 1} required />
+                     
+                     <div className="flex gap-2 pt-2">
+                        {editingPackage && <button type="button" onClick={() => setEditingPackage(null)} className="flex-1 bg-slate-100 text-slate-500 rounded-md font-bold uppercase text-[11px] py-3 hover:bg-slate-200">Cancelar</button>}
+                        <button type="submit" className="flex-1 bg-indigo-600 text-white rounded-md font-bold uppercase text-[11px] py-3 hover:bg-indigo-700">{editingPackage ? 'Atualizar' : 'Salvar Plano'}</button>
+                     </div>
+                   </form>
+                </div>
+                 {packages.map(p => (
+                  <div key={p.id} className={`p-4 rounded-lg border relative shadow-sm flex justify-between items-center ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
+                    <div>
+                      <div className="text-[13px] font-bold uppercase text-slate-800 dark:text-white">{p.name}</div>
+                      <div className="text-[10px] text-slate-400 font-medium uppercase mt-0.5">Venda: R$ {p.price.toFixed(2)} • Custo: R$ {p.cost.toFixed(2)} • {p.months} Mês(es)</div>
+                    </div>
+                    <div className="flex gap-2">
+                        <button onClick={() => setEditingPackage(p)} className="text-blue-400 hover:text-blue-600"><Edit3 size={16}/></button>
+                        <button onClick={() => handleDeletePackage(p.id)} className="text-red-300 hover:text-red-500"><Trash2 size={16}/></button>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
 
@@ -1317,6 +1718,39 @@ export default function App() {
                     <button onClick={() => handleDeleteRule(r.id)} className="text-red-300 hover:text-red-500"><Trash2 size={16}/></button>
                   </div>
                 ))}
+              </div>
+            )}
+
+            {view === 'history' && (
+              <div className="space-y-4">
+                  <div className={`p-5 rounded-lg border shadow-sm ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
+                    <h3 className="text-sm font-bold uppercase tracking-tight mb-4 flex items-center gap-2"><History size={18} className="text-blue-500"/> Histórico Completo de Pagamentos</h3>
+                    <div className="overflow-x-auto">
+                        <table className="w-full text-left border-collapse">
+                            <thead className={`border-b ${theme === 'dark' ? 'bg-slate-800/50 border-slate-700' : 'bg-slate-50 border-slate-100'}`}>
+                                <tr>
+                                    <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Data</th>
+                                    <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Cliente</th>
+                                    <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center">Tipo</th>
+                                    <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-right">Valor</th>
+                                </tr>
+                            </thead>
+                            <tbody className={`divide-y ${theme === 'dark' ? 'divide-slate-800' : 'divide-slate-100'}`}>
+                                {clients.flatMap(c => c.paymentHistory.map(h => ({...h, clientName: c.name}))).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map((item, i) => (
+                                    <tr key={i} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                                        <td className="px-4 py-3 text-[11px] font-medium opacity-80">{new Date(item.date).toLocaleDateString('pt-BR')} {new Date(item.date).toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'})}</td>
+                                        <td className="px-4 py-3 text-[12px] font-bold">{item.clientName}</td>
+                                        <td className="px-4 py-3 text-center"><span className="px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded text-[10px] font-bold uppercase text-slate-500">{item.method}</span></td>
+                                        <td className="px-4 py-3 text-right text-[12px] font-bold text-emerald-600">+R$ {item.amount.toFixed(2)}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                        {clients.flatMap(c => c.paymentHistory).length === 0 && (
+                            <div className="text-center py-8 text-slate-400 text-xs uppercase font-medium">Nenhum registro encontrado</div>
+                        )}
+                    </div>
+                  </div>
               </div>
             )}
 
@@ -1380,151 +1814,6 @@ export default function App() {
       {selectedClientForMsg && <MessageModal theme={theme} client={selectedClientForMsg} templates={templates} onSend={sendWhatsApp} onClose={() => setSelectedClientForMsg(null)} />}
       {selectedClientDetails && <ClientDetailsModal theme={theme} client={selectedClientDetails} onClose={() => setSelectedClientDetails(null)} />}
       {selectedClientForEdit && <EditClientModal theme={theme} client={selectedClientForEdit} packages={packages} onEdit={handleEditClient} onClose={() => setSelectedClientForEdit(null)} />}
-    </div>
-  );
-}
-
-// Helper Components
-function BottomNavItem({ icon, label, active, onClick }: any) {
-  return (
-    <button onClick={onClick} className={`flex flex-col items-center justify-center gap-1 min-w-[50px] transition-colors active:scale-95 ${active ? 'text-blue-600' : 'text-slate-400'}`}>
-      {icon}
-      <span className="text-[9px] font-bold uppercase tracking-tight">{label}</span>
-    </button>
-  );
-}
-
-function MobileSubItem({ icon, label, onClick }: any) {
-  return (
-    <button onClick={onClick} className="flex items-center gap-3 p-2.5 text-[12px] font-medium text-white hover:bg-white/10 rounded-md uppercase transition-colors">
-      {icon} {label}
-    </button>
-  );
-}
-
-/* Modals */
-function ClientDetailsModal({ client, onClose, theme }: any) {
-  const profit = client.price - client.expenses;
-  return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
-      <div className={`w-full max-w-sm rounded-lg shadow-2xl overflow-hidden border animate-in zoom-in-95 duration-200 ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
-        <div className="bg-slate-900 px-5 py-4 text-white flex justify-between items-center">
-          <h3 className="text-sm font-bold uppercase tracking-tight">Ficha do Cliente</h3>
-          <button onClick={onClose} className="p-1.5 bg-white/10 rounded-md hover:bg-white/20 transition-all"><X size={18}/></button>
-        </div>
-        <div className="p-5 space-y-3 max-h-[75vh] overflow-y-auto hide-scrollbar">
-          <DetailRow theme={theme} label="Nome Completo" value={client.name} icon={<Users size={16}/>}/>
-          <DetailRow theme={theme} label="WhatsApp" value={client.phone} icon={<Smartphone size={16}/>}/>
-          <div className="grid grid-cols-2 gap-3">
-            <DetailRow theme={theme} label="Usuário" value={client.username} icon={<Tag size={16}/>} isMono/>
-            <DetailRow theme={theme} label="Senha" value={client.password || '---'} icon={<Tag size={16}/>} isMono/>
-          </div>
-          <div className="h-px bg-slate-100 dark:bg-slate-800 my-1"></div>
-          <div className="grid grid-cols-2 gap-3">
-             <DetailRow theme={theme} label="Pacote" value={client.packageName} icon={<Layers size={16}/>} isHighlight/>
-             <DetailRow theme={theme} label="App" value={client.appName || '---'} icon={<Smartphone size={16}/>}/>
-          </div>
-          <div className="grid grid-cols-3 gap-2">
-             <DetailRow theme={theme} label="Venda" value={`R$ ${client.price.toFixed(2)}`} icon={<DollarSign size={14}/>} isHighlight/>
-             <DetailRow theme={theme} label="Custo" value={`R$ ${client.expenses.toFixed(2)}`} icon={<ArrowUpRight size={14}/>}/>
-             <DetailRow theme={theme} label="Lucro" value={`R$ ${profit.toFixed(2)}`} icon={<TrendingUp size={14}/>} className="text-emerald-500"/>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-             <DetailRow theme={theme} label="Início" value={new Date(client.createdAt).toLocaleDateString('pt-BR')} icon={<Calendar size={16}/>} />
-             <DetailRow theme={theme} label="Vencimento" value={new Date(client.expiresAt).toLocaleDateString('pt-BR')} icon={<Clock size={16}/>} className="text-red-500" />
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function EditClientModal({ client, packages, onEdit, onClose, theme }: any) {
-  return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
-      <div className={`w-full max-w-sm rounded-lg shadow-2xl overflow-hidden border animate-in zoom-in-95 duration-200 ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
-        <div className="bg-slate-900 px-5 py-4 text-white flex justify-between items-center">
-          <h3 className="text-sm font-bold uppercase tracking-tight">Editar Registro</h3>
-          <button onClick={onClose} className="p-1.5 bg-white/10 rounded-md hover:bg-white/20 transition-all"><X size={18}/></button>
-        </div>
-        <form className="p-5 space-y-3 max-h-[80vh] overflow-y-auto hide-scrollbar" onSubmit={(e) => { e.preventDefault(); onEdit(Object.fromEntries(new FormData(e.currentTarget))); }}>
-          <FormInput theme={theme} name="name" label="Nome do Cliente" defaultValue={client.name} required />
-          <FormInput theme={theme} name="phone" label="Zap" defaultValue={client.phone} required />
-          <div className="grid grid-cols-2 gap-3">
-            <FormInput theme={theme} name="username" label="Login Usuário" defaultValue={client.username} required />
-            <FormInput theme={theme} name="password" label="Senha Acesso" defaultValue={client.password} />
-          </div>
-          <div className="space-y-1">
-            <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Plano Sugerido</label>
-            <select name="packageId" defaultValue={client.packageId} className={`w-full p-2.5 rounded-md border text-[13px] font-medium outline-none ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50 border-slate-100 shadow-sm'}`}>
-              {packages.map((p: any) => <option key={p.id} value={p.id}>{p.name}</option>)}
-            </select>
-          </div>
-          <div className="grid grid-cols-2 gap-3">
-            <FormInput theme={theme} name="price" label="Valor Cobrado" type="number" step="0.01" defaultValue={client.price} required />
-            <FormInput theme={theme} name="expenses" label="Custo Painel" type="number" step="0.01" defaultValue={client.expenses} required />
-          </div>
-          <button type="submit" className="w-full bg-blue-600 text-white py-3 rounded-md font-bold uppercase text-[12px] shadow-sm mt-2 hover:bg-blue-700">Salvar Alterações</button>
-        </form>
-      </div>
-    </div>
-  );
-}
-
-function DetailRow({ label, value, icon, isMono, isHighlight, theme, className }: any) {
-  return (
-    <div className={`p-2.5 rounded-md border shadow-sm ${isHighlight ? 'bg-blue-500/10 border-blue-500/30' : theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-slate-50 border-slate-100'}`}>
-      <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest flex items-center gap-1.5 mb-1">
-        {icon} {label}
-      </span>
-      <div className={`text-[13px] font-medium truncate ${isMono ? 'font-mono tracking-tight' : ''} ${isHighlight ? 'text-blue-500' : 'text-slate-800 dark:text-white'} ${className}`}>
-        {value}
-      </div>
-    </div>
-  );
-}
-
-function RenewalModal({ client, packages, onRenew, onClose, theme }: any) {
-  return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
-      <div className={`w-full max-w-sm rounded-lg shadow-2xl overflow-hidden border animate-in zoom-in-95 duration-200 ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
-        <div className="bg-blue-600 px-5 py-4 text-white flex justify-between items-center">
-          <h3 className="text-sm font-bold uppercase tracking-tight">Renovar Sinal</h3>
-          <button onClick={onClose} className="p-1.5 bg-white/10 rounded-md hover:bg-white/20 transition-all"><X size={18}/></button>
-        </div>
-        <div className="p-5 space-y-3">
-          {packages.map((pkg: any) => (
-            <button key={pkg.id} onClick={() => onRenew(client.id, pkg.id)} className={`w-full text-left p-4 rounded-md border transition-all flex items-center justify-between group active:scale-[0.98] shadow-sm ${theme === 'dark' ? 'bg-slate-800 border-slate-700 hover:bg-emerald-500/5' : 'bg-slate-50 border-slate-100 hover:bg-emerald-50'}`}>
-              <div>
-                <div className="font-bold text-[13px] uppercase group-hover:text-emerald-500 transition-colors tracking-tight">{pkg.name}</div>
-                <div className="text-[10px] text-slate-400 font-medium uppercase mt-0.5 tracking-wider">Investimento: R$ {pkg.price.toFixed(2)}</div>
-              </div>
-              <ArrowUpRight size={20} className="text-emerald-500" />
-            </button>
-          ))}
-        </div>
-      </div>
-    </div>
-  );
-}
-
-function MessageModal({ client, templates, onSend, onClose, theme }: any) {
-  return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
-      <div className={`w-full max-w-sm rounded-lg shadow-2xl overflow-hidden border animate-in zoom-in-95 duration-200 ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
-        <div className="bg-emerald-600 px-5 py-4 text-white flex justify-between items-center">
-          <h3 className="text-sm font-bold uppercase tracking-tight">Enviar Mensagem</h3>
-          <button onClick={onClose} className="p-1.5 bg-white/10 rounded-md hover:bg-white/20 transition-all"><X size={18}/></button>
-        </div>
-        <div className="p-5 space-y-3">
-          {templates.map((tpl: any) => (
-            <button key={tpl.id} onClick={() => onSend(tpl, client)} className={`w-full text-left p-4 rounded-md border transition-all flex justify-between items-center group active:scale-[0.98] shadow-sm ${theme === 'dark' ? 'bg-slate-800 border-slate-700 hover:bg-blue-500/5' : 'bg-slate-50 border-slate-100 hover:bg-blue-50'}`}>
-              <span className="font-bold text-[12px] uppercase tracking-widest group-hover:text-blue-500 transition-colors">{tpl.title}</span>
-              <Send size={18} className="text-blue-500" />
-            </button>
-          ))}
-        </div>
-      </div>
     </div>
   );
 }
