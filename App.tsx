@@ -728,6 +728,12 @@ export default function App() {
   
   const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isRefreshing, setIsRefreshing] = useState(false);
+
+  // Pull to refresh refs and state
+  const mainRef = useRef<HTMLDivElement>(null);
+  const touchStartRef = useRef(0);
+  const [pullDistance, setPullDistance] = useState(0);
 
   // Estado para Toast
   const [toast, setToast] = useState<{message: string, type: 'success' | 'error'} | null>(null);
@@ -777,8 +783,8 @@ export default function App() {
     return () => subscription.unsubscribe();
   }, []);
 
-  const fetchAllData = async () => {
-    setIsLoading(true);
+  const fetchAllData = async (silent = false) => {
+    if (!silent) setIsLoading(true);
     try {
       const { data: sessionData } = await supabase.auth.getSession();
       const userId = sessionData.session?.user.id;
@@ -842,6 +848,13 @@ export default function App() {
     } finally {
       setIsLoading(false);
     }
+  };
+
+  const handleRefreshData = async () => {
+      setIsRefreshing(true);
+      await fetchAllData(true); // Silent fetch, but with local loading indicator
+      setIsRefreshing(false);
+      showToast("Dados atualizados com sucesso!");
   };
 
   useEffect(() => {
@@ -931,6 +944,29 @@ export default function App() {
   
   const handleLogout = async () => {
     await supabase.auth.signOut();
+  };
+
+  // PULL TO REFRESH LOGIC
+  const handleTouchStart = (e: React.TouchEvent) => {
+      if (mainRef.current?.scrollTop === 0) {
+          touchStartRef.current = e.targetTouches[0].clientY;
+      }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+      const touchY = e.targetTouches[0].clientY;
+      const diff = touchY - touchStartRef.current;
+      
+      if (mainRef.current?.scrollTop === 0 && diff > 0) {
+          setPullDistance(Math.min(diff * 0.4, 120)); // Resistance
+      }
+  };
+
+  const handleTouchEnd = () => {
+      if (pullDistance > 60) {
+          handleRefreshData();
+      }
+      setPullDistance(0);
   };
 
   // Função genérica de atualização de cliente no Supabase
@@ -1365,13 +1401,32 @@ export default function App() {
             <span className="hidden md:block text-[10px] font-bold uppercase text-slate-400">
                {session.user.user_metadata.full_name || session.user.email}
             </span>
+            <button 
+              onClick={handleRefreshData} 
+              className={`md:hidden p-2 rounded-md border transition-all shadow-sm ${isRefreshing ? 'animate-spin bg-blue-100 text-blue-600 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400' : 'bg-slate-50 text-slate-500 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700'}`}
+            >
+              <RefreshCw size={16} />
+            </button>
             <button onClick={() => geminiService.analyzeBusiness(clients).then(setAiAnalysis)} className="p-2 text-blue-600 bg-blue-50 dark:bg-blue-900/30 dark:text-blue-400 rounded-md border border-blue-100 dark:border-blue-800/50 hover:bg-blue-100 transition-all shadow-sm">
               <TrendingUp size={16} />
             </button>
           </div>
         </header>
 
-        <main className="flex-1 overflow-y-auto pb-32 p-4 md:p-6 hide-scrollbar bg-slate-50/50 dark:bg-slate-950">
+        <main 
+          ref={mainRef}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+          className="flex-1 overflow-y-auto pb-32 p-4 md:p-6 hide-scrollbar bg-slate-50/50 dark:bg-slate-950 transition-all"
+        >
+          {/* Pull to Refresh Indicator */}
+          <div style={{ height: `${pullDistance}px`, opacity: pullDistance > 0 ? 1 : 0 }} className="flex items-center justify-center overflow-hidden transition-all ease-out duration-200">
+             <div className={`p-2 rounded-full bg-white dark:bg-slate-800 shadow-md border border-slate-200 dark:border-slate-700 ${isRefreshing ? 'animate-spin' : ''} ${pullDistance > 60 ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400'}`}>
+                {isRefreshing ? <Loader2 size={20}/> : <ArrowUpRight size={20} className="rotate-180"/>}
+             </div>
+          </div>
+
           <div className="max-w-6xl mx-auto space-y-5">
             
             {aiAnalysis && (
