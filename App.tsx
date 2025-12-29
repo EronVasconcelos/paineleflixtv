@@ -1355,6 +1355,9 @@ export default function App() {
   const isAccessBlocked = useMemo(() => {
       if (!userProfile) return false;
       
+      // VIP ACCESS CHECK
+      if (session?.user?.email === 'eronvasconcelos.br@gmail.com') return false;
+
       const now = new Date();
       const trialEnd = new Date(userProfile.trial_ends_at);
       const subEnd = userProfile.subscription_ends_at ? new Date(userProfile.subscription_ends_at) : null;
@@ -1367,7 +1370,7 @@ export default function App() {
 
       // Se passou trial e não tem assinatura ativa = Bloqueado
       return true;
-  }, [userProfile]);
+  }, [userProfile, session]);
 
 
   if (isLoading) {
@@ -1461,7 +1464,11 @@ export default function App() {
                      <div className="hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
                          <Crown size={12} />
                          <span className="text-[9px] font-bold uppercase">
-                             {userProfile.subscription_ends_at ? 'Premium' : `Teste: Restam ${Math.max(0, Math.ceil((new Date(userProfile.trial_ends_at).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)))} dias`}
+                             {session?.user?.email === 'eronvasconcelos.br@gmail.com' 
+                                ? 'Vitalício' 
+                                : userProfile.subscription_ends_at 
+                                    ? 'Premium' 
+                                    : `Teste: Restam ${Math.max(0, Math.ceil((new Date(userProfile.trial_ends_at).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)))} dias`}
                          </span>
                      </div>
                  )}
