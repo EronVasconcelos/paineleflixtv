@@ -10,6 +10,22 @@ export interface PaymentRecord {
   method: string;
 }
 
+export interface CreditTransaction {
+  id: string;
+  date: string;
+  amount: number; // Quantidade de créditos
+  cost: number;   // Valor pago em R$
+}
+
+export interface Server {
+  id: string;
+  user_id?: string;
+  name: string;
+  url: string;
+  credits: number;
+  transactions: CreditTransaction[];
+}
+
 export interface Package {
   id: string;
   user_id?: string;
@@ -30,7 +46,7 @@ export interface MessageRule {
   id: string;
   user_id?: string;
   type: 'before' | 'on_day' | 'after';
-  days: number;
+  days: number; // Se type for 'on_day', days será ignorado ou 0
   time: string;
   templateId: string;
   isActive: boolean;

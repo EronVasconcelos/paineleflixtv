@@ -54,23 +54,28 @@ import {
   LogOut,
   Lock,
   Mail,
-  User
+  User,
+  Server as ServerIcon,
+  Link as LinkIcon,
+  Coins,
+  Tv,
+  PlayCircle
 } from 'lucide-react';
 import { Session } from '@supabase/supabase-js';
-import { Client, Package, MessageTemplate, MessageRule, ClientStatus, PaymentStatus } from './types';
+import { Client, Package, MessageTemplate, MessageRule, ClientStatus, PaymentStatus, Server, CreditTransaction } from './types';
 import { geminiService } from './services/geminiService';
 import { supabase } from './services/supabaseClient';
 
-const PANEL_NAME = "EFLIXTV";
+const PANEL_NAME = "STREAM MANAGER";
 const MONTHS = ['Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'];
 
 /* COMPONENTES DE UI */
 
 const SidebarItem = ({ icon, label, active, onClick }: { icon: React.ReactNode, label: string, active: boolean, onClick: () => void }) => (
-  <button onClick={onClick} className={`w-full flex items-center gap-3 px-3 py-2 rounded-md mb-0.5 transition-all group ${active ? 'bg-blue-600 text-white shadow-sm' : 'text-slate-500 hover:bg-slate-200/50 dark:hover:bg-slate-800 dark:text-slate-400 dark:hover:text-white'}`}>
-    <div className={`transition-transform ${active ? 'scale-105' : 'group-hover:scale-105'}`}>{icon}</div>
-    <span className="text-[12px] font-medium tracking-wide">{label}</span>
-    {active && <ChevronRight size={12} className="ml-auto opacity-70" />}
+  <button onClick={onClick} className={`w-full flex items-center gap-3 px-3 py-2.5 rounded-md mb-1 transition-all group ${active ? 'bg-slate-100 dark:bg-slate-800 shadow-sm border border-slate-200 dark:border-slate-700' : 'hover:bg-slate-50 dark:hover:bg-slate-800/50'}`}>
+    <div className={`transition-transform ${active ? 'scale-110' : 'group-hover:scale-110'}`}>{icon}</div>
+    <span className={`text-[12px] font-semibold tracking-wide ${active ? 'text-slate-900 dark:text-white' : 'text-slate-500 dark:text-slate-400'}`}>{label}</span>
+    {active && <ChevronRight size={14} className="ml-auto text-slate-400" />}
   </button>
 );
 
@@ -208,11 +213,11 @@ const AuthScreen = ({ theme }: { theme: 'light' | 'dark' }) => {
     <div className={`min-h-screen flex items-center justify-center p-4 transition-colors ${theme === 'dark' ? 'bg-slate-950 text-white' : 'bg-slate-50 text-slate-900'}`}>
       <div className={`w-full max-w-md p-8 rounded-2xl shadow-xl border ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
         <div className="flex flex-col items-center mb-8">
-          <div className="bg-blue-600 p-3 rounded-xl mb-4 shadow-lg shadow-blue-600/20">
-            <Activity size={32} className="text-white" />
+          <div className="bg-gradient-to-tr from-blue-600 to-cyan-500 p-4 rounded-2xl mb-4 shadow-lg shadow-blue-600/20">
+            <Tv size={40} className="text-white" />
           </div>
-          <h1 className="text-2xl font-black tracking-tight uppercase">{PANEL_NAME}</h1>
-          <p className="text-sm text-slate-400 font-medium">Gerenciador Premium IPTV</p>
+          <h1 className="text-2xl font-black tracking-tight uppercase bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-cyan-500">{PANEL_NAME}</h1>
+          <p className="text-sm text-slate-400 font-medium">Controle de Assinaturas</p>
         </div>
 
         <div className="flex bg-slate-100 dark:bg-slate-800 p-1 rounded-lg mb-6">
@@ -306,7 +311,7 @@ export default function App() {
   });
 
   const [session, setSession] = useState<Session | null>(null);
-  const [view, setView] = useState<'dashboard' | 'clients' | 'history' | 'add' | 'packages' | 'messages' | 'scheduling' | 'database'>('dashboard');
+  const [view, setView] = useState<'dashboard' | 'clients' | 'history' | 'add' | 'packages' | 'messages' | 'scheduling' | 'database' | 'servers'>('dashboard');
   const [selectedClientForMsg, setSelectedClientForMsg] = useState<Client | null>(null);
   const [selectedClientForRenewal, setSelectedClientForRenewal] = useState<Client | null>(null);
   const [selectedClientDetails, setSelectedClientDetails] = useState<Client | null>(null);
@@ -329,6 +334,7 @@ export default function App() {
   });
 
   const [editingPackage, setEditingPackage] = useState<Package | null>(null);
+  const [selectedServerForCredit, setSelectedServerForCredit] = useState<Server | null>(null);
   const [notificationsEnabled, setNotificationsEnabled] = useState(Notification.permission === 'granted');
   const notifiedIds = useRef<Set<string>>(new Set());
 
@@ -337,6 +343,7 @@ export default function App() {
   const [packages, setPackages] = useState<Package[]>([]);
   const [templates, setTemplates] = useState<MessageTemplate[]>([]);
   const [rules, setRules] = useState<MessageRule[]>([]);
+  const [servers, setServers] = useState<Server[]>([]);
 
   // Gestão da Sessão e Carregamento de Dados
   useEffect(() => {
@@ -357,6 +364,7 @@ export default function App() {
         setPackages([]);
         setTemplates([]);
         setRules([]);
+        setServers([]);
         setIsLoading(false);
       }
     });
@@ -367,12 +375,6 @@ export default function App() {
   const fetchAllData = async () => {
     setIsLoading(true);
     try {
-      // O Supabase filtra automaticamente pelo usuário se RLS estiver ativo,
-      // mas por segurança e boa prática, podemos assumir que o backend cuida disso
-      // ou filtrar explicitamente se as políticas forem públicas (não recomendado).
-      // Aqui, assumimos que RLS filtra ou tabela é compartilhada e filtramos manualmente.
-      // NOTA: Para segurança real, ative RLS no Supabase. O código abaixo envia o user_id na criação.
-      
       const { data: sessionData } = await supabase.auth.getSession();
       const userId = sessionData.session?.user.id;
       
@@ -393,12 +395,25 @@ export default function App() {
       }
 
       const { data: templatesData } = await supabase.from('templates').select('*').eq('user_id', userId);
-      if (templatesData) setTemplates(templatesData);
-      else setTemplates([{ id: 't1', user_id: userId, title: 'BOAS-VINDAS', body: 'Olá {{nome}}! Seus dados: User: {{usuario}} / Pass: {{senha}}' }]);
+      if (templatesData && templatesData.length > 0) setTemplates(templatesData);
+      else {
+          // Pre-configured messages as requested
+          const initialTemplates = [
+              { id: 't1', user_id: userId, title: 'BOAS-VINDAS', body: 'Olá {{nome}}! Seja bem-vindo(a) à EFLIXTV. \n\nSeus dados de acesso:\n👤 Usuário: {{usuario}}\n🔑 Senha: {{senha}}\n\nQualquer dúvida, estou à disposição!' },
+              { id: 't2', user_id: userId, title: 'COBRANÇA - PRÉ', body: 'Opa {{nome}}, tudo certo? Passando pra lembrar que seu plano vence em {{vencimento}}. O valor é R$ {{valor}}. Posso enviar o PIX para renovação?' },
+              { id: 't3', user_id: userId, title: 'COBRANÇA - HOJE', body: 'Olá {{nome}}! Seu plano vence HOJE ({{vencimento}}). Para evitar bloqueio automático, segue a chave PIX para renovação no valor de R$ {{valor}}.\n\nAguardo seu comprovante!' },
+              { id: 't4', user_id: userId, title: 'COBRANÇA - ATRASO', body: 'Oi {{nome}}, notei que seu pagamento não caiu. Seu acesso foi suspenso temporariamente. Para liberar agora mesmo, faça o PIX de R$ {{valor}} e me envie o comprovante.' },
+              { id: 't5', user_id: userId, title: 'RENOVAÇÃO CONFIRMADA', body: 'Pagamento recebido, {{nome}}! ✅\nSeu acesso foi renovado com sucesso. Muito obrigado pela preferência!' }
+          ];
+          setTemplates(initialTemplates);
+      }
 
       const { data: rulesData } = await supabase.from('rules').select('*').eq('user_id', userId);
       if (rulesData) setRules(rulesData);
-      else setRules([{ id: 'r1', user_id: userId, type: 'before', days: 3, time: '09:00', templateId: 't1', isActive: true }]);
+      else setRules([{ id: 'r1', user_id: userId, type: 'before', days: 3, time: '09:00', templateId: 't2', isActive: true }]);
+
+      const { data: serversData } = await supabase.from('servers').select('*').eq('user_id', userId);
+      if (serversData) setServers(serversData);
 
     } catch (error) {
       console.error("Erro ao carregar dados do Supabase:", error);
@@ -438,9 +453,11 @@ export default function App() {
         rules.forEach(rule => {
           if (!rule.isActive) return;
           let targetDate = new Date(expiryDate);
+          
           if (rule.type === 'before') targetDate.setDate(targetDate.getDate() - rule.days);
           else if (rule.type === 'after') targetDate.setDate(targetDate.getDate() + rule.days);
-
+          // if type is 'on_day', targetDate stays as expiryDate
+          
           if (targetDate.toLocaleDateString('pt-BR') === todayStr) {
             const [ruleH, ruleM] = rule.time.split(':').map(Number);
             const ruleDate = new Date(now);
@@ -502,7 +519,7 @@ export default function App() {
       id: Math.random().toString(36).substr(2, 9),
       user_id: session.user.id,
       name: form.name,
-      username: form.username,
+      username: form.username, // Mantém como digitado (sem toUpperCase/toLowerCase)
       password: form.password,
       status: 'active',
       paymentStatus: form.isPaid ? 'paid' : 'pending',
@@ -625,16 +642,62 @@ export default function App() {
       await supabase.from('rules').delete().eq('id', id);
   };
 
+  // CRUD Servidores
+  const handleSaveServer = async (serverData: any) => {
+    if (!session) return;
+    const newServer: Server = {
+        id: Math.random().toString(36).substr(2, 9),
+        user_id: session.user.id,
+        name: serverData.name,
+        url: serverData.url,
+        credits: Number(serverData.credits),
+        transactions: [{ 
+            id: Math.random().toString(36).substr(2, 5), 
+            date: new Date().toISOString(), 
+            amount: Number(serverData.credits), 
+            cost: 0 // Créditos iniciais assumem custo zero ou usuário não definiu na criação
+        }]
+    };
+    setServers(prev => [...prev, newServer]);
+    try { await supabase.from('servers').insert([newServer]); } catch(e) { console.error(e); }
+  };
+
+  const handleDeleteServer = async (id: string) => {
+      if(!confirm('Excluir servidor?')) return;
+      setServers(prev => prev.filter(s => s.id !== id));
+      try { await supabase.from('servers').delete().eq('id', id); } catch(e) { console.error(e); }
+  };
+
+  const handleAddCredits = async (amount: number, totalCost: number) => {
+    if (!session || !selectedServerForCredit) return;
+    const transaction: CreditTransaction = {
+        id: Math.random().toString(36).substr(2, 5),
+        date: new Date().toISOString(),
+        amount: amount,
+        cost: totalCost
+    };
+    
+    const updatedServer = { 
+        ...selectedServerForCredit, 
+        credits: selectedServerForCredit.credits + amount,
+        transactions: [transaction, ...(selectedServerForCredit.transactions || [])]
+    };
+    
+    setServers(prev => prev.map(s => s.id === updatedServer.id ? updatedServer : s));
+    setSelectedServerForCredit(null);
+    try { await supabase.from('servers').update(updatedServer).eq('id', updatedServer.id); } catch(e) { console.error(e); }
+  };
+
   const requestPermission = async () => {
       const permission = await Notification.requestPermission();
       setNotificationsEnabled(permission === 'granted');
   };
 
   const stats = useMemo(() => {
-    return clients.reduce((acc, c) => {
+    const clientsStats = clients.reduce((acc, c) => {
       acc.totalLTV += c.totalPaid || 0;
       acc.monthlyRevenue += c.price || 0;
-      acc.monthlyCosts += c.expenses || 0;
+      acc.monthlyCosts += c.expenses || 0; // Custos por cliente (ex: custo por ativação no painel)
       const expired = isExpired(c.expiresAt);
       if (c.status === 'blocked') acc.blockedCount++;
       else if (expired) acc.expiredCount++;
@@ -642,7 +705,29 @@ export default function App() {
       if (c.paymentStatus === 'pending') acc.pendingPaymentCount++;
       return acc;
     }, { totalLTV: 0, monthlyRevenue: 0, monthlyCosts: 0, activeCount: 0, expiredCount: 0, blockedCount: 0, pendingPaymentCount: 0 });
-  }, [clients]);
+
+    // Somar custos de compra de créditos de servidor do mês atual
+    const currentMonth = new Date().getMonth();
+    const currentYear = new Date().getFullYear();
+    
+    let serverMonthlyCosts = 0;
+    servers.forEach(s => {
+        if(s.transactions) {
+            s.transactions.forEach(t => {
+                const tDate = new Date(t.date);
+                if(tDate.getMonth() === currentMonth && tDate.getFullYear() === currentYear) {
+                    serverMonthlyCosts += t.cost;
+                }
+            });
+        }
+    });
+
+    return {
+        ...clientsStats,
+        monthlyCosts: clientsStats.monthlyCosts + serverMonthlyCosts
+    };
+
+  }, [clients, servers]);
 
   const filteredClients = useMemo(() => {
     return clients.filter(c => {
@@ -693,21 +778,26 @@ export default function App() {
       {/* Desktop Sidebar */}
       <aside className="w-56 bg-slate-50 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 hidden md:flex flex-col shrink-0">
         <div className="p-5 flex items-center gap-3">
-          <div className="bg-blue-600 p-1.5 rounded-lg"><Activity size={18} className="text-white" /></div>
-          <h1 className="text-sm font-bold uppercase tracking-tight">{PANEL_NAME}</h1>
+          <div className="bg-gradient-to-br from-blue-600 to-cyan-500 p-1.5 rounded-lg shadow-lg shadow-blue-500/30">
+            <Tv size={20} className="text-white" />
+          </div>
+          <h1 className="text-sm font-black uppercase tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-cyan-500 dark:from-blue-400 dark:to-cyan-300 leading-none">
+              STREAM<br/>MANAGER
+          </h1>
         </div>
         
         <nav className="flex-1 px-3 space-y-0.5 overflow-y-auto py-2 hide-scrollbar">
-          <SidebarItem icon={<LayoutDashboard size={18} />} label="Visão Geral" active={view === 'dashboard'} onClick={() => setView('dashboard')} />
-          <SidebarItem icon={<Users size={18} />} label="Meus Clientes" active={view === 'clients'} onClick={() => setView('clients')} />
-          <SidebarItem icon={<UserPlus size={18} />} label="Novo Cadastro" active={view === 'add'} onClick={() => setView('add')} />
-          <SidebarItem icon={<History size={18} />} label="Financeiro" active={view === 'history'} onClick={() => setView('history')} />
-          <SidebarItem icon={<CalendarDays size={18} />} label="Automação Zap" active={view === 'scheduling'} onClick={() => setView('scheduling')} />
+          <SidebarItem icon={<LayoutDashboard size={18} className="text-blue-500"/>} label="Visão Geral" active={view === 'dashboard'} onClick={() => setView('dashboard')} />
+          <SidebarItem icon={<Users size={18} className="text-orange-500"/>} label="Meus Clientes" active={view === 'clients'} onClick={() => setView('clients')} />
+          <SidebarItem icon={<UserPlus size={18} className="text-cyan-500"/>} label="Novo Cadastro" active={view === 'add'} onClick={() => setView('add')} />
+          <SidebarItem icon={<History size={18} className="text-red-500"/>} label="Histórico" active={view === 'history'} onClick={() => setView('history')} />
+          <SidebarItem icon={<ServerIcon size={18} className="text-purple-500"/>} label="Servidores" active={view === 'servers'} onClick={() => setView('servers')} />
+          <SidebarItem icon={<CalendarDays size={18} className="text-emerald-500"/>} label="Automação Zap" active={view === 'scheduling'} onClick={() => setView('scheduling')} />
           
           <div className="pt-6 pb-2 px-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Configurações</div>
-          <SidebarItem icon={<Layers size={18} />} label="Planos e Preços" active={view === 'packages'} onClick={() => setView('packages')} />
-          <SidebarItem icon={<MessageSquare size={18} />} label="Modelos Texto" active={view === 'messages'} onClick={() => setView('messages')} />
-          <SidebarItem icon={<Database size={18} />} label="Backup Dados" active={view === 'database'} onClick={() => setView('database')} />
+          <SidebarItem icon={<Layers size={18} className="text-indigo-500"/>} label="Planos e Preços" active={view === 'packages'} onClick={() => setView('packages')} />
+          <SidebarItem icon={<MessageSquare size={18} className="text-emerald-500"/>} label="Mensagens" active={view === 'messages'} onClick={() => setView('messages')} />
+          <SidebarItem icon={<Database size={18} className="text-slate-500"/>} label="Backup Dados" active={view === 'database'} onClick={() => setView('database')} />
         </nav>
 
         <div className="p-3 border-t border-slate-200 dark:border-slate-800 space-y-2">
@@ -729,13 +819,14 @@ export default function App() {
           <div className="flex items-center gap-3">
              <h2 className={`text-sm font-bold uppercase tracking-tight ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
               {view === 'dashboard' && 'Dashboard'}
-              {view === 'history' && 'Matriz Financeira'}
+              {view === 'history' && 'Histórico Financeiro'}
               {view === 'clients' && 'Gestão de Clientes'}
               {view === 'scheduling' && 'Automação'}
               {view === 'add' && 'Cadastrar Cliente'}
               {view === 'packages' && 'Gerenciar Planos'}
-              {view === 'messages' && 'Mensagens Padrão'}
+              {view === 'messages' && 'Modelos de Mensagem'}
               {view === 'database' && 'Segurança'}
+              {view === 'servers' && 'Meus Servidores'}
             </h2>
             <button onClick={notificationsEnabled ? () => {} : requestPermission} className={`p-1.5 rounded-md transition-colors ${notificationsEnabled ? 'text-emerald-500 bg-emerald-500/10' : 'text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
               {notificationsEnabled ? <Bell size={16}/> : <BellOff size={16}/>}
@@ -809,7 +900,8 @@ export default function App() {
                     <input type="text" placeholder="Buscar cliente..." className={`w-full pl-10 pr-4 py-2.5 rounded-md outline-none text-[13px] font-medium border ${theme === 'dark' ? 'bg-slate-900 border-slate-800 text-white' : 'bg-white border-slate-200 text-slate-900 shadow-sm'}`} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
                   </div>
                   
-                  <div className="flex gap-2 overflow-x-auto hide-scrollbar pb-1">
+                  {/* FIX: Layout overflow for chips using flex-wrap */}
+                  <div className="flex flex-wrap gap-2 pb-1">
                     <FilterChip active={statusFilter === 'all' && paymentFilter === 'all'} label="Todos" theme={theme} onClick={() => { setStatusFilter('all'); setPaymentFilter('all'); }} />
                     <FilterChip active={statusFilter === 'active'} label="Ativos" theme={theme} onClick={() => setStatusFilter('active')} />
                     <FilterChip active={statusFilter === 'expired'} label="Vencidos" theme={theme} onClick={() => setStatusFilter('expired')} />
@@ -828,17 +920,20 @@ export default function App() {
                         <div className="flex justify-between items-start mb-3">
                           <div className="flex-1 min-w-0 pr-3">
                             <h4 className="font-bold text-[15px] truncate leading-tight text-slate-900 dark:text-white">{c.name}</h4>
-                            <div className="text-[11px] opacity-60 font-medium uppercase truncate mt-0.5">{c.username}</div>
+                            <div className="text-[11px] opacity-60 font-medium mt-0.5">{c.username}</div>
                           </div>
                           <div className="flex gap-1.5 shrink-0">
-                             <button onClick={() => handleToggleStatus(c)} className={`px-2.5 py-1 rounded-md text-[9px] font-bold uppercase border ${c.status === 'blocked' ? 'bg-slate-100 text-slate-400 border-slate-200 dark:bg-slate-800' : expired ? 'bg-red-500 text-white border-red-600' : 'bg-emerald-500 text-white border-emerald-600'}`}>{c.status === 'blocked' ? 'Block' : expired ? 'Exp' : 'On'}</button>
-                             <button onClick={() => handleTogglePayment(c)} className={`px-2.5 py-1 rounded-md text-[9px] font-bold uppercase border ${c.paymentStatus === 'paid' ? 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-900/30' : 'bg-amber-50 text-amber-600 border-amber-100 dark:bg-amber-900/30'}`}>{c.paymentStatus === 'paid' ? 'Pago' : 'Pend'}</button>
+                             <button onClick={() => handleToggleStatus(c)} className={`px-2.5 py-1 rounded-md text-[9px] font-bold uppercase border ${c.status === 'blocked' ? 'bg-slate-100 text-slate-400 border-slate-200 dark:bg-slate-800' : expired ? 'bg-red-500 text-white border-red-600' : 'bg-emerald-500 text-white border-emerald-600'}`}>{c.status === 'blocked' ? 'Bloqueado' : expired ? 'Vencido' : 'Ativo'}</button>
+                             <button onClick={() => handleTogglePayment(c)} className={`px-2.5 py-1 rounded-md text-[9px] font-bold uppercase border ${c.paymentStatus === 'paid' ? 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-900/30' : 'bg-amber-50 text-amber-600 border-amber-100 dark:bg-amber-900/30'}`}>{c.paymentStatus === 'paid' ? 'Pago' : 'Pendente'}</button>
                           </div>
                         </div>
                         <div className="flex gap-2.5 mb-3">
                           <div className="flex-1 bg-slate-50 dark:bg-slate-800/50 p-2.5 rounded-md border dark:border-slate-800">
                              <div className="text-[9px] font-bold text-slate-400 uppercase mb-1">Vencimento</div>
-                             <div className={`text-[12px] font-bold truncate ${expired && c.status === 'active' ? 'text-red-500' : ''}`}>{new Date(c.expiresAt).toLocaleDateString('pt-BR')}</div>
+                             <div className={`text-[12px] font-bold truncate ${expired && c.status === 'active' ? 'text-red-500' : ''}`}>
+                                 {new Date(c.expiresAt).toLocaleDateString('pt-BR')}
+                                 <div className="text-[10px] opacity-60 font-normal">{new Date(c.expiresAt).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})}</div>
+                             </div>
                           </div>
                           <div className="flex-1 bg-slate-50 dark:bg-slate-800/50 p-2.5 rounded-md border dark:border-slate-800">
                              <div className="text-[9px] font-bold text-slate-400 uppercase mb-1">Pacote</div>
@@ -879,18 +974,21 @@ export default function App() {
                             <td className="px-4 py-2.5">
                               <div className="flex flex-col">
                                 <span className="font-bold text-[13px]">{c.name}</span>
-                                <span className="text-[10px] opacity-60 font-medium uppercase">{c.username}</span>
+                                <span className="text-[10px] opacity-60 font-medium">{c.username}</span>
                               </div>
                             </td>
                             <td className="px-4 py-2.5 text-center">
-                              <div className={`text-[11px] font-bold ${expired && c.status === 'active' ? 'text-red-500' : ''}`}>{new Date(c.expiresAt).toLocaleDateString('pt-BR')}</div>
+                              <div className={`text-[11px] font-bold ${expired && c.status === 'active' ? 'text-red-500' : ''}`}>
+                                  {new Date(c.expiresAt).toLocaleDateString('pt-BR')}
+                                  <div className="text-[9px] opacity-60 font-normal">{new Date(c.expiresAt).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})}</div>
+                              </div>
                             </td>
                             <td className="px-4 py-2.5 text-center text-[11px] font-medium uppercase">{c.packageName}</td>
                             <td className="px-4 py-2.5 text-center">
-                              <button onClick={() => handleToggleStatus(c)} className={`px-2 py-0.5 rounded-md text-[9px] font-bold uppercase border ${c.status === 'blocked' ? 'bg-slate-100 text-slate-400 border-slate-200 dark:bg-slate-800' : expired ? 'bg-red-500 text-white border-red-600' : 'bg-emerald-500 text-white border-emerald-600'}`}>{c.status === 'blocked' ? 'Block' : expired ? 'Venc' : 'On'}</button>
+                              <button onClick={() => handleToggleStatus(c)} className={`px-2 py-0.5 rounded-md text-[9px] font-bold uppercase border ${c.status === 'blocked' ? 'bg-slate-100 text-slate-400 border-slate-200 dark:bg-slate-800' : expired ? 'bg-red-500 text-white border-red-600' : 'bg-emerald-500 text-white border-emerald-600'}`}>{c.status === 'blocked' ? 'Bloqueado' : expired ? 'Vencido' : 'Ativo'}</button>
                             </td>
                             <td className="px-4 py-2.5 text-center">
-                              <button onClick={() => handleTogglePayment(c)} className={`px-2 py-0.5 rounded-md text-[9px] font-bold uppercase border ${c.paymentStatus === 'paid' ? 'bg-emerald-50 text-emerald-600 border-emerald-200 dark:bg-emerald-900/20' : 'bg-amber-50 text-amber-600 border-amber-200 dark:bg-amber-900/20'}`}>{c.paymentStatus === 'paid' ? 'Pago' : 'Pnd'}</button>
+                              <button onClick={() => handleTogglePayment(c)} className={`px-2 py-0.5 rounded-md text-[9px] font-bold uppercase border ${c.paymentStatus === 'paid' ? 'bg-emerald-50 text-emerald-600 border-emerald-200 dark:bg-emerald-900/20' : 'bg-amber-50 text-amber-600 border-amber-200 dark:bg-amber-900/20'}`}>{c.paymentStatus === 'paid' ? 'Pago' : 'Pendente'}</button>
                             </td>
                             <td className="px-4 py-2.5 text-right">
                               <div className="flex gap-1.5 justify-end">
@@ -906,6 +1004,52 @@ export default function App() {
                     </tbody>
                   </table>
                 </div>
+              </div>
+            )}
+            
+            {view === 'servers' && (
+              <div className="max-w-lg mx-auto space-y-4">
+                 <div className={`p-5 rounded-lg border shadow-sm ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
+                   <h4 className="font-bold text-[13px] uppercase mb-4 text-purple-500 tracking-wide">Adicionar Servidor</h4>
+                   <form className="space-y-3" onSubmit={(e) => {
+                     e.preventDefault();
+                     const fd = new FormData(e.currentTarget);
+                     handleSaveServer({ 
+                         name: fd.get('name'), 
+                         url: fd.get('url'), 
+                         credits: fd.get('credits') 
+                     });
+                     e.currentTarget.reset();
+                   }}>
+                     <FormInput theme={theme} name="name" label="Nome do Servidor" placeholder="Ex: Servidor Principal" required />
+                     <FormInput theme={theme} name="url" label="Link / DNS" placeholder="http://..." required />
+                     <FormInput theme={theme} name="credits" label="Créditos Iniciais" type="number" required />
+                     <button type="submit" className="w-full bg-purple-600 text-white rounded-md font-bold uppercase text-[11px] py-3 hover:bg-purple-700">Salvar Servidor</button>
+                   </form>
+                </div>
+                 {servers.map(s => (
+                  <div key={s.id} className={`p-4 rounded-lg border relative shadow-sm ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
+                    <div className="flex justify-between items-start mb-2">
+                        <div>
+                            <span className="text-[13px] font-bold uppercase text-slate-800 dark:text-white block">{s.name}</span>
+                            <div className="flex items-center gap-1.5 text-[10px] text-slate-400 font-medium mt-1">
+                                <LinkIcon size={12}/> {s.url}
+                            </div>
+                        </div>
+                        <button onClick={() => handleDeleteServer(s.id)} className="text-red-300 hover:text-red-500"><Trash2 size={16}/></button>
+                    </div>
+                    
+                    <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-md border border-slate-100 dark:border-slate-800 mt-3 flex items-center justify-between">
+                        <div>
+                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest block mb-0.5">Saldo de Créditos</span>
+                            <span className="text-xl font-bold text-purple-600 dark:text-purple-400">{s.credits}</span>
+                        </div>
+                        <button onClick={() => setSelectedServerForCredit(s)} className="px-3 py-2 bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 rounded-md text-[10px] font-bold uppercase border border-purple-100 dark:border-purple-800 hover:bg-purple-100 dark:hover:bg-purple-900/30 transition-all flex items-center gap-2">
+                            <Plus size={14}/> Add Créditos
+                        </button>
+                    </div>
+                  </div>
+                ))}
               </div>
             )}
 
@@ -967,7 +1111,7 @@ export default function App() {
                      <FormInput theme={theme} name="expiryTime" label="Hora" type="time" defaultValue="23:59" />
                   </div>
                   
-                  <FormInput theme={theme} name="appName" label="App Sugerido" />
+                  <FormInput theme={theme} name="appName" label="App em Uso" />
                   <FormInput theme={theme} name="macKey" label="ID / MAC / Key" />
                   <div className="sm:col-span-2">
                      <FormInput theme={theme} name="notes" label="Observações" />
@@ -1001,7 +1145,7 @@ export default function App() {
                     </thead>
                     <tbody className="divide-y dark:divide-slate-800">
                       {clients.map(c => (
-                        <tr key={c.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30">
+                        <tr key={c.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
                           <td className={`px-4 py-2.5 text-[12px] font-medium sticky left-0 z-10 transition-colors ${theme === 'dark' ? 'bg-slate-900' : 'bg-white'}`}>{c.name}</td>
                           {MONTHS.map((_, i) => {
                              const monthEnd = new Date(currentYear, i + 1, 0);
@@ -1072,7 +1216,7 @@ export default function App() {
             {view === 'messages' && (
               <div className="max-w-lg mx-auto space-y-4">
                  <div className={`p-5 rounded-lg border shadow-sm ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
-                   <h4 className="font-bold text-[13px] uppercase mb-4 text-emerald-500 tracking-wide">Novo Modelo</h4>
+                   <h4 className="font-bold text-[13px] uppercase mb-4 text-emerald-500 tracking-wide">Nova Mensagem</h4>
                    <form className="space-y-3" onSubmit={(e) => {
                      e.preventDefault();
                      const fd = new FormData(e.currentTarget);
@@ -1128,10 +1272,11 @@ export default function App() {
                    <form className="space-y-3" onSubmit={(e) => {
                      e.preventDefault();
                      const fd = new FormData(e.currentTarget);
+                     const type = fd.get('type') as any;
                      handleSaveRule({ 
                        id: Math.random().toString(36).substr(2,9), 
-                       type: fd.get('type') as any,
-                       days: Number(fd.get('days')),
+                       type: type,
+                       days: type === 'on_day' ? 0 : Number(fd.get('days')),
                        time: fd.get('time') as string,
                        templateId: fd.get('templateId') as string,
                        isActive: true
@@ -1143,10 +1288,11 @@ export default function App() {
                           <label className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Quando Enviar?</label>
                           <select name="type" className={`w-full p-2.5 rounded-md border text-[13px] font-medium outline-none ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50 border-slate-100 shadow-sm'}`}>
                             <option value="before">Antes do Vencimento</option>
+                            <option value="on_day">No Dia do Vencimento</option>
                             <option value="after">Após o Vencimento</option>
                           </select>
                         </div>
-                        <FormInput theme={theme} name="days" label="Quantos Dias?" type="number" defaultValue="3" required />
+                        <FormInput theme={theme} name="days" label="Quantos Dias?" type="number" defaultValue="3" placeholder="Se aplicável" />
                      </div>
                      <div className="grid grid-cols-2 gap-3">
                         <FormInput theme={theme} name="time" label="Horário do Alerta" type="time" defaultValue="09:00" required />
@@ -1164,7 +1310,7 @@ export default function App() {
                   <div key={r.id} className={`p-4 rounded-lg border relative shadow-sm flex items-center justify-between ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
                     <div>
                       <div className="text-[12px] font-bold uppercase text-slate-700 dark:text-slate-200">
-                        {r.type === 'before' ? `Antedência de ${r.days} dias` : `Atraso de ${r.days} dias`} • {r.time}
+                        {r.type === 'on_day' ? 'Dia do Vencimento' : r.type === 'before' ? `Antedência de ${r.days} dias` : `Atraso de ${r.days} dias`} • {r.time}
                       </div>
                       <div className="text-[10px] text-slate-400 font-medium uppercase mt-0.5">Modelo: {templates.find(t => t.id === r.templateId)?.title || 'Desconhecido'}</div>
                     </div>
@@ -1186,15 +1332,16 @@ export default function App() {
               <Plus size={24} />
             </button>
           </div>
-          <BottomNavItem icon={<History size={22}/>} label="Matriz" active={view === 'history'} onClick={() => setView('history')} />
+          <BottomNavItem icon={<History size={22}/>} label="Histórico" active={view === 'history'} onClick={() => setView('history')} />
           <div className="relative flex flex-col items-center justify-center">
-             <BottomNavItem icon={<MoreHorizontal size={22}/>} label="Mais" active={['scheduling', 'packages', 'messages', 'database'].includes(view)} onClick={() => setShowMobileMenu(!showMobileMenu)} />
+             <BottomNavItem icon={<MoreHorizontal size={22}/>} label="Mais" active={['scheduling', 'packages', 'messages', 'database', 'servers'].includes(view)} onClick={() => setShowMobileMenu(!showMobileMenu)} />
              {showMobileMenu && (
                <div className="absolute bottom-14 right-2 bg-slate-900 rounded-lg shadow-2xl p-1.5 w-48 flex flex-col z-[110] border border-slate-800 animate-in slide-in-from-bottom-2">
+                 <MobileSubItem icon={<ServerIcon size={16} className="text-purple-500"/>} label="Servidores" onClick={() => { setView('servers'); setShowMobileMenu(false); }} />
                  <MobileSubItem icon={<Database size={16} className="text-blue-500"/>} label="Banco de Dados" onClick={() => { setView('database'); setShowMobileMenu(false); }} />
                  <MobileSubItem icon={<BellRing size={16} className="text-emerald-500"/>} label="Automação Zap" onClick={() => { setView('scheduling'); setShowMobileMenu(false); }} />
                  <MobileSubItem icon={<Layers size={16} className="text-amber-500"/>} label="Config Planos" onClick={() => { setView('packages'); setShowMobileMenu(false); }} />
-                 <MobileSubItem icon={<MessageSquare size={16} className="text-purple-500"/>} label="Modelos Zap" onClick={() => { setView('messages'); setShowMobileMenu(false); }} />
+                 <MobileSubItem icon={<MessageSquare size={16} className="text-emerald-500"/>} label="Mensagens" onClick={() => { setView('messages'); setShowMobileMenu(false); }} />
                  <div className="h-px bg-slate-800 my-1"></div>
                  <MobileSubItem icon={theme === 'dark' ? <Sun size={16} className="text-amber-400"/> : <Moon size={16}/>} label="Alternar Tema" onClick={() => { toggleTheme(); setShowMobileMenu(false); }} />
                  <MobileSubItem icon={<LogOut size={16} className="text-red-500"/>} label="Sair" onClick={() => { handleLogout(); setShowMobileMenu(false); }} />
@@ -1205,6 +1352,30 @@ export default function App() {
       </div>
       
       {/* Modals */}
+      {selectedServerForCredit && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+          <div className={`w-full max-w-sm rounded-lg shadow-2xl overflow-hidden border animate-in zoom-in-95 duration-200 ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
+             <div className="bg-purple-600 px-5 py-4 text-white flex justify-between items-center">
+              <h3 className="text-sm font-bold uppercase tracking-tight">Comprar Créditos</h3>
+              <button onClick={() => setSelectedServerForCredit(null)} className="p-1.5 bg-white/10 rounded-md hover:bg-white/20 transition-all"><X size={18}/></button>
+            </div>
+            <form className="p-5 space-y-3" onSubmit={(e) => {
+                e.preventDefault();
+                const fd = new FormData(e.currentTarget);
+                handleAddCredits(Number(fd.get('amount')), Number(fd.get('totalCost')));
+            }}>
+                <div className="p-3 bg-purple-50 dark:bg-purple-900/20 border border-purple-100 dark:border-purple-800 rounded-md mb-2">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase">Servidor</span>
+                    <div className="font-bold text-slate-800 dark:text-white">{selectedServerForCredit.name}</div>
+                </div>
+                <FormInput theme={theme} name="amount" label="Quantidade de Créditos" type="number" required autoFocus />
+                <FormInput theme={theme} name="totalCost" label="Custo Total da Compra (R$)" type="number" step="0.01" required />
+                <button type="submit" className="w-full bg-purple-600 text-white py-3 rounded-md font-bold uppercase text-[12px] shadow-sm mt-2 hover:bg-purple-700">Adicionar e Registrar Custo</button>
+            </form>
+          </div>
+        </div>
+      )}
+
       {selectedClientForRenewal && <RenewalModal theme={theme} client={selectedClientForRenewal} packages={packages} onRenew={registerRenewal} onClose={() => setSelectedClientForRenewal(null)} />}
       {selectedClientForMsg && <MessageModal theme={theme} client={selectedClientForMsg} templates={templates} onSend={sendWhatsApp} onClose={() => setSelectedClientForMsg(null)} />}
       {selectedClientDetails && <ClientDetailsModal theme={theme} client={selectedClientDetails} onClose={() => setSelectedClientDetails(null)} />}
