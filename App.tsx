@@ -65,7 +65,11 @@ import {
   ShieldCheck,
   CheckSquare,
   Circle,
-  Minus
+  Minus,
+  Rocket,
+  PartyPopper,
+  QrCode,
+  Copy
 } from 'lucide-react';
 import { Session } from '@supabase/supabase-js';
 import { Client, Package, MessageTemplate, MessageRule, ClientStatus, PaymentStatus, Server, CreditTransaction, UserProfile } from './types';
@@ -220,6 +224,64 @@ const ModalOverlay = ({ onClose, children, theme }: { onClose: () => void, child
     <div className="absolute inset-0" onClick={onClose}></div>
     <div className={`w-full max-w-md rounded-xl shadow-2xl relative overflow-hidden flex flex-col max-h-[90vh] animate-in zoom-in-95 duration-200 ${theme === 'dark' ? 'bg-slate-900 text-white border border-slate-800' : 'bg-white text-slate-900 border border-slate-200'}`}>
       {children}
+    </div>
+  </div>
+);
+
+const WelcomeModal = ({ theme, onClose }: { theme: 'light' | 'dark', onClose: () => void }) => (
+  <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-300">
+    <div className="relative w-full max-w-md overflow-hidden rounded-[32px] shadow-2xl bg-gradient-to-br from-blue-600 to-emerald-500 text-white border border-white/10 animate-in zoom-in-95 duration-300">
+       
+       {/* Decorative Background Elements */}
+       <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-16 -mt-16 blur-3xl animate-pulse"></div>
+       <div className="absolute bottom-0 left-0 w-64 h-64 bg-emerald-400/20 rounded-full -ml-16 -mb-16 blur-3xl"></div>
+
+       <div className="relative p-8 md:p-10 flex flex-col items-center text-center">
+
+          {/* Logo Badge */}
+          <div className="flex items-center gap-3 mb-8 bg-black/20 px-5 py-2.5 rounded-full border border-white/10 backdrop-blur-md shadow-lg">
+            <div className="bg-gradient-to-br from-blue-500 to-cyan-400 p-1.5 rounded-lg shadow-inner">
+               <Tv size={18} className="text-white" />
+            </div>
+            <div className="flex flex-col items-start leading-none">
+                <span className="text-[10px] font-black uppercase tracking-tighter opacity-80">Painel</span>
+                <span className="text-xs font-black uppercase tracking-tighter">STREAM MANAGER</span>
+            </div>
+          </div>
+
+          <h2 className="text-3xl font-black uppercase tracking-tight mb-3 drop-shadow-sm">Bem-vindo(a)!</h2>
+          <p className="text-white/90 font-medium text-sm mb-8 leading-relaxed max-w-xs mx-auto">
+            Você desbloqueou <strong className="text-yellow-300">3 dias de acesso total</strong>. Experimente agora o poder da gestão profissional.
+          </p>
+
+          {/* Benefits List */}
+          <div className="w-full space-y-3 mb-8 text-left">
+             <div className="flex items-center gap-3 bg-white/10 p-3 rounded-xl border border-white/5 backdrop-blur-sm">
+                <div className="w-6 h-6 rounded-full bg-white text-blue-600 flex items-center justify-center shrink-0 shadow-sm"><Check size={14} strokeWidth={4}/></div>
+                <span className="font-bold text-xs tracking-wide">Gestão Completa de Clientes</span>
+             </div>
+             <div className="flex items-center gap-3 bg-white/10 p-3 rounded-xl border border-white/5 backdrop-blur-sm">
+                <div className="w-6 h-6 rounded-full bg-white text-blue-600 flex items-center justify-center shrink-0 shadow-sm"><Check size={14} strokeWidth={4}/></div>
+                <span className="font-bold text-xs tracking-wide">Clientes Ilimitados</span>
+             </div>
+             <div className="flex items-center gap-3 bg-white/10 p-3 rounded-xl border border-white/5 backdrop-blur-sm">
+                <div className="w-6 h-6 rounded-full bg-white text-blue-600 flex items-center justify-center shrink-0 shadow-sm"><Check size={14} strokeWidth={4}/></div>
+                <span className="font-bold text-xs tracking-wide">Relatórios Financeiros Detalhados</span>
+             </div>
+             <div className="flex items-center gap-3 bg-white/10 p-3 rounded-xl border border-white/5 backdrop-blur-sm">
+                <div className="w-6 h-6 rounded-full bg-white text-blue-600 flex items-center justify-center shrink-0 shadow-sm"><Check size={14} strokeWidth={4}/></div>
+                <span className="font-bold text-xs tracking-wide">Sem fidelidade - Cancele quando quiser</span>
+             </div>
+          </div>
+
+          <button 
+            onClick={onClose}
+            className="w-full py-4 bg-white text-blue-700 font-black uppercase text-xs tracking-widest rounded-xl hover:bg-blue-50 transition-all shadow-xl active:scale-[0.98] flex items-center justify-center gap-2 group"
+          >
+            Começar Agora <ArrowUpRight size={16} className="group-hover:translate-x-1 transition-transform"/>
+          </button>
+
+       </div>
     </div>
   </div>
 );
@@ -487,7 +549,10 @@ const AuthScreen = ({ theme }: { theme: 'light' | 'dark' }) => {
           }
         });
         if (error) throw error;
-        else alert("Cadastro realizado! Você tem 3 dias de teste grátis.");
+        else {
+            // Seta flag de novo usuário para exibir modal de boas-vindas
+            localStorage.setItem('eflixtv_new_user', 'true');
+        }
       }
     } catch (err: any) {
       setError(err.message || "Ocorreu um erro. Tente novamente.");
@@ -717,6 +782,7 @@ export default function App() {
   const [selectedClientForRenewal, setSelectedClientForRenewal] = useState<Client | null>(null);
   const [selectedClientDetails, setSelectedClientDetails] = useState<Client | null>(null);
   const [selectedClientForEdit, setSelectedClientForEdit] = useState<Client | null>(null);
+  const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
@@ -782,6 +848,14 @@ export default function App() {
 
     return () => subscription.unsubscribe();
   }, []);
+
+  // Lógica para exibir modal de boas-vindas
+  useEffect(() => {
+      if (session && localStorage.getItem('eflixtv_new_user') === 'true') {
+          setShowWelcomeModal(true);
+          localStorage.removeItem('eflixtv_new_user');
+      }
+  }, [session]);
 
   const fetchAllData = async (silent = false) => {
     if (!silent) setIsLoading(true);
@@ -1784,9 +1858,13 @@ export default function App() {
                     </p>
                   </div>
                   
-                  {/* Botão para forçar recarga caso necessário */}
-                  <button onClick={() => window.location.reload()} className="w-full py-3 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-bold uppercase text-[11px] rounded-md hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
-                      Sincronizar Agora
+                  {/* Botão de Sincronização corrigido */}
+                  <button 
+                    onClick={handleRefreshData} 
+                    className="w-full py-3 bg-slate-100 dark:bg-slate-800 text-slate-500 dark:text-slate-400 font-bold uppercase text-[11px] rounded-md hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors flex items-center justify-center gap-2"
+                  >
+                      {isRefreshing ? <Loader2 size={16} className="animate-spin"/> : <RefreshCw size={16}/>}
+                      {isRefreshing ? 'Sincronizando...' : 'Sincronizar Agora'}
                   </button>
 
                 </div>
@@ -1952,6 +2030,8 @@ export default function App() {
       </div>
       
       {/* Modals */}
+      {showWelcomeModal && <WelcomeModal theme={theme} onClose={() => setShowWelcomeModal(false)} />}
+      
       {selectedServerForCredit && (
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
           <div className={`w-full max-w-sm rounded-lg shadow-2xl overflow-hidden border animate-in zoom-in-95 duration-200 ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
