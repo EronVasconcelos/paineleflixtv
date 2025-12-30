@@ -81,7 +81,6 @@ import { supabase } from './services/supabaseClient';
 const PANEL_NAME = "STREAM MANAGER";
 const MONTHS = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'];
 
-// --- INTEGRAÇÃO STRIPE ---
 const STRIPE_LINKS = {
   monthly: "https://buy.stripe.com/test_00waEWgqsbZWfD5azM4ZG00",
   quarterly: "https://buy.stripe.com/test_3cI28q8Y07JG0Ib8rE4ZG01",
@@ -745,18 +744,25 @@ export default function App() {
   const [notificationsEnabled, setNotificationsEnabled] = useState(Notification.permission === 'granted');
   const notifiedIds = useRef<Set<string>>(new Set());
 
-  // Estado para persistência do formulário de cadastro
+  // ESTADO PARA PERSISTÊNCIA AUTOMÁTICA DO FORMULÁRIO DE CADASTRO
   const [addFormData, setAddFormData] = useState(() => {
-      const saved = localStorage.getItem('eflixtv_draft_add');
-      return saved ? JSON.parse(saved) : {
-          name: '', username: '', password: '', phone: '', packageId: '', price: '', expenses: '',
-          expiryDate: '', expiryTime: '23:59', notes: '', isPaid: true
-      };
+    const saved = localStorage.getItem('eflixtv_draft_add');
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        console.error("Erro ao ler rascunho:", e);
+      }
+    }
+    return {
+      name: '', username: '', password: '', phone: '', packageId: '', price: '', expenses: '',
+      expiryDate: '', expiryTime: '23:59', notes: '', isPaid: true
+    };
   });
 
-  // Salva rascunho do formulário ao alterar
+  // Salva rascunho sempre que addFormData muda
   useEffect(() => {
-      localStorage.setItem('eflixtv_draft_add', JSON.stringify(addFormData));
+    localStorage.setItem('eflixtv_draft_add', JSON.stringify(addFormData));
   }, [addFormData]);
 
   const [clients, setClients] = useState<Client[]>([]);
@@ -855,6 +861,7 @@ export default function App() {
     };
     setClients(prev => [...prev, newClient]);
     setView('clients');
+    // Limpa estado e rascunho
     setAddFormData({ name: '', username: '', password: '', phone: '', packageId: '', price: '', expenses: '', expiryDate: '', expiryTime: '23:59', notes: '', isPaid: true });
     localStorage.removeItem('eflixtv_draft_add');
     showToast("Cadastrado com sucesso!");
@@ -895,6 +902,95 @@ export default function App() {
     showToast("Renovado!");
   };
 
+  // CRUD Servidores
+  const handleSaveServer = async (serverData: any) => {
+    if (!session) return;
+    const newServer: Server = {
+        id: Math.random().toString(36).substr(2, 9),
+        user_id: session.user.id,
+        name: serverData.name,
+        url: serverData.url,
+        credits: Number(serverData.credits),
+        transactions: [{ 
+            id: Math.random().toString(36).substr(2, 5), 
+            date: new Date().toISOString(), 
+            amount: Number(serverData.credits), 
+            cost: 0 
+        }]
+    };
+    setServers(prev => [...prev, newServer]);
+    try { await supabase.from('servers').insert([newServer]); } catch(e) { console.error(e); }
+  };
+
+  const handleDeleteServer = async (id: string) => {
+      if(!confirm('Excluir servidor?')) return;
+      setServers(prev => prev.filter(s => s.id !== id));
+      try { await supabase.from('servers').delete().eq('id', id); } catch(e) { console.error(e); }
+  };
+
+  const handleAddCredits = async (amount: number, totalCost: number) => {
+    if (!session || !selectedServerForCredit) return;
+    const transaction: CreditTransaction = {
+        id: Math.random().toString(36).substr(2, 5),
+        date: new Date().toISOString(),
+        amount: amount,
+        cost: totalCost
+    };
+    const updatedServer = { 
+        ...selectedServerForCredit, 
+        credits: selectedServerForCredit.credits + amount,
+        transactions: [transaction, ...(selectedServerForCredit.transactions || [])]
+    };
+    setServers(prev => prev.map(s => s.id === updatedServer.id ? updatedServer : s));
+    setSelectedServerForCredit(null);
+    try { await supabase.from('servers').update(updatedServer).eq('id', updatedServer.id); } catch(e) { console.error(e); }
+  };
+
+  const handleSavePackage = async (pkg: Package) => {
+    if (!session) return;
+    const pkgWithUser = { ...pkg, user_id: session.user.id };
+    if(editingPackage) {
+        setPackages(prev => prev.map(p => p.id === pkg.id ? pkgWithUser : p));
+        await supabase.from('packages').update(pkgWithUser).eq('id', pkg.id);
+        setEditingPackage(null);
+    } else {
+        setPackages(prev => [...prev, pkgWithUser]);
+        await supabase.from('packages').insert([pkgWithUser]);
+    }
+    showToast("Plano salvo!");
+  };
+
+  const handleDeletePackage = async (id: string) => {
+      if(!confirm('Excluir plano?')) return;
+      setPackages(prev => prev.filter(p => p.id !== id));
+      await supabase.from('packages').delete().eq('id', id);
+  };
+
+  const handleSaveTemplate = async (tpl: MessageTemplate) => {
+    if (!session) return;
+    const tplWithUser = { ...tpl, user_id: session.user.id };
+    setTemplates(prev => [...prev, tplWithUser]);
+    await supabase.from('templates').insert([tplWithUser]);
+  };
+
+  const handleDeleteTemplate = async (id: string) => {
+      setTemplates(prev => prev.filter(t => t.id !== id));
+      await supabase.from('templates').delete().eq('id', id);
+  };
+
+  const handleSaveRule = async (rule: MessageRule) => {
+    if (!session) return;
+    const ruleWithUser = { ...rule, user_id: session.user.id };
+    setRules(prev => [...prev, ruleWithUser]);
+    await supabase.from('rules').insert([ruleWithUser]);
+    showToast("Regra salva!");
+  };
+
+  const handleDeleteRule = async (id: string) => {
+      setRules(prev => prev.filter(r => r.id !== id));
+      await supabase.from('rules').delete().eq('id', id);
+  };
+
   const stats = useMemo(() => {
     return clients.reduce((acc, c) => {
       acc.totalLTV += c.totalPaid || 0;
@@ -924,6 +1020,27 @@ export default function App() {
   const sendWhatsApp = (template: MessageTemplate | string, client: Client) => {
     let body = typeof template === 'string' ? template : template.body.replace(/{{nome}}/g, client.name).replace(/{{usuario}}/g, client.username).replace(/{{senha}}/g, client.password || '***').replace(/{{vencimento}}/g, new Date(client.expiresAt).toLocaleDateString('pt-BR')).replace(/{{valor}}/g, client.price.toFixed(2));
     window.open(`https://wa.me/${client.phone.replace(/\D/g, '')}?text=${encodeURIComponent(body)}`, '_blank');
+  };
+
+  const getMonthStatus = (client: Client, monthIndex: number, year: number) => {
+    const isPaid = client.paymentHistory.some(payment => {
+        const payDate = new Date(payment.date);
+        const payMonth = payDate.getMonth();
+        const payYear = payDate.getFullYear();
+        const startAbsolute = payYear * 12 + payMonth;
+        const endAbsolute = startAbsolute + payment.monthsPaid;
+        const targetAbsolute = year * 12 + monthIndex;
+        return targetAbsolute >= startAbsolute && targetAbsolute < endAbsolute;
+    });
+    if (isPaid) return 'paid';
+    const targetDate = new Date(year, monthIndex, 1);
+    const createdDate = new Date(client.createdAt);
+    const createdNorm = new Date(createdDate.getFullYear(), createdDate.getMonth(), 1);
+    const now = new Date();
+    const nowNorm = new Date(now.getFullYear(), now.getMonth(), 1);
+    if (targetDate < createdNorm) return 'none';
+    if (targetDate < nowNorm) return 'late';
+    return 'pending';
   };
 
   const isAdmin = session?.user?.email === 'eronvasconcelos.br@gmail.com';
@@ -964,6 +1081,7 @@ export default function App() {
           <SidebarItem icon={<UserPlus size={18} className="text-cyan-500"/>} label="Novo Cadastro" active={view === 'add'} onClick={() => setView('add')} />
           <SidebarItem icon={<History size={18} className="text-red-500"/>} label="Histórico" active={view === 'history'} onClick={() => setView('history')} />
           <SidebarItem icon={<ServerIcon size={18} className="text-purple-500"/>} label="Servidores" active={view === 'servers'} onClick={() => setView('servers')} />
+          <SidebarItem icon={<CalendarDays size={18} className="text-emerald-500"/>} label="Automação Zap" active={view === 'scheduling'} onClick={() => setView('scheduling')} />
           <SidebarItem icon={<CreditCard size={18} className="text-yellow-500"/>} label="Assinatura" active={view === 'subscription'} onClick={() => setView('subscription')} />
           <div className="pt-6 pb-2 px-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Configurações</div>
           <SidebarItem icon={<Layers size={18} className="text-indigo-500"/>} label="Planos" active={view === 'packages'} onClick={() => setView('packages')} />
@@ -988,11 +1106,14 @@ export default function App() {
         <main className="flex-1 overflow-y-auto pb-32 p-4 md:p-6 hide-scrollbar bg-slate-50/50 dark:bg-slate-950">
           <div className="max-w-6xl mx-auto space-y-5">
             {view === 'dashboard' && (
-              <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                <StatCard title="Ativos" value={stats.activeCount} icon={<CheckCircle/>} color="emerald" theme={theme} />
-                <StatCard title="Pendentes" value={stats.pendingPaymentCount} icon={<AlertCircle/>} color="amber" theme={theme} />
-                <StatCard title="Vencidos" value={stats.expiredCount} icon={<Clock/>} color="red" theme={theme} />
-                <StatCard title="LTV Total" value={`R$ ${stats.totalLTV.toFixed(0)}`} icon={<Activity/>} color="blue" theme={theme} />
+              <div className="space-y-5">
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                  <StatCard title="Ativos" value={stats.activeCount} icon={<CheckCircle/>} color="emerald" theme={theme} />
+                  <StatCard title="Pendentes" value={stats.pendingPaymentCount} icon={<AlertCircle/>} color="amber" theme={theme} />
+                  <StatCard title="Vencidos" value={stats.expiredCount} icon={<Clock/>} color="red" theme={theme} />
+                  <StatCard title="LTV Total" value={`R$ ${stats.totalLTV.toFixed(0)}`} icon={<Activity/>} color="blue" theme={theme} />
+                </div>
+                <RecentActivityCard title="Últimas Entradas" theme={theme} items={clients.flatMap(c => c.paymentHistory?.map(h => ({...h, clientName: c.name})) || []).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 5)} />
               </div>
             )}
 
@@ -1025,6 +1146,10 @@ export default function App() {
                          <FormInput theme={theme} label="Data Vencimento" type="date" value={addFormData.expiryDate} onChange={(e:any) => setAddFormData({...addFormData, expiryDate: e.target.value})} required />
                          <FormInput theme={theme} label="Hora" type="time" value={addFormData.expiryTime} onChange={(e:any) => setAddFormData({...addFormData, expiryTime: e.target.value})} />
                      </div>
+                     <div className="p-3 rounded-md bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 flex items-center gap-3">
+                        <input type="checkbox" checked={addFormData.isPaid} onChange={(e) => setAddFormData({...addFormData, isPaid: e.target.checked})} id="isPaid" className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" />
+                        <label htmlFor="isPaid" className="text-[11px] font-bold uppercase cursor-pointer select-none">Pagamento já realizado?</label>
+                     </div>
                      <FormInput theme={theme} label="Observações" value={addFormData.notes} onChange={(e:any) => setAddFormData({...addFormData, notes: e.target.value})} />
                      <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3.5 rounded-md font-bold uppercase text-[12px] shadow-lg transition-all active:scale-[0.99]">Cadastrar Cliente</button>
                    </form>
@@ -1037,6 +1162,12 @@ export default function App() {
                  <div className="relative">
                     <Search className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400" size={16} />
                     <input type="text" placeholder="Buscar..." className={`w-full pl-10 pr-4 py-2.5 rounded-md outline-none border ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`} value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+                 </div>
+                 <div className="flex flex-wrap gap-2">
+                    <FilterChip active={statusFilter === 'all'} label="Todos" theme={theme} onClick={() => setStatusFilter('all')} />
+                    <FilterChip active={statusFilter === 'active'} label="Ativos" theme={theme} onClick={() => setStatusFilter('active')} />
+                    <FilterChip active={statusFilter === 'expired'} label="Vencidos" theme={theme} onClick={() => setStatusFilter('expired')} />
+                    <FilterChip active={statusFilter === 'blocked'} label="Blocks" theme={theme} onClick={() => setStatusFilter('blocked')} />
                  </div>
                  <div className="space-y-3">
                   {filteredClients.map(c => (
@@ -1060,6 +1191,121 @@ export default function App() {
               </div>
             )}
 
+            {view === 'history' && (
+              <div className="overflow-x-auto rounded-lg border shadow-sm bg-white dark:bg-slate-900 border-slate-200 dark:border-slate-800">
+                <table className="w-full text-left border-collapse min-w-[800px]">
+                  <thead className={`${theme === 'dark' ? 'bg-slate-800' : 'bg-slate-50'}`}>
+                    <tr>
+                      <th className="px-4 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest border-r">Cliente</th>
+                      {MONTHS.map(m => (<th key={m} className="px-2 py-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest text-center">{m}</th>))}
+                    </tr>
+                  </thead>
+                  <tbody className="divide-y dark:divide-slate-800">
+                    {clients.map(client => (
+                      <tr key={client.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                        <td className="px-4 py-3 border-r font-bold text-[12px]">{client.name}</td>
+                        {MONTHS.map((_, index) => {
+                          const status = getMonthStatus(client, index, currentYear);
+                          return (
+                            <td key={index} className="px-2 py-3 text-center">
+                              <div className="flex justify-center">
+                                {status === 'paid' && <CheckCircle size={16} className="text-emerald-500"/>}
+                                {status === 'late' && <XCircle size={16} className="text-red-500"/>}
+                                {status === 'pending' && <Circle size={12} className="text-slate-200 dark:text-slate-700"/>}
+                              </div>
+                            </td>
+                          );
+                        })}
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
+
+            {view === 'servers' && (
+              <div className="max-w-lg mx-auto space-y-4">
+                 <div className={`p-5 rounded-lg border shadow-sm ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
+                   <h4 className="font-bold text-[13px] uppercase mb-4 text-purple-500">Novo Servidor</h4>
+                   <form className="space-y-3" onSubmit={(e) => {
+                     e.preventDefault();
+                     const fd = new FormData(e.currentTarget);
+                     handleSaveServer({ name: fd.get('name'), url: fd.get('url'), credits: fd.get('credits') });
+                     e.currentTarget.reset();
+                   }}>
+                     <FormInput theme={theme} name="name" label="Nome" required />
+                     <FormInput theme={theme} name="url" label="Link" required />
+                     <FormInput theme={theme} name="credits" label="Créditos" type="number" required />
+                     <button type="submit" className="w-full bg-purple-600 text-white rounded-md font-bold uppercase text-[11px] py-3">Salvar</button>
+                   </form>
+                </div>
+                 {servers.map(s => (
+                  <div key={s.id} className={`p-4 rounded-lg border relative shadow-sm ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
+                    <div className="flex justify-between items-center">
+                      <div><span className="text-[13px] font-bold uppercase">{s.name}</span><div className="text-[10px] text-slate-400">{s.url}</div></div>
+                      <span className="text-xl font-bold text-purple-500">{s.credits}</span>
+                    </div>
+                    <div className="flex gap-2 mt-3">
+                       <button onClick={() => setSelectedServerForCredit(s)} className="flex-1 py-2 bg-purple-50 dark:bg-purple-900/30 text-purple-600 dark:text-purple-400 rounded-md text-[10px] font-bold uppercase">Add Créditos</button>
+                       <button onClick={() => handleDeleteServer(s.id)} className="p-2 text-red-300 hover:text-red-500"><Trash2 size={16}/></button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {view === 'packages' && (
+              <div className="max-w-lg mx-auto space-y-4">
+                 <div className={`p-5 rounded-lg border shadow-sm ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
+                   <h4 className="font-bold text-[13px] uppercase mb-4 text-indigo-500">{editingPackage ? 'Editar Plano' : 'Novo Plano'}</h4>
+                   <form className="space-y-3" onSubmit={(e) => {
+                     e.preventDefault();
+                     const fd = new FormData(e.currentTarget);
+                     handleSavePackage({ id: editingPackage?.id || Math.random().toString(36).substr(2,9), name: fd.get('name') as string, price: Number(fd.get('price')), cost: Number(fd.get('cost')), months: Number(fd.get('months')) });
+                     e.currentTarget.reset();
+                   }}>
+                     <FormInput theme={theme} name="name" label="Nome" defaultValue={editingPackage?.name} required />
+                     <div className="grid grid-cols-2 gap-3">
+                       <FormInput theme={theme} name="price" label="Preço" type="number" step="0.01" defaultValue={editingPackage?.price} required />
+                       <FormInput theme={theme} name="cost" label="Custo" type="number" step="0.01" defaultValue={editingPackage?.cost} required />
+                     </div>
+                     <FormInput theme={theme} name="months" label="Meses" type="number" defaultValue={editingPackage?.months || 1} required />
+                     <button type="submit" className="w-full bg-indigo-600 text-white rounded-md font-bold uppercase text-[11px] py-3">{editingPackage ? 'Atualizar' : 'Salvar'}</button>
+                   </form>
+                </div>
+                 {packages.map(p => (
+                  <div key={p.id} className={`p-4 rounded-lg border flex justify-between items-center ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
+                    <div><span className="text-[13px] font-bold uppercase">{p.name}</span><div className="text-[10px] text-slate-400">R$ {p.price.toFixed(2)} • {p.months} mes(es)</div></div>
+                    <div className="flex gap-2"><button onClick={() => setEditingPackage(p)} className="text-blue-400"><Edit3 size={16}/></button><button onClick={() => handleDeletePackage(p.id)} className="text-red-300"><Trash2 size={16}/></button></div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {view === 'messages' && (
+              <div className="max-w-lg mx-auto space-y-4">
+                 <div className={`p-5 rounded-lg border shadow-sm ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
+                   <h4 className="font-bold text-[13px] uppercase mb-4 text-emerald-500">Novo Modelo</h4>
+                   <form className="space-y-3" onSubmit={(e) => {
+                     e.preventDefault();
+                     const fd = new FormData(e.currentTarget);
+                     handleSaveTemplate({ id: Math.random().toString(36).substr(2,9), title: fd.get('title') as string, body: fd.get('body') as string });
+                     e.currentTarget.reset();
+                   }}>
+                     <FormInput theme={theme} name="title" label="Título" required />
+                     <textarea name="body" className={`w-full p-3 rounded-md border text-[13px] font-medium leading-relaxed ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-slate-50 border-slate-200'}`} rows={4}></textarea>
+                     <button type="submit" className="w-full bg-emerald-600 text-white rounded-md font-bold uppercase text-[11px] py-3">Salvar</button>
+                   </form>
+                </div>
+                 {templates.map(t => (
+                  <div key={t.id} className={`p-4 rounded-lg border relative ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
+                    <div className="flex justify-between mb-2"><span className="text-[11px] font-bold uppercase text-blue-500">{t.title}</span><button onClick={() => handleDeleteTemplate(t.id)} className="text-red-300"><Trash2 size={16}/></button></div>
+                    <p className="text-[12px] opacity-70 italic">"{t.body}"</p>
+                  </div>
+                ))}
+              </div>
+            )}
+
             {view === 'subscription' && <div className="flex items-center justify-center min-h-[500px]"><SubscriptionContent theme={theme} /></div>}
 
             <footer className="text-center py-6 text-[10px] text-slate-400 font-bold tracking-widest opacity-60">
@@ -1074,10 +1320,11 @@ export default function App() {
           <BottomNavItem icon={<Users size={22}/>} label="Clientes" active={view === 'clients'} onClick={() => setView('clients')} />
           <div className="relative"><button onClick={() => setView('add')} className="w-12 h-12 bg-blue-600 text-white rounded-full flex items-center justify-center shadow-lg -mt-8 border-4 border-slate-50 dark:border-slate-950"><Plus size={24} /></button></div>
           <BottomNavItem icon={<History size={22}/>} label="Histórico" active={view === 'history'} onClick={() => setView('history')} />
-          <BottomNavItem icon={<MoreHorizontal size={22}/>} label="Mais" active={['subscription', 'packages', 'messages'].includes(view)} onClick={() => setShowMobileMenu(!showMobileMenu)} />
+          <BottomNavItem icon={<MoreHorizontal size={22}/>} label="Mais" active={['subscription', 'packages', 'messages', 'scheduling', 'servers'].includes(view)} onClick={() => setShowMobileMenu(!showMobileMenu)} />
           {showMobileMenu && (
              <div className="absolute bottom-14 right-2 bg-slate-900 rounded-lg shadow-2xl p-1.5 w-48 flex flex-col z-[110] border border-slate-800">
-               <MobileSubItem icon={<CreditCard size={16} className="text-yellow-500"/>} label="Assinatura" onClick={() => { setView('subscription'); setShowMobileMenu(false); }} />
+               <MobileSubItem icon={<CreditCard size={16} className="text-yellow-500"/>} label="Minha Assinatura" onClick={() => { setView('subscription'); setShowMobileMenu(false); }} />
+               <MobileSubItem icon={<ServerIcon size={16} className="text-purple-500"/>} label="Servidores" onClick={() => { setView('servers'); setShowMobileMenu(false); }} />
                <MobileSubItem icon={<Layers size={16} className="text-amber-500"/>} label="Planos" onClick={() => { setView('packages'); setShowMobileMenu(false); }} />
                <MobileSubItem icon={<MessageSquare size={16} className="text-emerald-500"/>} label="Mensagens" onClick={() => { setView('messages'); setShowMobileMenu(false); }} />
                <div className="h-px bg-slate-800 my-1"></div>
@@ -1092,6 +1339,26 @@ export default function App() {
       {selectedClientForMsg && <MessageModal theme={theme} client={selectedClientForMsg} templates={templates} onSend={sendWhatsApp} onClose={() => setSelectedClientForMsg(null)} />}
       {selectedClientDetails && <ClientDetailsModal theme={theme} client={selectedClientDetails} onClose={() => setSelectedClientDetails(null)} />}
       {selectedClientForEdit && <EditClientModal theme={theme} client={selectedClientForEdit} packages={packages} onEdit={handleEditClient} onClose={() => setSelectedClientForEdit(null)} />}
+      
+      {selectedServerForCredit && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+          <div className={`w-full max-w-sm rounded-lg shadow-2xl overflow-hidden border animate-in zoom-in-95 duration-200 ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
+             <div className="bg-purple-600 px-5 py-4 text-white flex justify-between items-center">
+              <h3 className="text-sm font-bold uppercase tracking-tight">Comprar Créditos</h3>
+              <button onClick={() => setSelectedServerForCredit(null)} className="p-1.5 bg-white/10 rounded-md hover:bg-white/20 transition-all"><X size={18}/></button>
+            </div>
+            <form className="p-5 space-y-3" onSubmit={(e) => {
+                e.preventDefault();
+                const fd = new FormData(e.currentTarget);
+                handleAddCredits(Number(fd.get('amount')), Number(fd.get('totalCost')));
+            }}>
+                <FormInput theme={theme} name="amount" label="Quantidade" type="number" required autoFocus />
+                <FormInput theme={theme} name="totalCost" label="Custo (R$)" type="number" step="0.01" required />
+                <button type="submit" className="w-full bg-purple-600 text-white py-3 rounded-md font-bold uppercase text-[12px] shadow-sm">Adicionar</button>
+            </form>
+          </div>
+        </div>
+      )}
     </div>
   );
 }
