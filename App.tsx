@@ -69,7 +69,9 @@ import {
   Rocket,
   PartyPopper,
   QrCode,
-  Copy
+  Copy,
+  TestTube,
+  Wrench
 } from 'lucide-react';
 import { Session } from '@supabase/supabase-js';
 import { Client, Package, MessageTemplate, MessageRule, ClientStatus, PaymentStatus, Server, CreditTransaction, UserProfile } from './types';
@@ -107,17 +109,33 @@ const Toast = ({ message, onClose, type = 'success' }: { message: string, onClos
 
 const PaymentSuccessModal = ({ theme, onClose }: { theme: 'light' | 'dark', onClose: () => void }) => (
   <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-300">
-    <div className="relative w-full max-w-sm bg-white dark:bg-slate-900 rounded-3xl shadow-2xl p-8 flex flex-col items-center text-center border border-slate-200 dark:border-slate-800 animate-in zoom-in-95">
-       <div className="w-20 h-20 bg-emerald-100 dark:bg-emerald-900/30 rounded-full flex items-center justify-center mb-6 text-emerald-500 animate-bounce">
-          <PartyPopper size={40} />
+    <div className="relative w-full max-w-md overflow-hidden rounded-[32px] shadow-2xl bg-gradient-to-br from-blue-600 to-emerald-500 text-white border border-white/10 animate-in zoom-in-95 duration-300">
+       
+       {/* Decorative Background Elements */}
+       <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-16 -mt-16 blur-3xl animate-pulse"></div>
+       <div className="absolute bottom-0 left-0 w-64 h-64 bg-emerald-400/20 rounded-full -ml-16 -mb-16 blur-3xl"></div>
+
+       <div className="relative p-8 md:p-10 flex flex-col items-center text-center">
+
+          {/* Celebration Icon */}
+          <div className="w-20 h-20 bg-white/20 rounded-full flex items-center justify-center mb-6 backdrop-blur-md shadow-lg border border-white/20 animate-bounce">
+            <PartyPopper size={40} className="text-white drop-shadow-md" />
+          </div>
+
+          <h2 className="text-3xl font-black uppercase tracking-tight mb-3 drop-shadow-sm">Assinatura Confirmada!</h2>
+          <p className="text-white/90 font-medium text-sm mb-8 leading-relaxed max-w-xs mx-auto">
+            Muito obrigado pela confiança! <br/>
+            Seu pagamento foi processado com sucesso e todos os recursos Premium já estão liberados para você usar.
+          </p>
+
+          <button 
+            onClick={onClose}
+            className="w-full py-4 bg-white text-blue-700 font-black uppercase text-xs tracking-widest rounded-xl hover:bg-blue-50 transition-all shadow-xl active:scale-[0.98] flex items-center justify-center gap-2 group"
+          >
+            Acessar Painel Agora <ArrowUpRight size={16} className="group-hover:translate-x-1 transition-transform"/>
+          </button>
+
        </div>
-       <h2 className="text-2xl font-black uppercase text-slate-900 dark:text-white mb-2">Pagamento Confirmado!</h2>
-       <p className="text-slate-500 dark:text-slate-400 text-sm mb-8 font-medium leading-relaxed">
-         Sua assinatura foi ativada com sucesso. Você agora tem acesso total a todos os recursos Premium.
-       </p>
-       <button onClick={onClose} className="w-full py-3 bg-emerald-500 hover:bg-emerald-600 text-white font-bold uppercase rounded-xl transition-all shadow-lg shadow-emerald-500/30 active:scale-95">
-         Acessar Painel
-       </button>
     </div>
   </div>
 );
@@ -673,7 +691,7 @@ const AuthScreen = ({ theme }: { theme: 'light' | 'dark' }) => {
 };
 
 // Componente de Conteúdo de Assinatura (Reutilizável)
-const SubscriptionContent = ({ theme, onLogout, isBlocking }: { theme: 'light' | 'dark', onLogout?: () => void, isBlocking?: boolean }) => {
+const SubscriptionContent = ({ theme, onLogout, isBlocking, blockReason }: { theme: 'light' | 'dark', onLogout?: () => void, isBlocking?: boolean, blockReason?: 'trial_expired' | 'sub_expired' | null }) => {
   const [selectedPlanId, setSelectedPlanId] = useState('monthly');
 
   const plans = [
@@ -700,11 +718,36 @@ const SubscriptionContent = ({ theme, onLogout, isBlocking }: { theme: 'light' |
         <div className="absolute bottom-0 left-0 w-64 h-64 bg-emerald-400/20 rounded-full -ml-16 -mb-16 blur-3xl"></div>
 
         <div className="relative z-10">
-          <div className="mb-8">
-             <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center mb-6 shadow-lg border border-white/20"><Tv size={28}/></div>
-             <h2 className="text-3xl md:text-4xl font-black tracking-tight mb-2">Plano Premium</h2>
-             <p className="text-sm opacity-80 leading-relaxed font-medium">Desbloqueie todo o potencial do seu negócio com ferramentas avançadas de gestão.</p>
-          </div>
+          {isBlocking ? (
+             <div className="mb-8 animate-in fade-in slide-in-from-bottom-4 duration-500">
+                {/* Message above icon */}
+                <h2 className="text-3xl md:text-4xl font-black tracking-tight mb-4 leading-tight">
+                  {blockReason === 'trial_expired' ? "Seu teste expirou,\nassine um plano" : "Acesso Bloqueado"}
+                </h2>
+                <p className="text-sm opacity-90 leading-relaxed font-medium bg-black/20 p-4 rounded-lg border border-white/10 backdrop-blur-sm mb-6">
+                   {blockReason === 'trial_expired' 
+                     ? "Seu período de avaliação gratuita terminou. Para continuar cadastrando e gerenciando seus clientes sem perder dados, escolha seu plano."
+                     : "Identificamos uma pendência na sua assinatura. Para restabelecer seu acesso ao painel imediatamente, realize a renovação abaixo."}
+                </p>
+
+                {/* Icon + Label */}
+                <div className="flex items-center gap-4">
+                     <div className="w-14 h-14 bg-white/20 rounded-xl flex items-center justify-center shadow-lg border border-white/20 backdrop-blur-md">
+                        <Tv size={32} className="text-white"/>
+                     </div>
+                     <div>
+                        <span className="text-xs font-bold text-white/70 uppercase tracking-wider block mb-0.5">Assinatura</span>
+                        <span className="text-2xl font-black text-white uppercase tracking-tight">Plano Premium</span>
+                     </div>
+                </div>
+             </div>
+          ) : (
+             <div className="mb-8">
+                 <div className="w-12 h-12 bg-white/20 rounded-xl flex items-center justify-center mb-6 shadow-lg border border-white/20"><Tv size={28}/></div>
+                 <h2 className="text-3xl md:text-4xl font-black tracking-tight mb-2">Plano Premium</h2>
+                 <p className="text-sm opacity-80 leading-relaxed font-medium">Desbloqueie todo o potencial do seu negócio com ferramentas avançadas de gestão.</p>
+             </div>
+          )}
 
           <div className="space-y-5">
               <div className="flex items-center gap-4">
@@ -782,9 +825,27 @@ const SubscriptionContent = ({ theme, onLogout, isBlocking }: { theme: 'light' |
                   <CreditCard size={18}/> Continuar para Pagamento
               </a>
               
-              <p className="text-[10px] text-slate-400 text-center mt-4 mx-auto max-w-xs leading-relaxed">
+              <p className="text-[10px] text-slate-400 text-center mt-4 mx-auto max-w-xs leading-relaxed mb-4">
                   Pagamento seguro processado pelo Stripe. Acesso liberado imediatamente após a confirmação.
               </p>
+
+              {/* Added Contact Support Section */}
+              <div className="pt-4 border-t border-slate-100 dark:border-slate-800">
+                  <p className="text-[10px] text-slate-400 text-center mb-3 font-bold uppercase tracking-widest">
+                      Suporte Financeiro & Liberação
+                  </p>
+                  <a 
+                      href="https://wa.me/5585992780931?text=Ol%C3%A1%20Eron,%20tive%20um%20problema%20com%20o%20pagamento%20do%20painel."
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex items-center justify-center gap-2 w-full py-3 rounded-lg border border-emerald-200 dark:border-emerald-800/50 bg-emerald-50 dark:bg-emerald-900/10 text-emerald-700 dark:text-emerald-400 text-xs font-bold uppercase hover:bg-emerald-100 dark:hover:bg-emerald-900/20 transition-all"
+                  >
+                      <Smartphone size={16} /> Fale com Eron Vasconcelos
+                  </a>
+                  <p className="text-[9px] text-slate-400 text-center mt-2 font-medium">
+                      (85) 99278-0931
+                  </p>
+              </div>
           </div>
       </div>
     </div>
@@ -807,6 +868,7 @@ export default function App() {
   const [selectedClientForEdit, setSelectedClientForEdit] = useState<Client | null>(null);
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
+  const [simulationMode, setSimulationMode] = useState<'none' | 'trial_expired' | 'sub_expired'>('none'); // Estado avançado de simulação
   
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
@@ -1420,26 +1482,38 @@ export default function App() {
     return 'pending'; // Futuro ou atual e não pago
   };
 
+  // Verifica se é o admin (Eron)
+  const isAdmin = useMemo(() => {
+    return session?.user?.email === 'eronvasconcelos.br@gmail.com';
+  }, [session]);
+
   // CHECK ACCESS LEVEL
-  const isAccessBlocked = useMemo(() => {
-      if (!userProfile) return false;
-      
-      // VIP ACCESS CHECK
-      if (session?.user?.email === 'eronvasconcelos.br@gmail.com') return false;
+  const getBlockReason = () => {
+      if (simulationMode !== 'none') return simulationMode;
+
+      if (!userProfile) return null;
+      if (isAdmin) return null; // Admin nunca bloqueia
 
       const now = new Date();
       const trialEnd = new Date(userProfile.trial_ends_at);
       const subEnd = userProfile.subscription_ends_at ? new Date(userProfile.subscription_ends_at) : null;
 
-      // Se tiver assinatura ativa, não bloqueia
-      if (subEnd && subEnd > now) return false;
+      // Se tiver assinatura ativa, ok
+      if (subEnd && subEnd > now) return null;
       
-      // Se não tem assinatura, verifica o trial
-      if (trialEnd > now) return false;
+      // Se não tem assinatura e trial válido, ok
+      if (trialEnd > now) return null;
 
-      // Se passou trial e não tem assinatura ativa = Bloqueado
-      return true;
-  }, [userProfile, session]);
+      // Se bloqueado:
+      // Se já teve assinatura no passado e expirou = sub_expired
+      if (subEnd && subEnd <= now) return 'sub_expired';
+      
+      // Caso contrário (nunca assinou) = trial_expired
+      return 'trial_expired';
+  };
+
+  const currentBlockReason = useMemo(getBlockReason, [userProfile, session, isAdmin, simulationMode]);
+  const isAccessBlocked = !!currentBlockReason;
 
 
   if (isLoading) {
@@ -1458,11 +1532,19 @@ export default function App() {
     return <AuthScreen theme={theme} />;
   }
 
-  // Se tiver sessão, mas estiver bloqueado, exibe Paywall (Bloqueio total)
+  // Se tiver sessão, mas estiver bloqueado (ou simulando), exibe Paywall (Bloqueio total)
   if (isAccessBlocked) {
       return (
         <div className={`fixed inset-0 z-[500] flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-md overflow-y-auto`}>
-           <SubscriptionContent theme={theme} onLogout={handleLogout} isBlocking={true} />
+           {simulationMode !== 'none' && (
+               <button 
+                 onClick={() => setSimulationMode('none')} 
+                 className="absolute top-5 left-5 z-[600] bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-full text-xs font-bold uppercase border border-white/20 backdrop-blur-md flex items-center gap-2"
+               >
+                 <XCircle size={16}/> Sair da Simulação
+               </button>
+           )}
+           <SubscriptionContent theme={theme} onLogout={handleLogout} isBlocking={true} blockReason={currentBlockReason} />
         </div>
       );
   }
@@ -1533,7 +1615,7 @@ export default function App() {
                      <div className="hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
                          <Crown size={12} />
                          <span className="text-[9px] font-bold uppercase">
-                             {session?.user?.email === 'eronvasconcelos.br@gmail.com' 
+                             {isAdmin 
                                 ? 'Vitalício' 
                                 : userProfile.subscription_ends_at 
                                     ? 'Premium' 
@@ -1595,6 +1677,55 @@ export default function App() {
 
             {view === 'dashboard' && (
               <div className="space-y-5">
+                
+                {/* ÁREA DE TESTES (SOMENTE ADMIN) */}
+                {isAdmin && (
+                    <div className={`p-5 rounded-xl border border-dashed ${theme === 'dark' ? 'bg-slate-900/50 border-slate-700' : 'bg-slate-100 border-slate-300'}`}>
+                        <div className="flex items-center gap-2 mb-4">
+                            <div className="p-1.5 bg-slate-200 dark:bg-slate-800 rounded-md text-slate-600 dark:text-slate-400">
+                                <TestTube size={16}/>
+                            </div>
+                            <div>
+                                <h3 className="text-xs font-bold uppercase tracking-widest text-slate-500">Ambiente de Testes do Desenvolvedor</h3>
+                                <p className="text-[10px] text-slate-400 font-medium">Controles exclusivos para Eron Vasconcelos</p>
+                            </div>
+                        </div>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
+                            <button 
+                                onClick={() => setSimulationMode('trial_expired')}
+                                className="flex flex-col items-center justify-center gap-2 py-4 px-3 bg-white hover:bg-slate-50 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-lg transition-all hover:scale-[1.02] shadow-sm"
+                            >
+                                <Clock size={20} className="text-orange-500"/>
+                                <span className="text-[10px] font-bold uppercase text-center">Simular Fim do Teste</span>
+                            </button>
+
+                            <button 
+                                onClick={() => setSimulationMode('sub_expired')}
+                                className="flex flex-col items-center justify-center gap-2 py-4 px-3 bg-white hover:bg-slate-50 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-lg transition-all hover:scale-[1.02] shadow-sm"
+                            >
+                                <UserX size={20} className="text-red-500"/>
+                                <span className="text-[10px] font-bold uppercase text-center">Simular Assinatura Vencida</span>
+                            </button>
+                            
+                            <button 
+                                onClick={() => setShowSuccessModal(true)}
+                                className="flex flex-col items-center justify-center gap-2 py-4 px-3 bg-white hover:bg-slate-50 dark:bg-slate-800 dark:hover:bg-slate-700 border border-slate-200 dark:border-slate-700 text-slate-600 dark:text-slate-300 rounded-lg transition-all hover:scale-[1.02] shadow-sm"
+                            >
+                                <CheckCircle size={20} className="text-emerald-500"/>
+                                <span className="text-[10px] font-bold uppercase text-center">Simular Pagamento Sucesso</span>
+                            </button>
+
+                            <button 
+                                onClick={() => { setSimulationMode('none'); setShowSuccessModal(false); showToast("Ambiente resetado"); }}
+                                className="flex flex-col items-center justify-center gap-2 py-4 px-3 bg-slate-200 hover:bg-slate-300 dark:bg-slate-700 dark:hover:bg-slate-600 border border-slate-300 dark:border-slate-600 text-slate-600 dark:text-slate-300 rounded-lg transition-all hover:scale-[1.02] shadow-sm"
+                            >
+                                <RefreshCw size={20}/>
+                                <span className="text-[10px] font-bold uppercase text-center">Resetar Tudo</span>
+                            </button>
+                        </div>
+                    </div>
+                )}
+
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                   <StatCard title="Ativos" value={stats.activeCount} icon={<CheckCircle/>} color="emerald" theme={theme} />
                   <StatCard title="A Vencer" value={stats.pendingPaymentCount} icon={<AlertCircle/>} color="amber" theme={theme} />
@@ -2069,8 +2200,9 @@ export default function App() {
               </div>
             )}
 
-            <footer className="text-center py-4 text-[10px] text-slate-400 font-bold uppercase tracking-widest opacity-50">
-               © {currentYear} {PANEL_NAME}. Todos os direitos reservados.
+            <footer className="text-center py-4 text-[10px] text-slate-400 font-bold tracking-widest opacity-50">
+               <div className="uppercase">© {currentYear} {PANEL_NAME}. Todos os direitos reservados.</div>
+               <div className="mt-1">Desenvolvido por Eron Vasconcelos</div>
             </footer>
 
           </div>
