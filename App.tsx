@@ -890,9 +890,22 @@ export default function App() {
   // Estado para Toast
   const [toast, setToast] = useState<{message: string, type: 'success' | 'error'} | null>(null);
 
-  const [addFormValues, setAddFormValues] = useState({
+  // ESTADO DO FORMULÁRIO DE CADASTRO (PERSISTENTE)
+  // Agora mantém todos os campos, não apenas preço e custo
+  const [addFormData, setAddFormData] = useState({
+    name: '',
+    username: '',
+    password: '',
+    phone: '',
+    packageId: '',
     price: '',
-    expenses: ''
+    expenses: '',
+    expiryDate: '',
+    expiryTime: '23:59',
+    isPaid: true,
+    notes: '',
+    appName: '',
+    macKey: ''
   });
 
   const [editingPackage, setEditingPackage] = useState<Package | null>(null);
@@ -906,6 +919,13 @@ export default function App() {
   const [templates, setTemplates] = useState<MessageTemplate[]>([]);
   const [rules, setRules] = useState<MessageRule[]>([]);
   const [servers, setServers] = useState<Server[]>([]);
+
+  // RESET SCROLL AO MUDAR DE ABA
+  useEffect(() => {
+      if (mainRef.current) {
+          mainRef.current.scrollTop = 0;
+      }
+  }, [view]);
 
   // Lógica para verificar retorno do Stripe
   useEffect(() => {
@@ -1198,36 +1218,44 @@ export default function App() {
 
   const handleTogglePayment = (client: Client) => updateClientInSupabase(client.id, { paymentStatus: client.paymentStatus === 'paid' ? 'pending' : 'paid' });
 
-  const handleAddClient = async (form: any) => {
+  // HANDLER ATUALIZADO PARA USAR O ESTADO CONTROLADO
+  const handleAddClient = async (e: React.FormEvent) => {
+    e.preventDefault();
     if (!session) return;
     
-    const pkg = packages.find(p => p.id === form.packageId);
-    const expiryDate = new Date(`${form.expiryDate}T${form.expiryTime || '00:00'}`);
+    const pkg = packages.find(p => p.id === addFormData.packageId);
+    const expiryDate = new Date(`${addFormData.expiryDate}T${addFormData.expiryTime || '00:00'}`);
     const newClient: Client = {
       id: Math.random().toString(36).substr(2, 9),
       user_id: session.user.id,
-      name: form.name,
-      username: form.username, // Mantém como digitado (sem toUpperCase/toLowerCase)
-      password: form.password,
+      name: addFormData.name,
+      username: addFormData.username, 
+      password: addFormData.password,
       status: 'active',
-      paymentStatus: form.isPaid ? 'paid' : 'pending',
-      phone: form.phone,
+      paymentStatus: addFormData.isPaid ? 'paid' : 'pending',
+      phone: addFormData.phone,
       packageName: pkg?.name || 'Personalizado',
-      packageId: form.packageId,
-      price: Number(form.price) || 0,
-      expenses: Number(form.expenses) || 0,
-      notes: form.notes || '',
-      appName: form.appName || '',
-      macKey: form.macKey || '',
+      packageId: addFormData.packageId,
+      price: Number(addFormData.price) || 0,
+      expenses: Number(addFormData.expenses) || 0,
+      notes: addFormData.notes || '',
+      appName: addFormData.appName || '',
+      macKey: addFormData.macKey || '',
       createdAt: new Date().toISOString(),
       expiresAt: expiryDate.toISOString(),
-      paymentHistory: form.isPaid ? [{ id: Math.random().toString(36).substr(2,5), amount: Number(form.price), date: new Date().toISOString(), monthsPaid: pkg?.months || 1, method: 'Cadastro' }] : [],
-      totalPaid: form.isPaid ? Number(form.price) : 0
+      paymentHistory: addFormData.isPaid ? [{ id: Math.random().toString(36).substr(2,5), amount: Number(addFormData.price), date: new Date().toISOString(), monthsPaid: pkg?.months || 1, method: 'Cadastro' }] : [],
+      totalPaid: addFormData.isPaid ? Number(addFormData.price) : 0
     };
 
     setClients(prev => [...prev, newClient]);
     setView('clients');
-    setAddFormValues({ price: '', expenses: '' });
+    
+    // Reset form after successful submission
+    setAddFormData({
+        name: '', username: '', password: '', phone: '', packageId: '', price: '', expenses: '',
+        expiryDate: '', expiryTime: '23:59', isPaid: true, notes: '', appName: '', macKey: ''
+    });
+    
     showToast("Cliente cadastrado com sucesso!");
 
     try {
@@ -2088,27 +2116,30 @@ export default function App() {
                      <h3 className="text-sm font-bold uppercase tracking-tight text-slate-800 dark:text-white">Novo Cliente</h3>
                    </div>
                    
-                   <form className="space-y-4" onSubmit={(e) => {
-                     e.preventDefault();
-                     const fd = new FormData(e.currentTarget);
-                     handleAddClient(Object.fromEntries(fd.entries()));
-                     e.currentTarget.reset();
-                   }}>
-                     <FormInput theme={theme} name="name" label="Nome Completo" placeholder="Ex: João Silva" required />
+                   <form className="space-y-4" onSubmit={handleAddClient}>
+                     <FormInput theme={theme} name="name" label="Nome Completo" placeholder="Ex: João Silva" required value={addFormData.name} onChange={(e: any) => setAddFormData({...addFormData, name: e.target.value})} />
                      <div className="grid grid-cols-2 gap-4">
-                       <FormInput theme={theme} name="username" label="Usuário IPTV" required />
-                       <FormInput theme={theme} name="password" label="Senha IPTV" />
+                       <FormInput theme={theme} name="username" label="Usuário IPTV" required value={addFormData.username} onChange={(e: any) => setAddFormData({...addFormData, username: e.target.value})} />
+                       <FormInput theme={theme} name="password" label="Senha IPTV" value={addFormData.password} onChange={(e: any) => setAddFormData({...addFormData, password: e.target.value})} />
                      </div>
-                     <FormInput theme={theme} name="phone" label="WhatsApp" placeholder="(00) 00000-0000" required />
+                     <FormInput theme={theme} name="phone" label="WhatsApp" placeholder="(00) 00000-0000" required value={addFormData.phone} onChange={(e: any) => setAddFormData({...addFormData, phone: e.target.value})} />
                      
+                     <div className="grid grid-cols-2 gap-4">
+                         <FormInput theme={theme} name="appName" label="Aplicativo" value={addFormData.appName} onChange={(e: any) => setAddFormData({...addFormData, appName: e.target.value})} />
+                         <FormInput theme={theme} name="macKey" label="Mac / Key" value={addFormData.macKey} onChange={(e: any) => setAddFormData({...addFormData, macKey: e.target.value})} />
+                     </div>
+
                      <div className="space-y-1">
                       <label className="text-[10px] font-bold text-slate-400 uppercase ml-1 tracking-wider">Plano</label>
                       <select 
                         name="packageId" 
+                        value={addFormData.packageId}
                         className={`w-full px-3 py-2.5 rounded-md border text-[13px] font-medium outline-none ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50 border-slate-200 shadow-sm'}`}
                         onChange={(e) => {
                            const pkg = packages.find(p => p.id === e.target.value);
-                           if(pkg) setAddFormValues({ price: pkg.price.toString(), expenses: pkg.cost.toString() });
+                           const newPrice = pkg ? pkg.price.toString() : addFormData.price;
+                           const newExp = pkg ? pkg.cost.toString() : addFormData.expenses;
+                           setAddFormData({...addFormData, packageId: e.target.value, price: newPrice, expenses: newExp});
                         }}
                       >
                         <option value="">Personalizado</option>
@@ -2117,21 +2148,26 @@ export default function App() {
                      </div>
 
                      <div className="grid grid-cols-2 gap-4">
-                         <FormInput theme={theme} name="price" label="Preço (R$)" type="number" step="0.01" value={addFormValues.price} onChange={(e: any) => setAddFormValues({...addFormValues, price: e.target.value})} required />
-                         <FormInput theme={theme} name="expenses" label="Custo (R$)" type="number" step="0.01" value={addFormValues.expenses} onChange={(e: any) => setAddFormValues({...addFormValues, expenses: e.target.value})} required />
+                         <FormInput theme={theme} name="price" label="Preço (R$)" type="number" step="0.01" value={addFormData.price} onChange={(e: any) => setAddFormData({...addFormData, price: e.target.value})} required />
+                         <FormInput theme={theme} name="expenses" label="Custo (R$)" type="number" step="0.01" value={addFormData.expenses} onChange={(e: any) => setAddFormData({...addFormData, expenses: e.target.value})} required />
                      </div>
 
                      <div className="grid grid-cols-2 gap-4">
-                         <FormInput theme={theme} name="expiryDate" label="Vencimento Data" type="date" required />
-                         <FormInput theme={theme} name="expiryTime" label="Hora" type="time" defaultValue="23:59" />
+                         <FormInput theme={theme} name="expiryDate" label="Vencimento Data" type="date" required value={addFormData.expiryDate} onChange={(e: any) => setAddFormData({...addFormData, expiryDate: e.target.value})} />
+                         <FormInput theme={theme} name="expiryTime" label="Hora" type="time" value={addFormData.expiryTime} onChange={(e: any) => setAddFormData({...addFormData, expiryTime: e.target.value})} />
                      </div>
 
-                     <div className="p-3 rounded-md bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 flex items-center gap-3">
-                        <input type="checkbox" name="isPaid" id="isPaid" className="w-4 h-4 rounded border-slate-300 text-blue-600 focus:ring-blue-500" defaultChecked />
-                        <label htmlFor="isPaid" className="text-[11px] font-bold uppercase cursor-pointer select-none">Pagamento já realizado?</label>
+                     <div 
+                        className="p-3 rounded-md bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 flex items-center gap-3 cursor-pointer select-none"
+                        onClick={() => setAddFormData({...addFormData, isPaid: !addFormData.isPaid})}
+                     >
+                        <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${addFormData.isPaid ? 'bg-blue-600 border-blue-600' : 'border-slate-300 dark:border-slate-600'}`}>
+                            {addFormData.isPaid && <Check size={14} className="text-white" strokeWidth={3} />}
+                        </div>
+                        <label className="text-[11px] font-bold uppercase cursor-pointer">Pagamento já realizado?</label>
                      </div>
 
-                     <FormInput theme={theme} name="notes" label="Observações (Opcional)" placeholder="Ex: TV Box Sala" />
+                     <FormInput theme={theme} name="notes" label="Observações (Opcional)" placeholder="Ex: TV Box Sala" value={addFormData.notes} onChange={(e: any) => setAddFormData({...addFormData, notes: e.target.value})} />
                      
                      <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3.5 rounded-md font-bold uppercase text-[12px] shadow-lg shadow-blue-600/20 mt-2 transition-all active:scale-[0.99]">
                          Cadastrar Cliente
