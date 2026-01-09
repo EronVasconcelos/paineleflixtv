@@ -1,12 +1,8 @@
 {
   "name": "PAINEL STREAM Gerenciador",
   "short_name": "PAINEL STREAM",
-  "description": "Gerenciador de Clientes IPTV",
-  "start_url": "index.html",
+  "start_url": "./index.html",
   "display": "standalone",
-  "background_color": "#0f172a",
-  "theme_color": "#2563eb",
-  "orientation": "portrait",
   "icons": [
     {
       "src": "favicon.png",

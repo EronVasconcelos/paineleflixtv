@@ -17,12 +17,15 @@
     <title>PAINEL STREAM - Gerenciador Premium</title>
 
     <script>
-      if ('serviceWorker' in navigator) {
-        window.addEventListener('load', () => {
-          navigator.serviceWorker.register('./sw.js');
-        });
-      }
-    </script>
+  if ('serviceWorker' in navigator) {
+    window.addEventListener('load', () => {
+      // Tente registrar sem o ./ para garantir que ele busque na raiz
+      navigator.serviceWorker.register('sw.js')
+        .then(reg => console.log('SW registrado!', reg))
+        .catch(err => console.log('Erro no SW:', err));
+    });
+  }
+</script>
     
     <script src="https://cdn.tailwindcss.com"></script>
     <script>

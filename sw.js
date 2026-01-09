@@ -1,9 +1,9 @@
-const CACHE_NAME = 'painel-stream-v2';
+const CACHE_NAME = 'painel-stream-v3';
 const ASSETS = [
   './',
   './index.html',
   './manifest.json',
-  './favicon.png'
+  './favicon.png' // Remova o index.tsx desta lista!
 ];
 
 self.addEventListener('install', (event) => {
