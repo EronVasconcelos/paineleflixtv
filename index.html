@@ -25,22 +25,19 @@
       }
 
       // 2. Função para Ativar Notificações
-      async function ativarNotificacoes() {
-        if (!("Notification" in window)) {
-          alert("Este navegador não suporta notificações.");
-          return;
-        }
-
-        const permission = await Notification.requestPermission();
-        if (permission === "granted") {
-          new Notification("PAINEL STREAM", {
-            body: "Notificações ativadas com sucesso!",
-            icon: "https://i.postimg.cc/VNCzbyZV/favicon.png"
-          });
-        } else {
-          alert("Por favor, autorize as notificações nas configurações do seu navegador.");
-        }
-      }
+      window.ativarNotificacoes = async function() { // Adicionando 'window.' na frente
+  if (!("Notification" in window)) {
+    alert("Este navegador não suporta notificações.");
+    return;
+  }
+  const permission = await Notification.requestPermission();
+  if (permission === "granted") {
+    new Notification("PAINEL STREAM", {
+      body: "Notificações ativadas!",
+      icon: "https://i.postimg.cc/VNCzbyZV/favicon.png"
+    });
+  }
+}
     </script>
     
     <script src="https://cdn.tailwindcss.com"></script>
@@ -107,6 +104,18 @@
 </head>
 <body class="bg-slate-50 dark:bg-slate-950 text-slate-900 dark:text-slate-100 overflow-hidden">
     <div id="root"></div>
+    
+    <button 
+        onclick="ativarNotificacoes()" 
+        style="position: fixed; bottom: 20px; right: 20px; z-index: 9999; background: #10b981; color: white; border: none; padding: 12px; border-radius: 50%; box-shadow: 0 4px 6px rgba(0,0,0,0.1); cursor: pointer;"
+        title="Ativar Notificações"
+    >
+        🔔
+    </button>
+
+    <script type="module" src="./index.tsx"></script>
+
+    
     <script type="module" src="./index.tsx"></script>
 </body>
 </html>

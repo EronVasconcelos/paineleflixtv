@@ -1,4 +1,4 @@
-const CACHE_NAME = 'painel-stream-reset-v1';
+const CACHE_NAME = 'painel-stream-reset-v13';
 
 self.addEventListener('activate', (e) => {
   e.waitUntil(
