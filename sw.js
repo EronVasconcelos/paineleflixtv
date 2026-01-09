@@ -1,10 +1,9 @@
-
-const CACHE_NAME = 'eflixtv-v2';
+const CACHE_NAME = 'painel-stream-v2';
 const ASSETS = [
   './',
   './index.html',
   './manifest.json',
-  './index.tsx'
+  './favicon.png'
 ];
 
 self.addEventListener('install', (event) => {
