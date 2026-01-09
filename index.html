@@ -19,10 +19,8 @@
     <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      // Tente registrar sem o ./ para garantir que ele busque na raiz
-      navigator.serviceWorker.register('sw.js')
-        .then(reg => console.log('SW registrado!', reg))
-        .catch(err => console.log('Erro no SW:', err));
+      // Registrar apontando para a raiz absoluta
+      navigator.serviceWorker.register('/sw.js');
     });
   }
 </script>
