@@ -19,7 +19,6 @@
     <script>
   if ('serviceWorker' in navigator) {
     window.addEventListener('load', () => {
-      // Registrar na raiz para evitar o erro 404
       navigator.serviceWorker.register('/sw.js', { scope: '/' });
     });
   }

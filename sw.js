@@ -1,8 +1,8 @@
+const CACHE_NAME = 'painel-stream-v4';
 const ASSETS = [
   '/',
   '/index.html',
   '/manifest.json'
-  // Removido o favicon local daqui
 ];
 
 self.addEventListener('install', (event) => {
@@ -28,9 +28,11 @@ self.addEventListener('activate', (event) => {
 self.addEventListener('fetch', (event) => {
   event.respondWith(
     caches.match(event.request).then((response) => {
+      // Tenta o cache, se não tiver, tenta a rede
       return response || fetch(event.request).catch(() => {
+        // Se falhar e for navegação, retorna a raiz limpa
         if (event.request.mode === 'navigate') {
-          return caches.match('./index.html');
+          return caches.match('/');
         }
       });
     })
