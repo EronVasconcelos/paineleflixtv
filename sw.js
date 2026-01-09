@@ -19,3 +19,25 @@ self.addEventListener('fetch', (event) => {
     );
   }
 });
+
+self.addEventListener('push', (event) => {
+  const data = event.data ? event.data.json() : { 
+    title: 'PAINEL STREAM', 
+    body: 'Você tem uma nova atualização!' 
+  };
+  
+  event.waitUntil(
+    self.registration.showNotification(data.title, {
+      body: data.body,
+      icon: 'https://i.postimg.cc/VNCzbyZV/favicon.png',
+      badge: 'https://i.postimg.cc/VNCzbyZV/favicon.png',
+      vibrate: [100, 50, 100]
+    })
+  );
+});
+
+// Adicione isso ao final do seu sw.js no GitHub
+self.addEventListener('notificationclick', (event) => {
+  event.notification.close();
+  event.waitUntil(clients.openWindow('/'));
+});
