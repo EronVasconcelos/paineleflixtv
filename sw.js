@@ -1,40 +1,25 @@
-const CACHE_NAME = 'painel-stream-v4';
-const ASSETS = [
-  '/',
-  '/index.html',
-  '/manifest.json'
-];
+const CACHE_NAME = 'painel-stream-v5';
 
-self.addEventListener('install', (event) => {
-  event.waitUntil(
-    caches.open(CACHE_NAME).then((cache) => {
-      return cache.addAll(ASSETS);
-    })
-  );
+// 1. Instalação: Pula a espera para ativar o novo SW imediatamente
+self.addEventListener('install', (e) => {
   self.skipWaiting();
 });
 
-self.addEventListener('activate', (event) => {
-  event.waitUntil(
-    caches.keys().then((cacheNames) => {
-      return Promise.all(
-        cacheNames.filter((name) => name !== CACHE_NAME).map((name) => caches.delete(name))
-      );
+// 2. Ativação: Limpa QUALQUER cache antigo para destravar a tela branca
+self.addEventListener('activate', (e) => {
+  e.waitUntil(
+    caches.keys().then((keys) => {
+      return Promise.all(keys.map((key) => caches.delete(key)));
     })
   );
   self.clients.claim();
 });
 
+// 3. Busca (Fetch): Tenta sempre a internet. Se falhar (offline), usa o cache.
 self.addEventListener('fetch', (event) => {
   event.respondWith(
-    caches.match(event.request).then((response) => {
-      // Tenta o cache, se não tiver, tenta a rede
-      return response || fetch(event.request).catch(() => {
-        // Se falhar e for navegação, retorna a raiz limpa
-        if (event.request.mode === 'navigate') {
-          return caches.match('/');
-        }
-      });
+    fetch(event.request).catch(() => {
+      return caches.match(event.request) || caches.match('/');
     })
   );
 });
