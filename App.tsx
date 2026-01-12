@@ -982,22 +982,27 @@ export default function App() {
       else setIsLoading(false); // Stop loading if no session
     });
 
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setSession(session);
-      if (session) {
-        fetchAllData();
-      } else {
-        setClients([]);
-        setPackages([]);
-        setTemplates([]);
-        setRules([]);
-        setServers([]);
-        setUserProfile(null);
-        setIsLoading(false);
-      }
-    });
+ const {
+  data: { subscription },
+} = supabase.auth.onAuthStateChange((event, session) => {
+  setSession(session);
+  
+  if (session) {
+    // Só recarrega os dados se for um evento de LOGIN ou se ainda não tivermos os dados
+    // Isso evita o recarregamento ao alternar janelas (evento 'SIGNED_IN' ou 'TOKEN_REFRESHED' silencioso)
+    if (event === 'SIGNED_IN' || clients.length === 0) {
+      fetchAllData();
+    }
+  } else {
+    setClients([]);
+    setPackages([]);
+    setTemplates([]);
+    setRules([]);
+    setServers([]);
+    setUserProfile(null);
+    setIsLoading(false);
+  }
+});
 
     return () => subscription.unsubscribe();
   }, []);
