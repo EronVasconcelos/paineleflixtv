@@ -888,6 +888,7 @@ export default function App() {
   const mainRef = useRef<HTMLDivElement>(null);
   const touchStartRef = useRef(0);
   const [pullDistance, setPullDistance] = useState(0);
+  const isFirstLoad = useRef(true);
 
   // Estado para Toast
   const [toast, setToast] = useState<{message: string, type: 'success' | 'error'} | null>(null);
@@ -1015,72 +1016,75 @@ export default function App() {
       }
   }, [session]);
 
-  const fetchAllData = async (silent = false) => {
-    if (!silent) setIsLoading(true);
+const fetchAllData = async (silent = false) => {
+    // Só ativa o setIsLoading se for a PRIMEIRA carga e NÃO for um refresh silencioso
+    if (isFirstLoad.current && !silent) {
+        setIsLoading(true);
+    }
+    
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const userId = sessionData.session?.user.id;
-      
-      if (!userId) return;
+        const { data: sessionData } = await supabase.auth.getSession();
+        const userId = sessionData.session?.user.id;
+        
+        if (!userId) return;
 
-      // Fetch User Profile (Subscription Status)
-      const { data: profileData } = await supabase.from('profiles').select('*').eq('id', userId).single();
-      if (profileData) {
-          setUserProfile(profileData);
-      } else {
-          // Fallback se não existir perfil (ex: usuários antigos antes da migration)
-          // Cria um perfil temporário com trial ativo para não bloquear imediatamente
-          const tempProfile: UserProfile = {
-              id: userId,
-              email: sessionData.session?.user.email || '',
-              trial_ends_at: new Date(Date.now() + 86400000).toISOString(), // +1 dia de cortesia se falhar
-              subscription_ends_at: null,
-              plan_type: null
-          };
-          setUserProfile(tempProfile);
-      }
+        // Fetch User Profile (Subscription Status)
+        const { data: profileData } = await supabase.from('profiles').select('*').eq('id', userId).single();
+        if (profileData) {
+            setUserProfile(profileData);
+        } else {
+            const tempProfile: UserProfile = {
+                id: userId,
+                email: sessionData.session?.user.email || '',
+                trial_ends_at: new Date(Date.now() + 86400000).toISOString(),
+                subscription_ends_at: null,
+                plan_type: null
+            };
+            setUserProfile(tempProfile);
+        }
 
-      const { data: clientsData } = await supabase.from('clients').select('*').eq('user_id', userId);
-      if (clientsData) setClients(clientsData);
+        const { data: clientsData } = await supabase.from('clients').select('*').eq('user_id', userId);
+        if (clientsData) setClients(clientsData);
 
-      const { data: packagesData } = await supabase.from('packages').select('*').eq('user_id', userId);
-      if (packagesData) setPackages(packagesData);
-      else {
-         const initialPackages = [
-          { id: 'p1', user_id: userId, name: 'Básico SD/HD', price: 25, cost: 8, months: 1 },
-          { id: 'p2', user_id: userId, name: 'Completo 4K', price: 35, cost: 12, months: 1 },
-          { id: 'p3', user_id: userId, name: 'Trimestral Promo', price: 90, cost: 36, months: 3 }
-         ];
-         setPackages(initialPackages);
-      }
+        const { data: packagesData } = await supabase.from('packages').select('*').eq('user_id', userId);
+        if (packagesData) setPackages(packagesData);
+        else {
+            const initialPackages = [
+                { id: 'p1', user_id: userId, name: 'Básico SD/HD', price: 25, cost: 8, months: 1 },
+                { id: 'p2', user_id: userId, name: 'Completo 4K', price: 35, cost: 12, months: 1 },
+                { id: 'p3', user_id: userId, name: 'Trimestral Promo', price: 90, cost: 36, months: 3 }
+            ];
+            setPackages(initialPackages);
+        }
 
-      const { data: templatesData } = await supabase.from('templates').select('*').eq('user_id', userId);
-      if (templatesData && templatesData.length > 0) setTemplates(templatesData);
-      else {
-          // Pre-configured messages as requested
-          const initialTemplates = [
-              { id: 't1', user_id: userId, title: 'BOAS-VINDAS', body: 'Olá {{nome}}! Seja bem-vindo(a)!. \n\nSeus dados de acesso:\n👤 Usuário: {{usuario}}\n🔑 Senha: {{senha}}\n\nQualquer dúvida, estou à disposição!' },
-              { id: 't2', user_id: userId, title: 'COBRANÇA - PRÉ', body: 'Opa {{nome}}, tudo certo? Passando pra lembrar que seu plano vence em {{vencimento}}. O valor é R$ {{valor}}. Posso enviar o PIX para renovação?' },
-              { id: 't3', user_id: userId, title: 'COBRANÇA - HOJE', body: 'Olá {{nome}}! Seu plano vence HOJE ({{vencimento}}). Para evitar bloqueio automático, segue a chave PIX para renovação no valor de R$ {{valor}}.\n\nAguardo seu comprovante!' },
-              { id: 't4', user_id: userId, title: 'COBRANÇA - ATRASO', body: 'Oi {{nome}}, notei que seu pagamento não caiu. Seu acesso foi suspenso temporariamente. Para liberar agora mesmo, faça o PIX de R$ {{valor}} e me envie o comprovante.' },
-              { id: 't5', user_id: userId, title: 'RENOVAÇÃO CONFIRMADA', body: 'Pagamento recebido, {{nome}}! ✅\nSeu acesso foi renovado com sucesso. Muito obrigado pela preferência!' }
-          ];
-          setTemplates(initialTemplates);
-      }
+        const { data: templatesData } = await supabase.from('templates').select('*').eq('user_id', userId);
+        if (templatesData && templatesData.length > 0) setTemplates(templatesData);
+        else {
+            const initialTemplates = [
+                { id: 't1', user_id: userId, title: 'BOAS-VINDAS', body: 'Olá {{nome}}! Seja bem-vindo(a)!. \n\nSeus dados de acesso:\n👤 Usuário: {{usuario}}\n🔑 Senha: {{senha}}\n\nQualquer dúvida, estou à disposição!' },
+                { id: 't2', user_id: userId, title: 'COBRANÇA - PRÉ', body: 'Opa {{nome}}, tudo certo? Passando pra lembrar que seu plano vence em {{vencimento}}. O valor é R$ {{valor}}. Posso enviar o PIX para renovação?' },
+                { id: 't3', user_id: userId, title: 'COBRANÇA - HOJE', body: 'Olá {{nome}}! Seu plano vence HOJE ({{vencimento}}). Para evitar bloqueio automático, segue a chave PIX para renovação no valor de R$ {{valor}}.\n\nAguardo seu comprovante!' },
+                { id: 't4', user_id: userId, title: 'COBRANÇA - ATRASO', body: 'Oi {{nome}}, notei que seu pagamento não caiu. Seu acesso foi suspenso temporariamente. Para liberar agora mesmo, faça o PIX de R$ {{valor}} e me envie o comprovante.' },
+                { id: 't5', user_id: userId, title: 'RENOVAÇÃO CONFIRMADA', body: 'Pagamento recebido, {{nome}}! ✅\nSeu acesso foi renovado com sucesso. Muito obrigado pela preferência!' }
+            ];
+            setTemplates(initialTemplates);
+        }
 
-      const { data: rulesData } = await supabase.from('rules').select('*').eq('user_id', userId);
-      if (rulesData) setRules(rulesData);
-      else setRules([{ id: 'r1', user_id: userId, type: 'before', days: 3, time: '09:00', templateId: 't2', isActive: true }]);
+        const { data: rulesData } = await supabase.from('rules').select('*').eq('user_id', userId);
+        if (rulesData) setRules(rulesData);
+        else setRules([{ id: 'r1', user_id: userId, type: 'before', days: 3, time: '09:00', templateId: 't2', isActive: true }]);
 
-      const { data: serversData } = await supabase.from('servers').select('*').eq('user_id', userId);
-      if (serversData) setServers(serversData);
+        const { data: serversData } = await supabase.from('servers').select('*').eq('user_id', userId);
+        if (serversData) setServers(serversData);
 
     } catch (error) {
-      console.error("Erro ao carregar dados do Supabase:", error);
+        console.error("Erro ao carregar dados do Supabase:", error);
     } finally {
-      setIsLoading(false);
+        setIsLoading(false);
+        // Após o primeiro carregamento terminar, marcamos como falso para nunca mais mostrar o loading visual
+        isFirstLoad.current = false;
     }
-  };
+};
 
   const handleRefreshData = async () => {
       setIsRefreshing(true);
