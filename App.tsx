@@ -1,77 +1,76 @@
-
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   Users, 
   LayoutDashboard, 
   PlusCircle, 
   Search, 
-  ChevronRight,
+  ChevronRight, 
   CheckCircle, 
   XCircle, 
-  Clock,
-  MessageSquare,
-  DollarSign,
-  TrendingUp,
-  CreditCard,
-  Layers,
-  Trash2,
-  Send,
-  X,
-  Activity,
-  RefreshCw,
-  BellRing,
-  MoreHorizontal,
-  Info,
-  Tag,
-  ArrowUpRight,
-  History,
-  Smartphone,
-  ChevronLeft,
-  UserX,
-  AlertCircle,
-  Clock3,
-  Eye,
-  CalendarDays,
-  Calendar,
-  Sun,
-  Moon,
-  Plus,
-  Pencil,
-  Save,
-  Check,
-  ChevronDown,
-  UserPlus,
-  Download,
-  Upload,
-  Database,
-  ShieldAlert,
-  Bell,
-  BellOff,
-  FileText,
-  Wallet,
-  Edit3,
-  Loader2,
-  LogOut,
-  Lock,
-  Mail,
-  User,
-  Server as ServerIcon,
-  Link as LinkIcon,
-  Coins,
-  Tv,
-  PlayCircle,
-  Crown,
-  Star,
-  Zap,
-  ShieldCheck,
-  CheckSquare,
-  Circle,
-  Minus,
-  Rocket,
-  PartyPopper,
-  QrCode,
-  Copy,
-  TestTube,
+  Clock, 
+  MessageSquare, 
+  DollarSign, 
+  TrendingUp, 
+  CreditCard, 
+  Layers, 
+  Trash2, 
+  Send, 
+  X, 
+  Activity, 
+  RefreshCw, 
+  BellRing, 
+  MoreHorizontal, 
+  Info, 
+  Tag, 
+  ArrowUpRight, 
+  History, 
+  Smartphone, 
+  ChevronLeft, 
+  UserX, 
+  AlertCircle, 
+  Clock3, 
+  Eye, 
+  CalendarDays, 
+  Calendar, 
+  Sun, 
+  Moon, 
+  Plus, 
+  Pencil, 
+  Save, 
+  Check, 
+  ChevronDown, 
+  UserPlus, 
+  Download, 
+  Upload, 
+  Database, 
+  ShieldAlert, 
+  Bell, 
+  BellOff, 
+  FileText, 
+  Wallet, 
+  Edit3, 
+  Loader2, 
+  LogOut, 
+  Lock, 
+  Mail, 
+  User, 
+  Server as ServerIcon, 
+  Link as LinkIcon, 
+  Coins, 
+  Tv, 
+  PlayCircle, 
+  Crown, 
+  Star, 
+  Zap, 
+  ShieldCheck, 
+  CheckSquare, 
+  Circle, 
+  Minus, 
+  Rocket, 
+  PartyPopper, 
+  QrCode, 
+  Copy, 
+  TestTube, 
   Wrench
 } from 'lucide-react';
 import { Session } from '@supabase/supabase-js';
@@ -111,7 +110,7 @@ const Toast = ({ message, onClose, type = 'success' }: { message: string, onClos
 const PaymentSuccessModal = ({ theme, onClose }: { theme: 'light' | 'dark', onClose: () => void }) => (
   <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-300">
     <div className="relative w-full max-w-md overflow-hidden rounded-[32px] shadow-2xl bg-gradient-to-br from-blue-600 to-emerald-500 text-white border border-white/10 animate-in zoom-in-95 duration-300">
-       
+        
        {/* Decorative Background Elements */}
        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-16 -mt-16 blur-3xl animate-pulse"></div>
        <div className="absolute bottom-0 left-0 w-64 h-64 bg-emerald-400/20 rounded-full -ml-16 -mb-16 blur-3xl"></div>
@@ -173,7 +172,7 @@ const StatCard = ({ title, value, icon, color, theme }: { title: string, value: 
       default: return theme === 'dark' ? 'bg-slate-800 text-slate-400 border-slate-700' : 'bg-slate-50 text-slate-600 border-slate-100';
     }
   };
-  
+   
   return (
     <div className={`p-3.5 rounded-lg border shadow-sm flex flex-col items-center text-center ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
       <div className={`w-8 h-8 flex items-center justify-center rounded-md mb-2 border ${getColors()}`}>
@@ -267,7 +266,7 @@ const ModalOverlay = ({ onClose, children, theme }: { onClose: () => void, child
 const WelcomeModal = ({ theme, onClose }: { theme: 'light' | 'dark', onClose: () => void }) => (
   <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-300">
     <div className="relative w-full max-w-md overflow-hidden rounded-[32px] shadow-2xl bg-gradient-to-br from-blue-600 to-emerald-500 text-white border border-white/10 animate-in zoom-in-95 duration-300">
-       
+        
        {/* Decorative Background Elements */}
        <div className="absolute top-0 right-0 w-64 h-64 bg-white/10 rounded-full -mr-16 -mt-16 blur-3xl animate-pulse"></div>
        <div className="absolute bottom-0 left-0 w-64 h-64 bg-emerald-400/20 rounded-full -ml-16 -mb-16 blur-3xl"></div>
@@ -324,7 +323,7 @@ const WelcomeModal = ({ theme, onClose }: { theme: 'light' | 'dark', onClose: ()
 
 const RenewalModal = ({ theme, client, packages, onRenew, onClose }: any) => {
   const [selectedPkg, setSelectedPkg] = useState('');
-  
+   
   return (
     <ModalOverlay theme={theme} onClose={onClose}>
        <div className="p-4 border-b bg-amber-500/10 border-amber-500/20 flex justify-between items-center">
@@ -641,7 +640,7 @@ const AuthScreen = ({ theme }: { theme: 'light' | 'dark' }) => {
                </div>
             </div>
           )}
-          
+           
           <div className="space-y-1">
              <label className="text-[10px] font-bold text-slate-400 uppercase ml-1 tracking-wider">Email</label>
              <div className={`flex items-center px-3 py-2.5 rounded-md border ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-slate-50 border-slate-200'}`}>
@@ -871,15 +870,15 @@ export default function App() {
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [simulationMode, setSimulationMode] = useState<'none' | 'trial_expired' | 'sub_expired'>('none'); // Estado avançado de simulação
-  
+   
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
-  
+   
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'expired' | 'blocked'>('all');
   const [paymentFilter, setPaymentFilter] = useState<'all' | 'paid' | 'pending'>('all');
   const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
-  
+   
   const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isRefreshing, setIsRefreshing] = useState(false);
@@ -888,6 +887,8 @@ export default function App() {
   const mainRef = useRef<HTMLDivElement>(null);
   const touchStartRef = useRef(0);
   const [pullDistance, setPullDistance] = useState(0);
+  
+  // TRAVA DE SEGURANÇA para carregamento (Adicionado)
   const isFirstLoad = useRef(true);
 
   // Estado para Toast
@@ -975,38 +976,57 @@ export default function App() {
     }
   }, [session]);
 
-  // Gestão da Sessão e Carregamento de Dados
+  // --- CORREÇÃO DA GESTÃO DE SESSÃO E CARREGAMENTO ---
   useEffect(() => {
+    let mounted = true;
+
+    // 1. Busca sessão inicial
     supabase.auth.getSession().then(({ data: { session } }) => {
+      if (!mounted) return;
       setSession(session);
-      if (session) fetchAllData();
-      else setIsLoading(false); // Stop loading if no session
+      if (session) {
+        fetchAllData(); 
+      } else {
+        setIsLoading(false);
+      }
     });
 
- const {
-  data: { subscription },
-} = supabase.auth.onAuthStateChange((event, session) => {
-  setSession(session);
-  
-  if (session) {
-    // Só recarrega os dados se for um evento de LOGIN ou se ainda não tivermos os dados
-    // Isso evita o recarregamento ao alternar janelas (evento 'SIGNED_IN' ou 'TOKEN_REFRESHED' silencioso)
-    if (event === 'SIGNED_IN' || clients.length === 0) {
-      fetchAllData();
-    }
-  } else {
-    setClients([]);
-    setPackages([]);
-    setTemplates([]);
-    setRules([]);
-    setServers([]);
-    setUserProfile(null);
-    setIsLoading(false);
-  }
-});
+    // 2. Monitora mudanças (DENTRO do useEffect para não duplicar)
+    const {
+      data: { subscription },
+    } = supabase.auth.onAuthStateChange((event, session) => {
+      if (!mounted) return;
+      setSession(session);
 
-    return () => subscription.unsubscribe();
-  }, []);
+      if (session) {
+        // Se for login explícito, carrega tudo.
+        // Se for apenas troca de aba (TOKEN_REFRESHED ou SIGNED_IN automático),
+        // chamamos fetchAllData(true) para ser silencioso.
+        if (event === 'SIGNED_IN') {
+           // Se for o primeiro login, deixa carregar normal. Se não, silencioso.
+           fetchAllData(clients.length > 0); 
+        } else if (event === 'TOKEN_REFRESHED') {
+           // Atualização de token sempre silenciosa
+           fetchAllData(true);
+        }
+      } else {
+        // Logout
+        setClients([]);
+        setPackages([]);
+        setTemplates([]);
+        setRules([]);
+        setServers([]);
+        setUserProfile(null);
+        setIsLoading(false);
+        isFirstLoad.current = true; // Reseta para o próximo login ter loading
+      }
+    });
+
+    return () => {
+      mounted = false;
+      subscription.unsubscribe();
+    };
+  }, []); // Dependências vazias para rodar apenas uma vez na montagem
 
   // Lógica para exibir modal de boas-vindas
   useEffect(() => {
@@ -1016,9 +1036,14 @@ export default function App() {
       }
   }, [session]);
 
-const fetchAllData = async (silent = false) => {
-    // Só ativa o setIsLoading se for a PRIMEIRA carga e NÃO for um refresh silencioso
-    if (isFirstLoad.current && !silent) {
+  const fetchAllData = async (silent = false) => {
+    // A TRAVA DE SEGURANÇA DEFINITIVA:
+    // Se a referência isFirstLoad for false, nós FORÇAMOS o silent mode,
+    // a menos que você passe explicitamente false (no caso de um pull-to-refresh manual).
+    
+    const shouldShowLoading = isFirstLoad.current && !silent;
+
+    if (shouldShowLoading) {
         setIsLoading(true);
     }
     
@@ -1026,7 +1051,10 @@ const fetchAllData = async (silent = false) => {
         const { data: sessionData } = await supabase.auth.getSession();
         const userId = sessionData.session?.user.id;
         
-        if (!userId) return;
+        if (!userId) {
+            if (shouldShowLoading) setIsLoading(false);
+            return;
+        }
 
         // Fetch User Profile (Subscription Status)
         const { data: profileData } = await supabase.from('profiles').select('*').eq('id', userId).single();
@@ -1080,11 +1108,11 @@ const fetchAllData = async (silent = false) => {
     } catch (error) {
         console.error("Erro ao carregar dados do Supabase:", error);
     } finally {
-        setIsLoading(false);
-        // Após o primeiro carregamento terminar, marcamos como falso para nunca mais mostrar o loading visual
+        if (shouldShowLoading) setIsLoading(false);
+        // Garante que a partir de agora isFirstLoad seja false
         isFirstLoad.current = false;
     }
-};
+  };
 
   const handleRefreshData = async () => {
       setIsRefreshing(true);
@@ -1480,4 +1508,7 @@ const fetchAllData = async (silent = false) => {
       const dateB = new Date(b.expiresAt).getTime();
       return sortOrder === 'asc' ? dateA - dateB : dateB - dateA;
     });
-  }, [clients, searchTerm, statusFilter
+  }, [clients, searchTerm, statusFilter, sortOrder]);
+
+  // AQUI ENTRA O CÓDIGO DA INTERFACE GRÁFICA (O RETURN)
+  // Certifique-se de que o resto do arquivo está abaixo dessa linha.
