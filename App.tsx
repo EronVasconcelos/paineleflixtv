@@ -1544,16 +1544,7 @@ export default function App() {
   const isAccessBlocked = !!currentBlockReason;
 
 
-  if (isLoading) {
-    return (
-      <div className={`flex items-center justify-center h-screen ${theme === 'dark' ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-800'}`}>
-        <div className="flex flex-col items-center gap-4">
-            <Loader2 size={40} className="animate-spin text-blue-600"/>
-            <p className="text-sm font-bold uppercase tracking-widest animate-pulse">Carregando Sistema...</p>
-        </div>
-      </div>
-    );
-  }
+  
 
   // Se não houver sessão, exibe a tela de Login
   if (!session) {
