@@ -909,18 +909,35 @@ const RevenueChart = ({ data, theme }: { data: any[], theme: 'light' | 'dark' })
 
 const PublicSignupScreen = ({ onSignup }: { onSignup: (data: any) => void }) => {
   const [formData, setFormData] = useState({ name: '', phone: '', username: '' });
+  
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-slate-900 to-blue-900 text-white">
       <div className="w-full max-w-md p-8 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 shadow-2xl">
         <div className="text-center mb-8">
-           <h1 className="text-2xl font-black uppercase">Solicitar Acesso</h1>
-           <p className="text-sm opacity-80 mt-2">Preencha para liberar seu teste.</p>
+           <div className="w-16 h-16 bg-blue-500 rounded-2xl mx-auto flex items-center justify-center mb-4 shadow-lg shadow-blue-500/50">
+             <UserPlus size={32} className="text-white"/>
+           </div>
+           <h1 className="text-2xl font-black uppercase tracking-tight">Solicitar Acesso</h1>
+           <p className="text-sm opacity-80 mt-2">Preencha seus dados para liberar seu teste grátis.</p>
         </div>
+
         <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); onSignup(formData); }}>
-           <input required className="w-full p-3 rounded-lg bg-black/20 border border-white/10 text-white placeholder-white/50" placeholder="Seu Nome" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
-           <input required className="w-full p-3 rounded-lg bg-black/20 border border-white/10 text-white placeholder-white/50" placeholder="WhatsApp" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} />
-           <input required className="w-full p-3 rounded-lg bg-black/20 border border-white/10 text-white placeholder-white/50" placeholder="Usuário Preferido" value={formData.username} onChange={e => setFormData({...formData, username: e.target.value})} />
-           <button type="submit" className="w-full py-4 bg-blue-500 hover:bg-blue-400 text-white font-bold uppercase rounded-xl mt-4">Solicitar Agora</button>
+           <div>
+             <label className="text-[10px] font-bold uppercase tracking-widest opacity-70 ml-1">Seu Nome</label>
+             <input required className="w-full p-3 rounded-lg bg-black/20 border border-white/10 text-white placeholder-white/30 outline-none focus:border-blue-400 transition-colors" placeholder="Ex: Maria Souza" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+           </div>
+           <div>
+             <label className="text-[10px] font-bold uppercase tracking-widest opacity-70 ml-1">WhatsApp</label>
+             <input required className="w-full p-3 rounded-lg bg-black/20 border border-white/10 text-white placeholder-white/30 outline-none focus:border-blue-400 transition-colors" placeholder="(00) 00000-0000" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} />
+           </div>
+           <div>
+             <label className="text-[10px] font-bold uppercase tracking-widest opacity-70 ml-1">Usuário Preferido</label>
+             <input required className="w-full p-3 rounded-lg bg-black/20 border border-white/10 text-white placeholder-white/30 outline-none focus:border-blue-400 transition-colors" placeholder="como quer ser chamado..." value={formData.username} onChange={e => setFormData({...formData, username: e.target.value})} />
+           </div>
+           
+           <button type="submit" className="w-full py-4 bg-blue-500 hover:bg-blue-400 text-white font-bold uppercase tracking-wide rounded-xl shadow-lg shadow-blue-500/30 transition-all transform active:scale-95 mt-4">
+              Solicitar Agora
+           </button>
         </form>
       </div>
     </div>
@@ -996,7 +1013,7 @@ export default function App() {
   const [rules, setRules] = useState<MessageRule[]>([]);
   const [servers, setServers] = useState<Server[]>([]);
 
-  // Verifica se é modo cadastro público
+// Verifica se é modo cadastro público
   const urlParams = new URLSearchParams(window.location.search);
   const isPublicSignup = urlParams.get('mode') === 'signup';
 
@@ -1455,39 +1472,44 @@ const handleAddClient = async (e: React.FormEvent) => {
       showToast("Cliente arquivado com sucesso!");
   };
 
+  // --- FUNCIONALIDADE 1: FLASH COPY ---
+  const handleCopyCredentials = (client: Client) => {
+      const text = `📺 *SEUS DADOS DE ACESSO*\n\n👤 Usuário: ${client.username}\n🔑 Senha: ${client.password}\n📅 Vencimento: ${new Date(client.expiresAt).toLocaleDateString('pt-BR')}\n\nBom divertimento!`;
+      
+      navigator.clipboard.writeText(text).then(() => {
+          showToast("Credenciais copiadas!");
+      }).catch(() => {
+          showToast("Erro ao copiar.", "error");
+      });
+  };
+
+  // --- FUNCIONALIDADE 2: SEMÁFORO VISUAL ---
+  const getTrafficLightColor = (client: Client) => {
+      if (client.status === 'blocked') return 'border-l-slate-400'; // Bloqueado (Cinza)
+      
+      const now = new Date();
+      const expiry = new Date(client.expiresAt);
+      const diffTime = expiry.getTime() - now.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+      if (diffDays <= 0) return 'border-l-red-500';     // Vencido (Vermelho)
+      if (diffDays <= 3) return 'border-l-amber-400';   // Urgente (Amarelo)
+      return 'border-l-emerald-500';                    // Seguro (Verde)
+  };
+
+  // --- FUNCIONALIDADE 3: LINK DE AUTO-CADASTRO ---
+  const handleShareSignupLink = () => {
+      const link = `${window.location.origin}?mode=signup`;
+      navigator.clipboard.writeText(link);
+      showToast("Link de cadastro copiado! Envie para seu cliente.");
+  };
+
   const handleRestoreClient = async (client: Client) => {
       if(!confirm(`Restaurar ${client.name} para a lista de ativos?`)) return;
 
       // Retorna status para 'active'
       updateClientInSupabase(client.id, { status: 'active' });
       showToast("Cliente restaurado com sucesso!");
-  };
-
-  // --- 1. FLASH COPY (COPIAR DADOS) ---
-  const handleCopyCredentials = (client: Client) => {
-      const text = `📺 *SEUS DADOS DE ACESSO*\n\n👤 Usuário: ${client.username}\n🔑 Senha: ${client.password}\n📅 Vencimento: ${new Date(client.expiresAt).toLocaleDateString('pt-BR')}\n\nBom divertimento!`;
-      navigator.clipboard.writeText(text);
-      showToast("Credenciais copiadas!");
-  };
-
-  // --- 2. SEMÁFORO VISUAL (CORES) ---
-  const getTrafficLightColor = (client: Client) => {
-      if (client.status === 'blocked') return 'border-l-slate-400'; // Cinza (Bloqueado)
-      const now = new Date();
-      const expiry = new Date(client.expiresAt);
-      const diffTime = expiry.getTime() - now.getTime();
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-      if (diffDays <= 0) return 'border-l-red-500';     // Vermelho (Vencido)
-      if (diffDays <= 3) return 'border-l-amber-400';   // Amarelo (Urgente)
-      return 'border-l-emerald-500';                    // Verde (Ok)
-  };
-
-  // --- 3. LINK DE AUTO-CADASTRO ---
-  const handleShareSignupLink = () => {
-      const link = `${window.location.origin}?mode=signup`;
-      navigator.clipboard.writeText(link);
-      showToast("Link copiado! Envie para o cliente.");
   };
 
   const handlePublicSignup = (data: any) => {
@@ -2106,6 +2128,7 @@ const handleAddClient = async (e: React.FormEvent) => {
             <ActionButton onClick={() => setSelectedClientForRenewal(c)} theme={theme} color="amber" icon={<RefreshCw size={16}/>} />
             {/* Botão Arquivar Novo */}
             <ActionButton onClick={() => handleArchiveClient(c)} theme={theme} color="amber" icon={<Archive size={16}/>} />
+            {/* Botão Flash Copy */}
             <ActionButton onClick={() => handleCopyCredentials(c)} theme={theme} color="slate" icon={<ClipboardCopy size={16}/>} />
         </>
     )}
@@ -2168,6 +2191,7 @@ const handleAddClient = async (e: React.FormEvent) => {
                                           <ActionButton onClick={() => setSelectedClientForMsg(c)} theme={theme} color="emerald" icon={<MessageSquare size={14}/>} />
                                           <ActionButton onClick={() => setSelectedClientForRenewal(c)} theme={theme} color="amber" icon={<RefreshCw size={14}/>} />
                                           <ActionButton onClick={() => handleArchiveClient(c)} theme={theme} color="amber" icon={<Archive size={14}/>} />
+                                          {/* Botão Flash Copy */}
                                           <ActionButton onClick={() => handleCopyCredentials(c)} theme={theme} color="slate" icon={<ClipboardCopy size={16}/>} />
                                       </>
                                   )}
