@@ -909,35 +909,18 @@ const RevenueChart = ({ data, theme }: { data: any[], theme: 'light' | 'dark' })
 
 const PublicSignupScreen = ({ onSignup }: { onSignup: (data: any) => void }) => {
   const [formData, setFormData] = useState({ name: '', phone: '', username: '' });
-  
   return (
     <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-slate-900 to-blue-900 text-white">
       <div className="w-full max-w-md p-8 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 shadow-2xl">
         <div className="text-center mb-8">
-           <div className="w-16 h-16 bg-blue-500 rounded-2xl mx-auto flex items-center justify-center mb-4 shadow-lg shadow-blue-500/50">
-             <UserPlus size={32} className="text-white"/>
-           </div>
-           <h1 className="text-2xl font-black uppercase tracking-tight">Solicitar Acesso</h1>
-           <p className="text-sm opacity-80 mt-2">Preencha seus dados para liberar seu teste grátis.</p>
+           <h1 className="text-2xl font-black uppercase">Solicitar Acesso</h1>
+           <p className="text-sm opacity-80 mt-2">Preencha para liberar seu teste.</p>
         </div>
-
         <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); onSignup(formData); }}>
-           <div>
-             <label className="text-[10px] font-bold uppercase tracking-widest opacity-70 ml-1">Seu Nome</label>
-             <input required className="w-full p-3 rounded-lg bg-black/20 border border-white/10 text-white placeholder-white/30 outline-none focus:border-blue-400 transition-colors" placeholder="Ex: Maria Souza" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
-           </div>
-           <div>
-             <label className="text-[10px] font-bold uppercase tracking-widest opacity-70 ml-1">WhatsApp</label>
-             <input required className="w-full p-3 rounded-lg bg-black/20 border border-white/10 text-white placeholder-white/30 outline-none focus:border-blue-400 transition-colors" placeholder="(00) 00000-0000" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} />
-           </div>
-           <div>
-             <label className="text-[10px] font-bold uppercase tracking-widest opacity-70 ml-1">Usuário Preferido</label>
-             <input required className="w-full p-3 rounded-lg bg-black/20 border border-white/10 text-white placeholder-white/30 outline-none focus:border-blue-400 transition-colors" placeholder="como quer ser chamado..." value={formData.username} onChange={e => setFormData({...formData, username: e.target.value})} />
-           </div>
-           
-           <button type="submit" className="w-full py-4 bg-blue-500 hover:bg-blue-400 text-white font-bold uppercase tracking-wide rounded-xl shadow-lg shadow-blue-500/30 transition-all transform active:scale-95 mt-4">
-              Solicitar Agora
-           </button>
+           <input required className="w-full p-3 rounded-lg bg-black/20 border border-white/10 text-white placeholder-white/50" placeholder="Seu Nome" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+           <input required className="w-full p-3 rounded-lg bg-black/20 border border-white/10 text-white placeholder-white/50" placeholder="WhatsApp" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} />
+           <input required className="w-full p-3 rounded-lg bg-black/20 border border-white/10 text-white placeholder-white/50" placeholder="Usuário Preferido" value={formData.username} onChange={e => setFormData({...formData, username: e.target.value})} />
+           <button type="submit" className="w-full py-4 bg-blue-500 hover:bg-blue-400 text-white font-bold uppercase rounded-xl mt-4">Solicitar Agora</button>
         </form>
       </div>
     </div>
@@ -1472,44 +1455,45 @@ const handleAddClient = async (e: React.FormEvent) => {
       showToast("Cliente arquivado com sucesso!");
   };
 
-  // --- FUNCIONALIDADE 1: FLASH COPY ---
-  const handleCopyCredentials = (client: Client) => {
-      const text = `📺 *SEUS DADOS DE ACESSO*\n\n👤 Usuário: ${client.username}\n🔑 Senha: ${client.password}\n📅 Vencimento: ${new Date(client.expiresAt).toLocaleDateString('pt-BR')}\n\nBom divertimento!`;
-      
-      navigator.clipboard.writeText(text).then(() => {
-          showToast("Credenciais copiadas!");
-      }).catch(() => {
-          showToast("Erro ao copiar.", "error");
-      });
-  };
-
-  // --- FUNCIONALIDADE 2: SEMÁFORO VISUAL ---
-  const getTrafficLightColor = (client: Client) => {
-      if (client.status === 'blocked') return 'border-l-slate-400'; // Bloqueado (Cinza)
-      
-      const now = new Date();
-      const expiry = new Date(client.expiresAt);
-      const diffTime = expiry.getTime() - now.getTime();
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-
-      if (diffDays <= 0) return 'border-l-red-500';     // Vencido (Vermelho)
-      if (diffDays <= 3) return 'border-l-amber-400';   // Urgente (Amarelo)
-      return 'border-l-emerald-500';                    // Seguro (Verde)
-  };
-
-  // --- FUNCIONALIDADE 3: LINK DE AUTO-CADASTRO ---
-  const handleShareSignupLink = () => {
-      const link = `${window.location.origin}?mode=signup`;
-      navigator.clipboard.writeText(link);
-      showToast("Link de cadastro copiado! Envie para seu cliente.");
-  };
-
   const handleRestoreClient = async (client: Client) => {
       if(!confirm(`Restaurar ${client.name} para a lista de ativos?`)) return;
 
       // Retorna status para 'active'
       updateClientInSupabase(client.id, { status: 'active' });
       showToast("Cliente restaurado com sucesso!");
+  };
+
+  // --- 1. FLASH COPY (COPIAR DADOS) ---
+  const handleCopyCredentials = (client: Client) => {
+      const text = `📺 *SEUS DADOS DE ACESSO*\n\n👤 Usuário: ${client.username}\n🔑 Senha: ${client.password}\n📅 Vencimento: ${new Date(client.expiresAt).toLocaleDateString('pt-BR')}\n\nBom divertimento!`;
+      navigator.clipboard.writeText(text);
+      showToast("Credenciais copiadas!");
+  };
+
+  // --- 2. SEMÁFORO VISUAL (CORES) ---
+  const getTrafficLightColor = (client: Client) => {
+      if (client.status === 'blocked') return 'border-l-slate-400'; // Cinza (Bloqueado)
+      const now = new Date();
+      const expiry = new Date(client.expiresAt);
+      const diffTime = expiry.getTime() - now.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+      if (diffDays <= 0) return 'border-l-red-500';     // Vermelho (Vencido)
+      if (diffDays <= 3) return 'border-l-amber-400';   // Amarelo (Urgente)
+      return 'border-l-emerald-500';                    // Verde (Ok)
+  };
+
+  // --- 3. LINK DE AUTO-CADASTRO ---
+  const handleShareSignupLink = () => {
+      const link = `${window.location.origin}?mode=signup`;
+      navigator.clipboard.writeText(link);
+      showToast("Link copiado! Envie para o cliente.");
+  };
+
+  const handlePublicSignup = (data: any) => {
+      // Redireciona para o WhatsApp para finalizar o cadastro
+      const text = `Olá! Quero me cadastrar no sistema.\nMeu Nome: ${data.name}\nUsuário Desejado: ${data.username}`;
+      window.location.href = `https://wa.me/5585992780931?text=${encodeURIComponent(text)}`;
   };
 
   const handleEditClient = async (form: any) => {
@@ -1791,80 +1775,43 @@ const handleAddClient = async (e: React.FormEvent) => {
     return session?.user?.email === 'eronvasconcelos.br@gmail.com';
   }, [session]);
 
-  // CHECK ACCESS LEVEL
+  // --- 1. VARIÁVEIS DE CONTROLE ---
+  const urlParams = new URLSearchParams(window.location.search);
+  const isPublicSignup = urlParams.get('mode') === 'signup';
+  
   const getBlockReason = () => {
       if (simulationMode !== 'none') return simulationMode;
-
       if (!userProfile) return null;
-      if (isAdmin) return null; // Admin nunca bloqueia
-
+      if (isAdmin) return null;
       const now = new Date();
       const trialEnd = new Date(userProfile.trial_ends_at);
       const subEnd = userProfile.subscription_ends_at ? new Date(userProfile.subscription_ends_at) : null;
-
-      // Se tiver assinatura ativa, ok
       if (subEnd && subEnd > now) return null;
-      
-      // Se não tem assinatura e trial válido, ok
       if (trialEnd > now) return null;
-
-      // Se bloqueado:
-      // Se já teve assinatura no passado e expirou = sub_expired
       if (subEnd && subEnd <= now) return 'sub_expired';
-      
-      // Caso contrário (nunca assinou) = trial_expired
       return 'trial_expired';
   };
-
   const currentBlockReason = useMemo(getBlockReason, [userProfile, session, isAdmin, simulationMode]);
   const isAccessBlocked = !!currentBlockReason;
 
+  // --- 2. RENDERIZAÇÃO CONDICIONAL (A ORDEM IMPORTA!) ---
 
-  // ... (fim de todas as suas funções const handle...)
-
-  // --- 1. VERIFICAÇÃO DE CADASTRO PÚBLICO (PRIMEIRA COISA) ---
-  // Isso deve vir ANTES de verificar a sessão, para quem não tem login conseguir acessar
+  // A) Tela Pública (Link de Leads) - Aparece mesmo sem login
   if (isPublicSignup) {
       return <PublicSignupScreen onSignup={handlePublicSignup} />;
   }
 
-  // --- 2. VERIFICAÇÃO DE LOGIN ---
-  // Se não for cadastro público e não tiver sessão, manda pro login
+  // B) Tela de Login - Se não tem sessão
   if (!session) {
     return <AuthScreen theme={theme} />;
   }
 
-  // --- 3. VERIFICAÇÃO DE BLOQUEIO ---
-  if (isAccessBlocked) {
-      return (
-        // ... código do bloqueio ...
-      );
-  }
-
-  // --- 4. RETORNO PRINCIPAL (PAINEL) ---
-  return (
-    <div className={`flex flex-col ...`}>
-       {/* ... resto do site ... */}
-    </div>
-  );
-} // <--- Fim da função App
-
-  // Se não houver sessão, exibe a tela de Login
-  if (!session) {
-    return <AuthScreen theme={theme} />;
-  }
-
-  // Se tiver sessão, mas estiver bloqueado (ou simulando), exibe Paywall (Bloqueio total)
+  // C) Tela de Bloqueio (Paywall) - Se venceu
   if (isAccessBlocked) {
       return (
         <div className={`fixed inset-0 z-[500] flex items-center justify-center p-4 bg-slate-950/90 backdrop-blur-md overflow-y-auto`}>
            {simulationMode !== 'none' && (
-               <button 
-                 onClick={() => setSimulationMode('none')} 
-                 className="absolute top-5 left-5 z-[600] bg-white/10 hover:bg-white/20 text-white px-4 py-2 rounded-full text-xs font-bold uppercase border border-white/20 backdrop-blur-md flex items-center gap-2"
-               >
-                 <XCircle size={16}/> Sair da Simulação
-               </button>
+               <button onClick={() => setSimulationMode('none')} className="absolute top-5 left-5 z-[600] text-white bg-white/10 px-4 py-2 rounded-full text-xs font-bold">Sair da Simulação</button>
            )}
            <SubscriptionContent theme={theme} onLogout={handleLogout} isBlocking={true} blockReason={currentBlockReason} />
         </div>
