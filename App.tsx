@@ -854,6 +854,57 @@ const SubscriptionContent = ({ theme, onLogout, isBlocking, blockReason }: { the
   );
 };
 
+// --- COMPONENTE DE GRÁFICO (SEM BIBLIOTECAS EXTERNAS) ---
+const RevenueChart = ({ data, theme }: { data: any[], theme: 'light' | 'dark' }) => {
+  if (!data || data.length === 0) return null;
+  const maxVal = Math.max(...data.map(d => d.value)) || 1;
+  const height = 100;
+  const width = 300; // Aspect ratio
+  
+  // Normaliza pontos para SVG
+  const points = data.map((d, i) => {
+    const x = (i / (data.length - 1)) * width;
+    const y = height - (d.value / maxVal) * height;
+    return `${x},${y}`;
+  }).join(' ');
+
+  return (
+    <div className={`p-4 rounded-lg border shadow-sm ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
+       <div className="flex justify-between items-center mb-4">
+          <h3 className="text-xs font-bold uppercase tracking-wide flex items-center gap-2">
+             <TrendingUp size={16} className="text-emerald-500"/> Crescimento (6 Meses)
+          </h3>
+          <span className="text-[10px] font-bold px-2 py-1 rounded bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400">
+             +R$ {data[data.length-1].value.toFixed(0)} (Atual)
+          </span>
+       </div>
+       <div className="relative h-32 w-full flex items-end justify-between px-2">
+          {/* Linha do Gráfico */}
+          <svg className="absolute inset-0 h-full w-full overflow-visible" preserveAspectRatio="none" viewBox={`0 0 ${width} ${height}`}>
+             <polyline fill="none" stroke={theme === 'dark' ? '#34d399' : '#059669'} strokeWidth="3" points={points} strokeLinecap="round" strokeLinejoin="round" />
+             {/* Área abaixo da linha (Gradiente Fake) */}
+             <polyline fill={theme === 'dark' ? 'rgba(52, 211, 153, 0.1)' : 'rgba(5, 150, 105, 0.1)'} stroke="none" points={`${points} ${width},${height} 0,${height}`} />
+          </svg>
+          
+          {/* Barras/Labels */}
+          {data.map((d, i) => (
+             <div key={i} className="relative flex flex-col items-center justify-end h-full group z-10 w-full">
+                {/* Tooltip ao passar o mouse */}
+                <div className="absolute bottom-full mb-2 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-800 text-white text-[10px] font-bold px-2 py-1 rounded shadow-lg whitespace-nowrap z-20 pointer-events-none">
+                   R$ {d.value.toFixed(2)}
+                </div>
+                {/* Ponto na linha */}
+                <div className="w-2 h-2 rounded-full bg-emerald-500 mb-1 opacity-0 group-hover:opacity-100 transition-opacity" style={{ marginBottom: `${(d.value / maxVal) * 100}%` }}></div>
+                {/* Mês */}
+                <span className="text-[9px] font-bold text-slate-400 uppercase mt-2 absolute bottom-[-20px]">{d.label}</span>
+             </div>
+          ))}
+       </div>
+       <div className="h-4"></div>
+    </div>
+  );
+};
+
 export default function App() {
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     const saved = localStorage.getItem('eflixtv_theme');
@@ -1221,6 +1272,29 @@ export default function App() {
 
   const handleTogglePayment = (client: Client) => updateClientInSupabase(client.id, { paymentStatus: client.paymentStatus === 'paid' ? 'pending' : 'paid' });
 
+// --- FUNÇÃO DE BACKUP (CSV) ---
+  const handleExportCSV = () => {
+    if (clients.length === 0) {
+       showToast("Sem dados para exportar.", "error");
+       return;
+    }
+    // Cabeçalho
+    const headers = "Nome,Usuario,Senha,Telefone,Vencimento,Plano,Status,Preco,Notas\n";
+    // Linhas
+    const rows = clients.map(c => 
+       `"${c.name}","${c.username}","${c.password || ''}","${c.phone}","${new Date(c.expiresAt).toLocaleDateString()}","${c.packageName}","${c.status}","${c.price}","${c.notes || ''}"`
+    ).join("\n");
+
+    const blob = new Blob([headers + rows], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `backup_painel_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showToast("Backup baixado com sucesso!");
+  };
   // HANDLER ATUALIZADO PARA USAR O ESTADO CONTROLADO
 const handleAddClient = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1463,23 +1537,49 @@ const handleAddClient = async (e: React.FormEvent) => {
       setNotificationsEnabled(permission === 'granted');
   };
 
-  const stats = useMemo(() => {
-    const clientsStats = clients.reduce((acc, c) => {
+const stats = useMemo(() => {
+    // Estatísticas Básicas
+    const baseStats = clients.reduce((acc, c) => {
       acc.totalLTV += c.totalPaid || 0;
       acc.monthlyRevenue += c.price || 0;
-      acc.monthlyCosts += c.expenses || 0; // Custos por cliente (ex: custo por ativação no painel)
+      acc.monthlyCosts += c.expenses || 0;
       const expired = isExpired(c.expiresAt);
       if (c.status === 'blocked') acc.blockedCount++;
+      else if (c.status === 'archived') acc.archivedCount++; // Se tiver arquivados
       else if (expired) acc.expiredCount++;
       else acc.activeCount++;
       if (c.paymentStatus === 'pending') acc.pendingPaymentCount++;
       return acc;
-    }, { totalLTV: 0, monthlyRevenue: 0, monthlyCosts: 0, activeCount: 0, expiredCount: 0, blockedCount: 0, pendingPaymentCount: 0 });
+    }, { totalLTV: 0, monthlyRevenue: 0, monthlyCosts: 0, activeCount: 0, expiredCount: 0, blockedCount: 0, archivedCount: 0, pendingPaymentCount: 0 });
 
-    // Somar custos de compra de créditos de servidor do mês atual
+    // CÁLCULO DE CHURN (Rotatividade)
+    const totalBase = clients.length - (baseStats.archivedCount || 0); // Desconsidera arquivados
+    // Consideramos Churn quem está bloqueado ou vencido
+    const churnCount = baseStats.blockedCount + baseStats.expiredCount; 
+    const churnRate = totalBase > 0 ? (churnCount / totalBase) * 100 : 0;
+
+    // DADOS PARA O GRÁFICO (Últimos 6 Meses)
+    const chartData = Array.from({length: 6}, (_, i) => {
+       const d = new Date();
+       d.setMonth(d.getMonth() - (5 - i));
+       const monthIdx = d.getMonth();
+       const year = d.getFullYear();
+       
+       // Soma pagamentos deste mês específico
+       const value = clients.reduce((sum, c) => {
+          const paidInMonth = c.paymentHistory?.filter((h: any) => {
+             const hDate = new Date(h.date);
+             return hDate.getMonth() === monthIdx && hDate.getFullYear() === year;
+          }).reduce((pSum: number, h: any) => pSum + h.amount, 0) || 0;
+          return sum + paidInMonth;
+       }, 0);
+
+       return { label: MONTHS[monthIdx], value };
+    });
+
+    // Custos de Servidores (Mantido do seu código anterior)
     const currentMonth = new Date().getMonth();
     const currentYear = new Date().getFullYear();
-    
     let serverMonthlyCosts = 0;
     servers.forEach(s => {
         if(s.transactions) {
@@ -1493,8 +1593,10 @@ const handleAddClient = async (e: React.FormEvent) => {
     });
 
     return {
-        ...clientsStats,
-        monthlyCosts: clientsStats.monthlyCosts + serverMonthlyCosts
+        ...baseStats,
+        monthlyCosts: baseStats.monthlyCosts + serverMonthlyCosts,
+        churnRate, // Nova métrica
+        chartData  // Novos dados do gráfico
     };
 
   }, [clients, servers]);
