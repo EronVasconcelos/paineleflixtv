@@ -14,6 +14,8 @@ import {
   CreditCard,
   Layers,
   Trash2,
+  Archive,
+  RotateCcw,
   Send,
   X,
   Activity,
@@ -1275,6 +1277,24 @@ export default function App() {
       } catch(err) { console.error(err); }
   };
 
+  // --- NOVAS FUNÇÕES DE ARQUIVAMENTO ---
+  const handleArchiveClient = async (client: Client) => {
+      // Pergunta de segurança
+      if(!confirm(`Deseja arquivar ${client.name}? Ele sairá da lista principal, mas poderá ser restaurado.`)) return;
+      
+      // Atualiza status para 'archived'
+      updateClientInSupabase(client.id, { status: 'archived' });
+      showToast("Cliente arquivado com sucesso!");
+  };
+
+  const handleRestoreClient = async (client: Client) => {
+      if(!confirm(`Restaurar ${client.name} para a lista de ativos?`)) return;
+
+      // Retorna status para 'active'
+      updateClientInSupabase(client.id, { status: 'active' });
+      showToast("Cliente restaurado com sucesso!");
+  };
+
   const handleEditClient = async (form: any) => {
     const pkg = packages.find(p => p.id === form.packageId);
     const expiryDate = new Date(`${form.expiryDate}T${form.expiryTime || '00:00'}`);
@@ -1449,15 +1469,27 @@ export default function App() {
 
   }, [clients, servers]);
 
-  const filteredClients = useMemo(() => {
+ const filteredClients = useMemo(() => {
     return clients.filter(c => {
       const matchesSearch = c.name.toLowerCase().includes(searchTerm.toLowerCase()) || c.username.toLowerCase().includes(searchTerm.toLowerCase()) || (c.macKey || '').toLowerCase().includes(searchTerm.toLowerCase());
       const expired = isExpired(c.expiresAt);
       
-      let matchesStatus = statusFilter === 'all';
-      if (statusFilter === 'active') matchesStatus = c.status === 'active' && !expired;
-      else if (statusFilter === 'expired') matchesStatus = c.status === 'active' && expired;
-      else if (statusFilter === 'blocked') matchesStatus = c.status === 'blocked';
+      let matchesStatus = false;
+
+      // LÓGICA ATUALIZADA PARA ARQUIVADOS
+      if (statusFilter === 'archived') {
+          // Se o filtro for 'archived', mostra APENAS clientes com status 'archived'
+          matchesStatus = c.status === 'archived';
+      } else {
+          // Se for qualquer outro filtro, ESCONDE os arquivados
+          if (c.status === 'archived') return false;
+
+          // Lógica padrão dos outros filtros
+          if (statusFilter === 'all') matchesStatus = true;
+          else if (statusFilter === 'active') matchesStatus = c.status === 'active' && !expired;
+          else if (statusFilter === 'expired') matchesStatus = c.status === 'active' && expired;
+          else if (statusFilter === 'blocked') matchesStatus = c.status === 'blocked';
+      }
 
       let matchesPayment = paymentFilter === 'all';
       if (paymentFilter === 'paid') matchesPayment = c.paymentStatus === 'paid';
@@ -1470,7 +1502,6 @@ export default function App() {
       return sortOrder === 'asc' ? dateA - dateB : dateB - dateA;
     });
   }, [clients, searchTerm, statusFilter, paymentFilter, sortOrder]);
-
   const sendWhatsApp = (template: MessageTemplate | string, client: Client) => {
     let body = typeof template === 'string' ? template : template.body.replace(/{{nome}}/g, client.name).replace(/{{usuario}}/g, client.username).replace(/{{senha}}/g, client.password || '***').replace(/{{vencimento}}/g, new Date(client.expiresAt).toLocaleDateString('pt-BR')).replace(/{{valor}}/g, client.price.toFixed(2));
     showToast("Redirecionando para WhatsApp...");
@@ -1795,6 +1826,7 @@ export default function App() {
                     <FilterChip active={statusFilter === 'active'} label="Ativos" theme={theme} onClick={() => setStatusFilter('active')} />
                     <FilterChip active={statusFilter === 'expired'} label="Vencidos" theme={theme} onClick={() => setStatusFilter('expired')} />
                     <FilterChip active={statusFilter === 'blocked'} label="Blocks" theme={theme} onClick={() => setStatusFilter('blocked')} />
+                    <FilterChip active={statusFilter === 'archived'} label="Arquivados" theme={theme} onClick={() => setStatusFilter('archived')} />
                     <div className="w-px h-6 bg-slate-200 dark:bg-slate-700 mx-1 self-center"></div>
                     <FilterChip active={paymentFilter === 'paid'} label="Pagos" theme={theme} onClick={() => setPaymentFilter(paymentFilter === 'paid' ? 'all' : 'paid')} />
                     <FilterChip active={paymentFilter === 'pending'} label="Pendentes" theme={theme} onClick={() => setPaymentFilter(paymentFilter === 'pending' ? 'all' : 'pending')} />
@@ -1830,14 +1862,26 @@ export default function App() {
                           </div>
                         </div>
                         <div className="flex gap-2 justify-between items-center border-t border-slate-100 dark:border-slate-800 pt-3">
-                          <div className="flex gap-2">
-                             <ActionButton onClick={() => setSelectedClientDetails(c)} theme={theme} color="blue" icon={<Eye size={16}/>} />
-                             <ActionButton onClick={() => setSelectedClientForEdit(c)} theme={theme} color="blue" icon={<Pencil size={16}/>} />
-                             <ActionButton onClick={() => setSelectedClientForMsg(c)} theme={theme} color="emerald" icon={<MessageSquare size={16}/>} />
-                             <ActionButton onClick={() => setSelectedClientForRenewal(c)} theme={theme} color="amber" icon={<RefreshCw size={16}/>} />
-                          </div>
-                          <ActionButton onClick={() => handleDeleteClient(c.id)} theme={theme} color="red" icon={<Trash2 size={16}/>} />
-                        </div>
+  <div className="flex gap-2">
+    {/* LÓGICA CONDICIONAL DOS BOTÕES */}
+    {c.status === 'archived' ? (
+        // Se estiver arquivado, mostra botão de RESTAURAR
+        <ActionButton onClick={() => handleRestoreClient(c)} theme={theme} color="emerald" icon={<RotateCcw size={16}/>} />
+    ) : (
+        // Se não estiver arquivado, mostra os botões normais + ARQUIVAR
+        <>
+            <ActionButton onClick={() => setSelectedClientDetails(c)} theme={theme} color="blue" icon={<Eye size={16}/>} />
+            <ActionButton onClick={() => setSelectedClientForEdit(c)} theme={theme} color="blue" icon={<Pencil size={16}/>} />
+            <ActionButton onClick={() => setSelectedClientForMsg(c)} theme={theme} color="emerald" icon={<MessageSquare size={16}/>} />
+            <ActionButton onClick={() => setSelectedClientForRenewal(c)} theme={theme} color="amber" icon={<RefreshCw size={16}/>} />
+            {/* Botão Arquivar Novo */}
+            <ActionButton onClick={() => handleArchiveClient(c)} theme={theme} color="amber" icon={<Archive size={16}/>} />
+        </>
+    )}
+  </div>
+  {/* Botão de Excluir sempre visível */}
+  <ActionButton onClick={() => handleDeleteClient(c.id)} theme={theme} color="red" icon={<Trash2 size={16}/>} />
+</div>
                       </div>
                     );
                   })}
@@ -1880,12 +1924,23 @@ export default function App() {
                               <button onClick={() => handleTogglePayment(c)} className={`px-2 py-0.5 rounded-md text-[9px] font-bold uppercase border ${c.paymentStatus === 'paid' ? 'bg-emerald-50 text-emerald-600 border-emerald-200 dark:bg-emerald-900/20' : 'bg-amber-50 text-amber-600 border-amber-200 dark:bg-amber-900/20'}`}>{c.paymentStatus === 'paid' ? 'Pago' : 'Pendente'}</button>
                             </td>
                             <td className="px-4 py-2.5 text-right">
-                              <div className="flex gap-1.5 justify-end">
-                                <ActionButton onClick={() => setSelectedClientDetails(c)} theme={theme} color="blue" icon={<Eye size={14}/>} />
-                                <ActionButton onClick={() => setSelectedClientForEdit(c)} theme={theme} color="blue" icon={<Pencil size={14}/>} />
-                                <ActionButton onClick={() => setSelectedClientForMsg(c)} theme={theme} color="emerald" icon={<MessageSquare size={14}/>} />
-                                <ActionButton onClick={() => setSelectedClientForRenewal(c)} theme={theme} color="amber" icon={<RefreshCw size={14}/>} />
-                              </div>
+  <div className="flex gap-1.5 justify-end">
+    {c.status === 'archived' ? (
+        // Botão Restaurar na Tabela
+        <ActionButton onClick={() => handleRestoreClient(c)} theme={theme} color="emerald" icon={<RotateCcw size={14}/>} />
+    ) : (
+        // Botões Normais na Tabela
+        <>
+            <ActionButton onClick={() => setSelectedClientDetails(c)} theme={theme} color="blue" icon={<Eye size={14}/>} />
+            <ActionButton onClick={() => setSelectedClientForEdit(c)} theme={theme} color="blue" icon={<Pencil size={14}/>} />
+            <ActionButton onClick={() => setSelectedClientForMsg(c)} theme={theme} color="emerald" icon={<MessageSquare size={14}/>} />
+            <ActionButton onClick={() => setSelectedClientForRenewal(c)} theme={theme} color="amber" icon={<RefreshCw size={14}/>} />
+            <ActionButton onClick={() => handleArchiveClient(c)} theme={theme} color="amber" icon={<Archive size={14}/>} />
+        </>
+    )}
+    <ActionButton onClick={() => handleDeleteClient(c.id)} theme={theme} color="red" icon={<Trash2 size={14}/>} />
+  </div>
+</td>
                             </td>
                           </tr>
                         );
