@@ -16,6 +16,8 @@ import {
   Trash2,
   Archive,
   RotateCcw,
+  ClipboardCopy, // Para o botão copiar
+  Share2,        // Para o botão de compartilhar link
   Send,
   X,
   Activity,
@@ -905,6 +907,43 @@ const RevenueChart = ({ data, theme }: { data: any[], theme: 'light' | 'dark' })
   );
 };
 
+const PublicSignupScreen = ({ onSignup }: { onSignup: (data: any) => void }) => {
+  const [formData, setFormData] = useState({ name: '', phone: '', username: '' });
+  
+  return (
+    <div className="min-h-screen flex items-center justify-center p-4 bg-gradient-to-br from-slate-900 to-blue-900 text-white">
+      <div className="w-full max-w-md p-8 rounded-2xl bg-white/10 backdrop-blur-md border border-white/20 shadow-2xl">
+        <div className="text-center mb-8">
+           <div className="w-16 h-16 bg-blue-500 rounded-2xl mx-auto flex items-center justify-center mb-4 shadow-lg shadow-blue-500/50">
+             <UserPlus size={32} className="text-white"/>
+           </div>
+           <h1 className="text-2xl font-black uppercase tracking-tight">Solicitar Acesso</h1>
+           <p className="text-sm opacity-80 mt-2">Preencha seus dados para liberar seu teste grátis.</p>
+        </div>
+
+        <form className="space-y-4" onSubmit={(e) => { e.preventDefault(); onSignup(formData); }}>
+           <div>
+             <label className="text-[10px] font-bold uppercase tracking-widest opacity-70 ml-1">Seu Nome</label>
+             <input required className="w-full p-3 rounded-lg bg-black/20 border border-white/10 text-white placeholder-white/30 outline-none focus:border-blue-400 transition-colors" placeholder="Ex: Maria Souza" value={formData.name} onChange={e => setFormData({...formData, name: e.target.value})} />
+           </div>
+           <div>
+             <label className="text-[10px] font-bold uppercase tracking-widest opacity-70 ml-1">WhatsApp</label>
+             <input required className="w-full p-3 rounded-lg bg-black/20 border border-white/10 text-white placeholder-white/30 outline-none focus:border-blue-400 transition-colors" placeholder="(00) 00000-0000" value={formData.phone} onChange={e => setFormData({...formData, phone: e.target.value})} />
+           </div>
+           <div>
+             <label className="text-[10px] font-bold uppercase tracking-widest opacity-70 ml-1">Usuário Preferido</label>
+             <input required className="w-full p-3 rounded-lg bg-black/20 border border-white/10 text-white placeholder-white/30 outline-none focus:border-blue-400 transition-colors" placeholder="como quer ser chamado..." value={formData.username} onChange={e => setFormData({...formData, username: e.target.value})} />
+           </div>
+           
+           <button type="submit" className="w-full py-4 bg-blue-500 hover:bg-blue-400 text-white font-bold uppercase tracking-wide rounded-xl shadow-lg shadow-blue-500/30 transition-all transform active:scale-95 mt-4">
+              Solicitar Agora
+           </button>
+        </form>
+      </div>
+    </div>
+  );
+};
+
 export default function App() {
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
     const saved = localStorage.getItem('eflixtv_theme');
@@ -973,6 +1012,10 @@ export default function App() {
   const [templates, setTemplates] = useState<MessageTemplate[]>([]);
   const [rules, setRules] = useState<MessageRule[]>([]);
   const [servers, setServers] = useState<Server[]>([]);
+
+  // Verifica se é modo cadastro público
+  const urlParams = new URLSearchParams(window.location.search);
+  const isPublicSignup = urlParams.get('mode') === 'signup';
 
   // RESET SCROLL AO MUDAR DE ABA
   useEffect(() => {
@@ -1248,6 +1291,44 @@ export default function App() {
       setPullDistance(0);
   };
 
+  const handlePublicSignup = async (data: any) => {
+      // Cria o cliente como BLOQUEADO (Lead) para aprovação
+      const newLead: Client = {
+          id: Math.random().toString(36).substr(2, 9),
+          // ATENÇÃO: Como é público, não temos user_id da sessão. 
+          // Precisamos pegar um ID fixo ou deixar null e tratar no backend.
+          // Para simplificar: Vamos assumir que você é o único dono do painel por enquanto.
+          user_id: userProfile?.id || 'public_lead', 
+          name: data.name,
+          username: data.username,
+          password: Math.random().toString(36).slice(-6), // Senha gerada
+          phone: data.phone,
+          status: 'blocked', // Entra como bloqueado
+          paymentStatus: 'pending',
+          packageName: 'Lead Auto-Cadastro',
+          packageId: '',
+          price: 0,
+          expenses: 0,
+          createdAt: new Date().toISOString(),
+          expiresAt: new Date().toISOString(), // Já entra vencido/bloqueado
+          notes: 'LEAD CAPTURADO VIA LINK PÚBLICO',
+          appName: '',
+          macKey: '',
+          paymentHistory: [],
+          totalPaid: 0
+      };
+
+      try {
+          // Tenta salvar no banco (requer que a política RLS permita insert público ou anônimo)
+          // Se sua política RLS for estrita, isso pode falhar.
+          // Alternativa segura: Gerar link de WhatsApp
+          const text = `Olá! Quero me cadastrar.\nNome: ${data.name}\nUsuário: ${data.username}`;
+          window.location.href = `https://wa.me/5585992780931?text=${encodeURIComponent(text)}`;
+      } catch (e) {
+          alert("Redirecionando para WhatsApp...");
+      }
+  };
+
   // Função genérica de atualização de cliente no Supabase
   const updateClientInSupabase = async (clientId: string, updates: Partial<Client>) => {
       // Optimistic Update
@@ -1389,6 +1470,38 @@ const handleAddClient = async (e: React.FormEvent) => {
       // Atualiza status para 'archived'
       updateClientInSupabase(client.id, { status: 'archived' });
       showToast("Cliente arquivado com sucesso!");
+  };
+
+  // --- FUNCIONALIDADE 1: FLASH COPY ---
+  const handleCopyCredentials = (client: Client) => {
+      const text = `📺 *SEUS DADOS DE ACESSO*\n\n👤 Usuário: ${client.username}\n🔑 Senha: ${client.password}\n📅 Vencimento: ${new Date(client.expiresAt).toLocaleDateString('pt-BR')}\n\nBom divertimento!`;
+      
+      navigator.clipboard.writeText(text).then(() => {
+          showToast("Credenciais copiadas!");
+      }).catch(() => {
+          showToast("Erro ao copiar.", "error");
+      });
+  };
+
+  // --- FUNCIONALIDADE 2: SEMÁFORO VISUAL ---
+  const getTrafficLightColor = (client: Client) => {
+      if (client.status === 'blocked') return 'border-l-slate-400'; // Bloqueado (Cinza)
+      
+      const now = new Date();
+      const expiry = new Date(client.expiresAt);
+      const diffTime = expiry.getTime() - now.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+
+      if (diffDays <= 0) return 'border-l-red-500';     // Vencido (Vermelho)
+      if (diffDays <= 3) return 'border-l-amber-400';   // Urgente (Amarelo)
+      return 'border-l-emerald-500';                    // Seguro (Verde)
+  };
+
+  // --- FUNCIONALIDADE 3: LINK DE AUTO-CADASTRO ---
+  const handleShareSignupLink = () => {
+      const link = `${window.location.origin}?mode=signup`;
+      navigator.clipboard.writeText(link);
+      showToast("Link de cadastro copiado! Envie para seu cliente.");
   };
 
   const handleRestoreClient = async (client: Client) => {
@@ -1537,69 +1650,69 @@ const handleAddClient = async (e: React.FormEvent) => {
       setNotificationsEnabled(permission === 'granted');
   };
 
-const stats = useMemo(() => {
-    // Estatísticas Básicas
-    const baseStats = clients.reduce((acc, c) => {
-      acc.totalLTV += c.totalPaid || 0;
-      acc.monthlyRevenue += c.price || 0;
-      acc.monthlyCosts += c.expenses || 0;
-      const expired = isExpired(c.expiresAt);
-      if (c.status === 'blocked') acc.blockedCount++;
-      else if (c.status === 'archived') acc.archivedCount++; // Se tiver arquivados
-      else if (expired) acc.expiredCount++;
-      else acc.activeCount++;
-      if (c.paymentStatus === 'pending') acc.pendingPaymentCount++;
-      return acc;
-    }, { totalLTV: 0, monthlyRevenue: 0, monthlyCosts: 0, activeCount: 0, expiredCount: 0, blockedCount: 0, archivedCount: 0, pendingPaymentCount: 0 });
+  const stats = useMemo(() => {
+      // Estatísticas Básicas
+      const baseStats = clients.reduce((acc, c) => {
+        acc.totalLTV += c.totalPaid || 0;
+        acc.monthlyRevenue += c.price || 0;
+        acc.monthlyCosts += c.expenses || 0;
+        const expired = isExpired(c.expiresAt);
+        if (c.status === 'blocked') acc.blockedCount++;
+        else if (c.status === 'archived') acc.archivedCount++; // Se tiver arquivados
+        else if (expired) acc.expiredCount++;
+        else acc.activeCount++;
+        if (c.paymentStatus === 'pending') acc.pendingPaymentCount++;
+        return acc;
+      }, { totalLTV: 0, monthlyRevenue: 0, monthlyCosts: 0, activeCount: 0, expiredCount: 0, blockedCount: 0, archivedCount: 0, pendingPaymentCount: 0 });
 
-    // CÁLCULO DE CHURN (Rotatividade)
-    const totalBase = clients.length - (baseStats.archivedCount || 0); // Desconsidera arquivados
-    // Consideramos Churn quem está bloqueado ou vencido
-    const churnCount = baseStats.blockedCount + baseStats.expiredCount; 
-    const churnRate = totalBase > 0 ? (churnCount / totalBase) * 100 : 0;
+      // CÁLCULO DE CHURN (Rotatividade)
+      const totalBase = clients.length - (baseStats.archivedCount || 0); // Desconsidera arquivados
+      // Consideramos Churn quem está bloqueado ou vencido
+      const churnCount = baseStats.blockedCount + baseStats.expiredCount; 
+      const churnRate = totalBase > 0 ? (churnCount / totalBase) * 100 : 0;
 
-    // DADOS PARA O GRÁFICO (Últimos 6 Meses)
-    const chartData = Array.from({length: 6}, (_, i) => {
-       const d = new Date();
-       d.setMonth(d.getMonth() - (5 - i));
-       const monthIdx = d.getMonth();
-       const year = d.getFullYear();
-       
-       // Soma pagamentos deste mês específico
-       const value = clients.reduce((sum, c) => {
-          const paidInMonth = c.paymentHistory?.filter((h: any) => {
-             const hDate = new Date(h.date);
-             return hDate.getMonth() === monthIdx && hDate.getFullYear() === year;
-          }).reduce((pSum: number, h: any) => pSum + h.amount, 0) || 0;
-          return sum + paidInMonth;
-       }, 0);
+      // DADOS PARA O GRÁFICO (Últimos 6 Meses)
+      const chartData = Array.from({length: 6}, (_, i) => {
+        const d = new Date();
+        d.setMonth(d.getMonth() - (5 - i));
+        const monthIdx = d.getMonth();
+        const year = d.getFullYear();
+        
+        // Soma pagamentos deste mês específico
+        const value = clients.reduce((sum, c) => {
+            const paidInMonth = c.paymentHistory?.filter((h: any) => {
+              const hDate = new Date(h.date);
+              return hDate.getMonth() === monthIdx && hDate.getFullYear() === year;
+            }).reduce((pSum: number, h: any) => pSum + h.amount, 0) || 0;
+            return sum + paidInMonth;
+        }, 0);
 
-       return { label: MONTHS[monthIdx], value };
-    });
+        return { label: MONTHS[monthIdx], value };
+      });
 
-    // Custos de Servidores (Mantido do seu código anterior)
-    const currentMonth = new Date().getMonth();
-    const currentYear = new Date().getFullYear();
-    let serverMonthlyCosts = 0;
-    servers.forEach(s => {
-        if(s.transactions) {
-            s.transactions.forEach(t => {
-                const tDate = new Date(t.date);
-                if(tDate.getMonth() === currentMonth && tDate.getFullYear() === currentYear) {
-                    serverMonthlyCosts += t.cost;
-                }
-            });
-        }
-    });
+      // Custos de Servidores (Mantido do seu código anterior)
+      const currentMonth = new Date().getMonth();
+      const currentYear = new Date().getFullYear();
+      let serverMonthlyCosts = 0;
+      servers.forEach(s => {
+          if(s.transactions) {
+              s.transactions.forEach(t => {
+                  const tDate = new Date(t.date);
+                  if(tDate.getMonth() === currentMonth && tDate.getFullYear() === currentYear) {
+                      serverMonthlyCosts += t.cost;
+                  }
+              });
+          }
+      });
 
-    return {
-        ...baseStats,
-        monthlyCosts: baseStats.monthlyCosts + serverMonthlyCosts,
-        churnRate, // Nova métrica
-        chartData  // Novos dados do gráfico
-    };
+      return {
+          ...baseStats,
+          monthlyCosts: baseStats.monthlyCosts + serverMonthlyCosts,
+          churnRate, // Nova métrica
+          chartData  // Novos dados do gráfico
+      };
 
-  }, [clients, servers]);
+    }, [clients, servers]);
 
  const filteredClients = useMemo(() => {
     return clients.filter(c => {
@@ -1707,7 +1820,34 @@ const stats = useMemo(() => {
   const isAccessBlocked = !!currentBlockReason;
 
 
-  
+  // ... (fim de todas as suas funções const handle...)
+
+  // --- 1. VERIFICAÇÃO DE CADASTRO PÚBLICO (PRIMEIRA COISA) ---
+  // Isso deve vir ANTES de verificar a sessão, para quem não tem login conseguir acessar
+  if (isPublicSignup) {
+      return <PublicSignupScreen onSignup={handlePublicSignup} />;
+  }
+
+  // --- 2. VERIFICAÇÃO DE LOGIN ---
+  // Se não for cadastro público e não tiver sessão, manda pro login
+  if (!session) {
+    return <AuthScreen theme={theme} />;
+  }
+
+  // --- 3. VERIFICAÇÃO DE BLOQUEIO ---
+  if (isAccessBlocked) {
+      return (
+        // ... código do bloqueio ...
+      );
+  }
+
+  // --- 4. RETORNO PRINCIPAL (PAINEL) ---
+  return (
+    <div className={`flex flex-col ...`}>
+       {/* ... resto do site ... */}
+    </div>
+  );
+} // <--- Fim da função App
 
   // Se não houver sessão, exibe a tela de Login
   if (!session) {
@@ -1820,6 +1960,13 @@ const stats = useMemo(() => {
               className={`md:hidden p-2 rounded-md border transition-all shadow-sm ${isRefreshing ? 'animate-spin bg-blue-100 text-blue-600 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400' : 'bg-slate-50 text-slate-500 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700'}`}
             >
               <RefreshCw size={16} />
+            </button>
+            <button 
+              onClick={handleShareSignupLink} 
+              className="p-2 text-blue-600 bg-blue-50 dark:bg-blue-900/30 dark:text-blue-400 rounded-md border border-blue-100 dark:border-blue-800/50 hover:bg-blue-100 transition-all shadow-sm" 
+              title="Copiar Link de Captura"
+            >
+              <Share2 size={16} />
             </button>
             <button onClick={() => geminiService.analyzeBusiness(clients).then(setAiAnalysis)} className="p-2 text-blue-600 bg-blue-50 dark:bg-blue-900/30 dark:text-blue-400 rounded-md border border-blue-100 dark:border-blue-800/50 hover:bg-blue-100 transition-all shadow-sm">
               <TrendingUp size={16} />
@@ -1969,7 +2116,7 @@ const stats = useMemo(() => {
                   {filteredClients.map(c => {
                     const expired = isExpired(c.expiresAt);
                     return (
-                      <div key={c.id} className={`p-4 rounded-lg border shadow-sm relative overflow-hidden transition-all active:scale-[0.99] ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
+                      <div key={c.id} className={`p-4 rounded-lg border shadow-sm relative overflow-hidden transition-all active:scale-[0.99] border-l-[6px] ${getTrafficLightColor(c)} ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
                         <div className="flex justify-between items-start mb-3">
                           <div className="flex-1 min-w-0 pr-3">
                             <h4 className="font-bold text-[15px] truncate leading-tight text-slate-900 dark:text-white">{c.name}</h4>
@@ -1987,6 +2134,7 @@ const stats = useMemo(() => {
                                  {new Date(c.expiresAt).toLocaleDateString('pt-BR')}
                                  <div className="text-[10px] opacity-60 font-normal">{new Date(c.expiresAt).toLocaleTimeString('pt-BR', {hour: '2-digit', minute:'2-digit'})}</div>
                              </div>
+
                           </div>
                           <div className="flex-1 bg-slate-50 dark:bg-slate-800/50 p-2.5 rounded-md border dark:border-slate-800">
                              <div className="text-[9px] font-bold text-slate-400 uppercase mb-1">Pacote</div>
@@ -1998,7 +2146,10 @@ const stats = useMemo(() => {
     {/* LÓGICA CONDICIONAL DOS BOTÕES */}
     {c.status === 'archived' ? (
         // Se estiver arquivado, mostra botão de RESTAURAR
-        <ActionButton onClick={() => handleRestoreClient(c)} theme={theme} color="emerald" icon={<RotateCcw size={16}/>} />
+        
+        
+        
+         onClick={() => handleRestoreClient(c)} theme={theme} color="emerald" icon={<RotateCcw size={16}/>} />
     ) : (
         // Se não estiver arquivado, mostra os botões normais + ARQUIVAR
         <>
@@ -2008,11 +2159,13 @@ const stats = useMemo(() => {
             <ActionButton onClick={() => setSelectedClientForRenewal(c)} theme={theme} color="amber" icon={<RefreshCw size={16}/>} />
             {/* Botão Arquivar Novo */}
             <ActionButton onClick={() => handleArchiveClient(c)} theme={theme} color="amber" icon={<Archive size={16}/>} />
+            <ActionButton onClick={() => handleCopyCredentials(c)} theme={theme} color="slate" icon={<ClipboardCopy size={16}/>} />
         </>
     )}
   </div>
   {/* Botão de Excluir sempre visível */}
   <ActionButton onClick={() => handleDeleteClient(c.id)} theme={theme} color="red" icon={<Trash2 size={16}/>} />
+
 </div>
                       </div>
                     );
@@ -2035,7 +2188,7 @@ const stats = useMemo(() => {
                         {filteredClients.map(c => {
                           const expired = isExpired(c.expiresAt);
                           return (
-                            <tr key={c.id} className="hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors">
+                            <tr key={c.id} className={`hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors border-l-4 ${getTrafficLightColor(c)}`}>
                               <td className="px-4 py-2.5">
                                 <div className="flex flex-col">
                                   <span className="font-bold text-[13px]">{c.name}</span>
@@ -2068,6 +2221,7 @@ const stats = useMemo(() => {
                                           <ActionButton onClick={() => setSelectedClientForMsg(c)} theme={theme} color="emerald" icon={<MessageSquare size={14}/>} />
                                           <ActionButton onClick={() => setSelectedClientForRenewal(c)} theme={theme} color="amber" icon={<RefreshCw size={14}/>} />
                                           <ActionButton onClick={() => handleArchiveClient(c)} theme={theme} color="amber" icon={<Archive size={14}/>} />
+                                          <ActionButton onClick={() => handleCopyCredentials(c)} theme={theme} color="slate" icon={<ClipboardCopy size={16}/>} />
                                       </>
                                   )}
                                   <ActionButton onClick={() => handleDeleteClient(c.id)} theme={theme} color="red" icon={<Trash2 size={14}/>} />
