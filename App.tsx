@@ -894,7 +894,7 @@ export default function App() {
 
   // ESTADO DO FORMULÁRIO DE CADASTRO (PERSISTENTE)
   // Agora mantém todos os campos, não apenas preço e custo
-  const [addFormData, setAddFormData] = useState({
+ const [addFormData, setAddFormData] = useState({
     name: '',
     username: '',
     password: '',
@@ -907,7 +907,8 @@ export default function App() {
     isPaid: true,
     notes: '',
     appName: '',
-    macKey: ''
+    macKey: '',
+    serverId: '' // <--- Adicionado
   });
 
   const [editingPackage, setEditingPackage] = useState<Package | null>(null);
@@ -1221,12 +1222,25 @@ export default function App() {
   const handleTogglePayment = (client: Client) => updateClientInSupabase(client.id, { paymentStatus: client.paymentStatus === 'paid' ? 'pending' : 'paid' });
 
   // HANDLER ATUALIZADO PARA USAR O ESTADO CONTROLADO
-  const handleAddClient = async (e: React.FormEvent) => {
+const handleAddClient = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!session) return;
     
+    // 1. VALIDAÇÃO DE CRÉDITOS DO SERVIDOR
+    let selectedServer = null;
+    if (addFormData.serverId) {
+        selectedServer = servers.find(s => s.id === addFormData.serverId);
+        if (selectedServer) {
+            if (selectedServer.credits <= 0) {
+                alert(`O servidor "${selectedServer.name}" está sem créditos! Ação cancelada.`);
+                return;
+            }
+        }
+    }
+    
     const pkg = packages.find(p => p.id === addFormData.packageId);
     const expiryDate = new Date(`${addFormData.expiryDate}T${addFormData.expiryTime || '00:00'}`);
+    
     const newClient: Client = {
       id: Math.random().toString(36).substr(2, 9),
       user_id: session.user.id,
@@ -1238,6 +1252,7 @@ export default function App() {
       phone: addFormData.phone,
       packageName: pkg?.name || 'Personalizado',
       packageId: addFormData.packageId,
+      serverId: addFormData.serverId || null, // <--- Vincula ao servidor
       price: Number(addFormData.price) || 0,
       expenses: Number(addFormData.expenses) || 0,
       notes: addFormData.notes || '',
@@ -1249,20 +1264,35 @@ export default function App() {
       totalPaid: addFormData.isPaid ? Number(addFormData.price) : 0
     };
 
+    // Atualiza lista local
     setClients(prev => [...prev, newClient]);
     setView('clients');
     
-    // Reset form after successful submission
+    // Reseta formulário
     setAddFormData({
         name: '', username: '', password: '', phone: '', packageId: '', price: '', expenses: '',
-        expiryDate: '', expiryTime: '23:59', isPaid: true, notes: '', appName: '', macKey: ''
+        expiryDate: '', expiryTime: '23:59', isPaid: true, notes: '', appName: '', macKey: '', serverId: ''
     });
     
     showToast("Cliente cadastrado com sucesso!");
 
     try {
+        // 2. SALVA O CLIENTE
         const { error } = await supabase.from('clients').insert([newClient]);
         if (error) throw error;
+
+        // 3. DESCONTA O CRÉDITO DO SERVIDOR (Se houve seleção)
+        if (selectedServer) {
+            const newCredits = selectedServer.credits - 1;
+            
+            // Atualiza localmente para feedback instantâneo
+            setServers(prev => prev.map(s => s.id === selectedServer.id ? {...s, credits: newCredits} : s));
+            
+            // Atualiza no banco
+            await supabase.from('servers').update({ credits: newCredits }).eq('id', selectedServer.id);
+            showToast(`1 Crédito descontado de ${selectedServer.name}`);
+        }
+
     } catch(err) {
         console.error(err);
         showToast("Erro ao sincronizar dados.", "error");
@@ -2163,6 +2193,27 @@ export default function App() {
                    
                    <form className="space-y-4" onSubmit={handleAddClient}>
                      <FormInput theme={theme} name="name" label="Nome Completo" placeholder="Ex: João Silva" required value={addFormData.name} onChange={(e: any) => setAddFormData({...addFormData, name: e.target.value})} />
+                     {/* SELEÇÃO DE SERVIDOR */}
+    <div className="space-y-1">
+      <label className="text-[10px] font-bold text-slate-400 uppercase ml-1 tracking-wider">Servidor (Saldo)</label>
+      <select 
+        name="serverId" 
+        value={addFormData.serverId}
+        onChange={(e: any) => setAddFormData({...addFormData, serverId: e.target.value})}
+        className={`w-full px-3 py-2.5 rounded-md border text-[13px] font-medium outline-none transition-all focus:ring-1 focus:ring-blue-500 ${
+          theme === 'dark' 
+            ? 'bg-slate-800 border-slate-700 text-white focus:border-blue-500' 
+            : 'bg-slate-50 border-slate-200 text-slate-800 shadow-sm focus:border-blue-500'
+        }`}
+      >
+        <option value="">-- Selecione o Servidor (Opcional) --</option>
+        {servers.map(s => (
+          <option key={s.id} value={s.id} disabled={s.credits <= 0} className={s.credits <= 0 ? 'text-red-400' : ''}>
+            {s.name} — {s.credits} Créditos {s.credits <= 0 ? '(Esgotado)' : ''}
+          </option>
+        ))}
+      </select>
+    </div>
                      <div className="grid grid-cols-2 gap-4">
                        <FormInput theme={theme} name="username" label="Usuário IPTV" required value={addFormData.username} onChange={(e: any) => setAddFormData({...addFormData, username: e.target.value})} />
                        <FormInput theme={theme} name="password" label="Senha IPTV" value={addFormData.password} onChange={(e: any) => setAddFormData({...addFormData, password: e.target.value})} />
