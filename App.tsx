@@ -8,7 +8,7 @@ import {
   Download, Upload, Database, ShieldAlert, Bell, BellOff, FileText, Wallet, Edit3, 
   Loader2, LogOut, Lock, Mail, User, Server as ServerIcon, Link as LinkIcon, Coins, Tv, 
   PlayCircle, Crown, Star, Zap, ShieldCheck, CheckSquare, Circle, Minus, Rocket, 
-  PartyPopper, QrCode, Copy, TestTube, Wrench
+  PartyPopper, QrCode, Copy, TestTube, Wrench, PieChart, TrendingDown
 } from 'lucide-react';
 import { Session } from '@supabase/supabase-js';
 // Certifique-se de que estes arquivos existem ou defina as interfaces aqui mesmo
@@ -168,6 +168,109 @@ const ModalOverlay = ({ onClose, children, theme }: { onClose: () => void, child
   </div>
 );
 
+/* NOVOS COMPONENTES PARA RELATÓRIOS (ADICIONADOS) */
+
+const RevenueChart = ({ data, theme }: { data: any[], theme: 'light' | 'dark' }) => {
+  if (!data || data.length === 0) return null;
+  const maxVal = Math.max(...data.map(d => d.value)) || 1;
+  const points = data.map((d, i) => `${(i / (data.length - 1)) * 300},${100 - (d.value / maxVal) * 100}`).join(' ');
+  return (
+    <div className={`p-4 rounded-lg border shadow-sm ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
+       <div className="flex justify-between items-center mb-4"><h3 className="text-xs font-bold uppercase tracking-wide flex items-center gap-2"><TrendingUp size={16} className="text-emerald-500"/> Crescimento (6 Meses)</h3></div>
+       <div className="relative h-32 w-full flex items-end justify-between px-2">
+          <svg className="absolute inset-0 h-full w-full overflow-visible" preserveAspectRatio="none" viewBox="0 0 300 100">
+             <polyline fill="none" stroke={theme === 'dark' ? '#34d399' : '#059669'} strokeWidth="3" points={points} strokeLinecap="round" strokeLinejoin="round" />
+             <polyline fill={theme === 'dark' ? 'rgba(52, 211, 153, 0.1)' : 'rgba(5, 150, 105, 0.1)'} stroke="none" points={`${points} 300,100 0,100`} />
+          </svg>
+          {data.map((d, i) => <div key={i} className="relative flex flex-col items-center justify-end h-full w-full"><span className="text-[9px] font-bold text-slate-400 uppercase mt-2 absolute bottom-[-20px]">{d.label}</span></div>)}
+       </div><div className="h-4"></div>
+    </div>
+  );
+};
+
+const ClientMovementChart = ({ clients, theme }: { clients: any[], theme: 'light' | 'dark' }) => {
+  const data = useMemo(() => Array.from({length: 6}, (_, i) => {
+        const d = new Date(); d.setMonth(d.getMonth() - (5 - i));
+        const monthIdx = d.getMonth(); const year = d.getFullYear();
+        const gained = clients.filter((c:any) => { const d = new Date(c.createdAt); return d.getMonth() === monthIdx && d.getFullYear() === year; }).length;
+        const lost = clients.filter((c:any) => { const d = new Date(c.expiresAt); return d.getMonth() === monthIdx && d.getFullYear() === year && (c.status === 'blocked' || c.paymentStatus !== 'paid'); }).length;
+        return { label: MONTHS[monthIdx], gained, lost };
+  }), [clients]);
+  const maxVal = Math.max(...data.map(d => Math.max(d.gained, d.lost))) || 1;
+  return (
+    <div className={`p-4 rounded-lg border shadow-sm ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
+       <div className="flex justify-between items-center mb-4">
+          <h3 className="text-xs font-bold uppercase tracking-wide flex items-center gap-2"><Users size={16} className="text-blue-500"/> Entradas vs Saídas</h3>
+          <div className="flex gap-3 text-[9px] font-bold uppercase"><span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-emerald-500"></div> Novos</span><span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-red-500"></div> Perdidos</span></div>
+       </div>
+       <div className="flex items-end justify-between h-32 px-2 gap-2">
+          {data.map((d, i) => (
+             <div key={i} className="flex-1 flex flex-col items-center justify-end h-full group relative">
+                <div className="w-full max-w-[12px] bg-emerald-500 rounded-t-sm" style={{ height: `${(d.gained / maxVal) * 50}%`, minHeight: d.gained > 0 ? '4px' : '0' }}></div>
+                <div className="w-full h-[1px] bg-slate-300 dark:bg-slate-600 my-0.5"></div>
+                <div className="w-full max-w-[12px] bg-red-500 rounded-b-sm" style={{ height: `${(d.lost / maxVal) * 50}%`, minHeight: d.lost > 0 ? '4px' : '0' }}></div>
+                <span className="text-[9px] font-bold text-slate-400 uppercase mt-3">{d.label}</span>
+             </div>
+          ))}
+       </div>
+    </div>
+  );
+};
+
+const ReportsView = ({ clients, packages, servers, templates, theme }: any) => {
+  const summary = useMemo(() => {
+    const totalRev = clients.reduce((acc: number, c: any) => acc + (c.price || 0), 0);
+    const totalExp = clients.reduce((acc: number, c: any) => acc + (c.expenses || 0), 0);
+    return { totalRev, totalExp, profit: totalRev - totalExp, 
+             active: clients.filter((c: any) => c.status === 'active' && new Date(c.expiresAt) > new Date()).length,
+             pending: clients.filter((c: any) => c.paymentStatus === 'pending').length,
+             blocked: clients.filter((c: any) => c.status === 'blocked').length };
+  }, [clients]);
+
+  const planStats = useMemo(() => packages.map((pkg: any) => ({ name: pkg.name, count: clients.filter((c: any) => c.packageId === pkg.id).length })).sort((a: any, b: any) => b.count - a.count), [clients, packages]);
+  const serverStats = useMemo(() => servers.map((srv: any) => ({ ...srv, count: clients.filter((c: any) => c.serverId === srv.id).length })).sort((a: any, b: any) => b.count - a.count), [clients, servers]);
+  
+  const chartData = useMemo(() => Array.from({length: 6}, (_, i) => {
+        const d = new Date(); d.setMonth(d.getMonth() - (5 - i));
+        const rev = clients.reduce((sum: number, c: any) => sum + (c.paymentHistory?.filter((h: any) => new Date(h.date).getMonth() === d.getMonth()).reduce((p: number, h: any) => p + h.amount, 0) || 0), 0);
+        return { label: MONTHS[d.getMonth()], value: rev };
+  }), [clients]);
+
+  return (
+    <div className="space-y-6 animate-in fade-in duration-500">
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <StatCard title="Receita Estimada" value={`R$ ${summary.totalRev.toFixed(2)}`} icon={<DollarSign/>} color="emerald" theme={theme}/>
+        <StatCard title="Despesas Totais" value={`R$ ${summary.totalExp.toFixed(2)}`} icon={<TrendingDown/>} color="red" theme={theme}/>
+        <StatCard title="Lucro Líquido" value={`R$ ${summary.profit.toFixed(2)}`} icon={<Wallet/>} color="blue" theme={theme}/>
+      </div>
+      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+         <div><h4 className="text-xs font-bold uppercase mb-3 text-slate-500">Fluxo de Caixa</h4><RevenueChart data={chartData} theme={theme} /></div>
+         <div><h4 className="text-xs font-bold uppercase mb-3 text-slate-500">Churn Rate</h4><ClientMovementChart clients={clients} theme={theme} /></div>
+      </div>
+      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+        <div className={`p-5 rounded-xl border ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
+           <h4 className="text-xs font-bold uppercase mb-4 flex items-center gap-2"><Users size={16} /> Status da Base</h4>
+           <div className="space-y-2 text-xs">
+              <div className="flex justify-between"><span>Ativos</span><span className="font-bold text-emerald-500">{summary.active}</span></div>
+              <div className="flex justify-between"><span>Pendentes</span><span className="font-bold text-amber-500">{summary.pending}</span></div>
+              <div className="flex justify-between"><span>Bloqueados</span><span className="font-bold text-slate-500">{summary.blocked}</span></div>
+           </div>
+        </div>
+        <div className={`p-5 rounded-xl border ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
+           <h4 className="text-xs font-bold uppercase mb-4 flex items-center gap-2"><Layers size={16} /> Planos Populares</h4>
+           <div className="space-y-2 text-xs max-h-40 overflow-y-auto">{planStats.map((p: any, i: number) => <div key={i} className="flex justify-between"><span>{p.name}</span><span className="font-bold text-blue-500">{p.count}</span></div>)}</div>
+        </div>
+        <div className={`p-5 rounded-xl border ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
+           <h4 className="text-xs font-bold uppercase mb-4 flex items-center gap-2"><ServerIcon size={16} /> Servidores</h4>
+           <div className="space-y-2 text-xs max-h-40 overflow-y-auto">{serverStats.map((s: any, i: number) => <div key={i} className="flex justify-between"><span>{s.name}</span><span className="font-bold text-purple-500">{s.count} users</span></div>)}</div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* --- PARTE 2: MODAIS E TELA DE LOGIN --- */
+
 const WelcomeModal = ({ theme, onClose }: { theme: 'light' | 'dark', onClose: () => void }) => (
   <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-300">
     <div className="relative w-full max-w-md overflow-hidden rounded-[32px] shadow-2xl bg-gradient-to-br from-blue-600 to-emerald-500 text-white border border-white/10 animate-in zoom-in-95 duration-300">
@@ -242,12 +345,15 @@ const RenewalModal = ({ theme, client, packages, onRenew, onClose }: any) => {
 const MessageModal = ({ theme, client, templates, onSend, onClose }: any) => {
   const [msg, setMsg] = useState('');
   const [loadingAI, setLoadingAI] = useState(false);
+  
   const handleGenerateAI = async () => {
       setLoadingAI(true);
+      // Certifique-se que geminiService foi importado/definido na Parte 1
       const text = await geminiService.generateRenewalMessage(client);
       setMsg(text);
       setLoadingAI(false);
   };
+
   return (
     <ModalOverlay theme={theme} onClose={onClose}>
        <div className="p-4 border-b bg-emerald-500/10 border-emerald-500/20 flex justify-between items-center">
@@ -480,6 +586,8 @@ const AuthScreen = ({ theme }: { theme: 'light' | 'dark' }) => {
   );
 };
 
+/* --- PARTE 3: COMPONENTES FINANCEIROS E LÓGICA DO APP --- */
+
 const SubscriptionContent = ({ theme, onLogout, isBlocking, blockReason }: { theme: 'light' | 'dark', onLogout?: () => void, isBlocking?: boolean, blockReason?: 'trial_expired' | 'sub_expired' | null }) => {
   const [selectedPlanId, setSelectedPlanId] = useState('monthly');
   const plans = [
@@ -578,227 +686,6 @@ const SubscriptionContent = ({ theme, onLogout, isBlocking, blockReason }: { the
   );
 };
 
-// --- COMPONENTE DE GRÁFICO (SEM BIBLIOTECAS EXTERNAS) ---
-const RevenueChart = ({ data, theme }: { data: any[], theme: 'light' | 'dark' }) => {
-  if (!data || data.length === 0) return null;
-  const maxVal = Math.max(...data.map(d => d.value)) || 1;
-  const height = 100;
-  const width = 300; 
-  const points = data.map((d, i) => {
-    const x = (i / (data.length - 1)) * width;
-    const y = height - (d.value / maxVal) * height;
-    return `${x},${y}`;
-  }).join(' ');
-
-  return (
-    <div className={`p-4 rounded-lg border shadow-sm ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
-       <div className="flex justify-between items-center mb-4">
-          <h3 className="text-xs font-bold uppercase tracking-wide flex items-center gap-2">
-             <TrendingUp size={16} className="text-emerald-500"/> Crescimento (6 Meses)
-          </h3>
-          <span className="text-[10px] font-bold px-2 py-1 rounded bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400">
-              +R$ {data[data.length-1].value.toFixed(0)} (Atual)
-          </span>
-       </div>
-       <div className="relative h-32 w-full flex items-end justify-between px-2">
-          <svg className="absolute inset-0 h-full w-full overflow-visible" preserveAspectRatio="none" viewBox={`0 0 ${width} ${height}`}>
-             <polyline fill="none" stroke={theme === 'dark' ? '#34d399' : '#059669'} strokeWidth="3" points={points} strokeLinecap="round" strokeLinejoin="round" />
-             <polyline fill={theme === 'dark' ? 'rgba(52, 211, 153, 0.1)' : 'rgba(5, 150, 105, 0.1)'} stroke="none" points={`${points} ${width},${height} 0,${height}`} />
-          </svg>
-          {data.map((d, i) => (
-             <div key={i} className="relative flex flex-col items-center justify-end h-full group z-10 w-full">
-                <div className="absolute bottom-full mb-2 opacity-0 group-hover:opacity-100 transition-opacity bg-slate-800 text-white text-[10px] font-bold px-2 py-1 rounded shadow-lg whitespace-nowrap z-20 pointer-events-none">
-                   R$ {d.value.toFixed(2)}
-                </div>
-                <div className="w-2 h-2 rounded-full bg-emerald-500 mb-1 opacity-0 group-hover:opacity-100 transition-opacity" style={{ marginBottom: `${(d.value / maxVal) * 100}%` }}></div>
-                <span className="text-[9px] font-bold text-slate-400 uppercase mt-2 absolute bottom-[-20px]">{d.label}</span>
-             </div>
-          ))}
-       </div>
-       <div className="h-4"></div>
-    </div>
-  );
-};
-
-const ReportsView = ({ clients, packages, servers, templates, theme }: any) => {
-  // 1. Cálculos Gerais
-  const summary = useMemo(() => {
-    const totalRev = clients.reduce((acc: number, c: any) => acc + (c.price || 0), 0);
-    const totalExp = clients.reduce((acc: number, c: any) => acc + (c.expenses || 0), 0);
-    const active = clients.filter((c: any) => c.status === 'active' && new Date(c.expiresAt) > new Date()).length;
-    const pending = clients.filter((c: any) => c.paymentStatus === 'pending').length;
-    const blocked = clients.filter((c: any) => c.status === 'blocked').length;
-    const archived = clients.filter((c: any) => c.status === 'archived').length;
-    const expired = clients.filter((c: any) => c.status === 'active' && new Date(c.expiresAt) < new Date()).length;
-    
-    return { totalRev, totalExp, profit: totalRev - totalExp, active, pending, blocked, archived, expired };
-  }, [clients]);
-
-  // 2. Distribuição por Planos
-  const planStats = useMemo(() => {
-    const stats = packages.map((pkg: any) => {
-      const count = clients.filter((c: any) => c.packageId === pkg.id).length;
-      return { name: pkg.name, count };
-    }).sort((a: any, b: any) => b.count - a.count); // Ordenar do maior para o menor
-    
-    // Adicionar "Personalizados" (sem ID de pacote)
-    const customCount = clients.filter((c: any) => !c.packageId).length;
-    if (customCount > 0) stats.push({ name: 'Personalizado', count: customCount });
-    
-    return stats;
-  }, [clients, packages]);
-
-  // 3. Distribuição por Servidor
-  const serverStats = useMemo(() => {
-    return servers.map((srv: any) => {
-      const count = clients.filter((c: any) => c.serverId === srv.id).length;
-      return { ...srv, count };
-    }).sort((a: any, b: any) => b.count - a.count);
-  }, [clients, servers]);
-
-  // 4. Dados para Gráficos
-  const chartData = useMemo(() => {
-      return Array.from({length: 6}, (_, i) => {
-        const d = new Date();
-        d.setMonth(d.getMonth() - (5 - i));
-        const monthIdx = d.getMonth();
-        const year = d.getFullYear();
-        
-        // Financeiro
-        const revenue = clients.reduce((sum: number, c: any) => {
-            const paidInMonth = c.paymentHistory?.filter((h: any) => {
-              const hDate = new Date(h.date);
-              return hDate.getMonth() === monthIdx && hDate.getFullYear() === year;
-            }).reduce((pSum: number, h: any) => pSum + h.amount, 0) || 0;
-            return sum + paidInMonth;
-        }, 0);
-
-        return { label: MONTHS[monthIdx], value: revenue };
-      });
-  }, [clients]);
-
-  return (
-    <div className="space-y-6 animate-in fade-in duration-500">
-      {/* CABEÇALHO FINANCEIRO */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <div className={`p-5 rounded-xl border flex items-center justify-between ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
-           <div>
-              <p className="text-[10px] font-bold uppercase text-slate-400 tracking-widest">Receita Mensal Estimada</p>
-              <h3 className="text-2xl font-black text-emerald-500 mt-1">R$ {summary.totalRev.toFixed(2)}</h3>
-           </div>
-           <div className="p-3 bg-emerald-500/10 rounded-lg"><DollarSign className="text-emerald-500" size={24}/></div>
-        </div>
-        <div className={`p-5 rounded-xl border flex items-center justify-between ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
-           <div>
-              <p className="text-[10px] font-bold uppercase text-slate-400 tracking-widest">Despesas Totais</p>
-              <h3 className="text-2xl font-black text-red-500 mt-1">R$ {summary.totalExp.toFixed(2)}</h3>
-           </div>
-           <div className="p-3 bg-red-500/10 rounded-lg"><TrendingDown className="text-red-500" size={24}/></div>
-        </div>
-        <div className={`p-5 rounded-xl border flex items-center justify-between ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
-           <div>
-              <p className="text-[10px] font-bold uppercase text-slate-400 tracking-widest">Lucro Líquido</p>
-              <h3 className="text-2xl font-black text-blue-500 mt-1">R$ {summary.profit.toFixed(2)}</h3>
-           </div>
-           <div className="p-3 bg-blue-500/10 rounded-lg"><Wallet className="text-blue-500" size={24}/></div>
-        </div>
-      </div>
-
-      {/* GRÁFICOS */}
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-         <div>
-            <h4 className="text-xs font-bold uppercase mb-3 text-slate-500">Fluxo de Caixa</h4>
-            <RevenueChart data={chartData} theme={theme} />
-         </div>
-         <div>
-            <h4 className="text-xs font-bold uppercase mb-3 text-slate-500">Movimentação (Churn)</h4>
-            <ClientMovementChart clients={clients} theme={theme} />
-         </div>
-      </div>
-
-      {/* DETALHAMENTO OPERACIONAL */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        
-        {/* COLUNA 1: STATUS DA BASE */}
-        <div className={`p-5 rounded-xl border ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
-           <h4 className="text-xs font-bold uppercase mb-4 flex items-center gap-2"><Users size={16} /> Status da Base</h4>
-           <div className="space-y-4">
-              <div className="flex justify-between items-center">
-                 <span className="text-xs font-medium text-slate-500">Ativos (Em dia)</span>
-                 <span className="text-xs font-bold px-2 py-1 bg-emerald-100 text-emerald-700 rounded-md">{summary.active}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                 <span className="text-xs font-medium text-slate-500">Pendentes Pagamento</span>
-                 <span className="text-xs font-bold px-2 py-1 bg-amber-100 text-amber-700 rounded-md">{summary.pending}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                 <span className="text-xs font-medium text-slate-500">Vencidos (Sem corte)</span>
-                 <span className="text-xs font-bold px-2 py-1 bg-red-100 text-red-700 rounded-md">{summary.expired}</span>
-              </div>
-              <div className="flex justify-between items-center">
-                 <span className="text-xs font-medium text-slate-500">Bloqueados</span>
-                 <span className="text-xs font-bold px-2 py-1 bg-slate-100 text-slate-700 rounded-md">{summary.blocked}</span>
-              </div>
-              <div className="pt-3 border-t dark:border-slate-800 flex justify-between items-center">
-                 <span className="text-xs font-bold uppercase text-slate-400">Total Geral</span>
-                 <span className="text-sm font-black">{clients.length}</span>
-              </div>
-           </div>
-        </div>
-
-        {/* COLUNA 2: PLANOS */}
-        <div className={`p-5 rounded-xl border ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
-           <h4 className="text-xs font-bold uppercase mb-4 flex items-center gap-2"><Layers size={16} /> Distribuição por Planos</h4>
-           <div className="space-y-3 max-h-60 overflow-y-auto pr-1 custom-scrollbar">
-              {planStats.map((p: any, i: number) => (
-                 <div key={i} className="space-y-1">
-                    <div className="flex justify-between text-[11px] font-bold">
-                       <span>{p.name}</span>
-                       <span className="text-slate-400">{p.count} clientes</span>
-                    </div>
-                    <div className="w-full h-1.5 bg-slate-100 dark:bg-slate-800 rounded-full overflow-hidden">
-                       <div className="h-full bg-blue-500 rounded-full" style={{ width: `${(p.count / clients.length) * 100}%` }}></div>
-                    </div>
-                 </div>
-              ))}
-              {planStats.length === 0 && <p className="text-xs text-slate-400">Nenhum plano ativo.</p>}
-           </div>
-        </div>
-
-        {/* COLUNA 3: SERVIDORES & SISTEMA */}
-        <div className={`p-5 rounded-xl border ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
-           <h4 className="text-xs font-bold uppercase mb-4 flex items-center gap-2"><ServerIcon size={16} /> Servidores & Sistema</h4>
-           <div className="space-y-4">
-              <div className="space-y-2">
-                 {serverStats.map((s: any, i: number) => (
-                    <div key={i} className="flex justify-between items-center text-xs p-2 rounded bg-slate-50 dark:bg-slate-800/50">
-                        <span className="font-bold truncate max-w-[100px]">{s.name}</span>
-                        <div className="flex items-center gap-2">
-                           <span className="text-[10px] bg-white dark:bg-slate-700 px-1.5 rounded border dark:border-slate-600 shadow-sm">{s.count} users</span>
-                           <span className={`w-2 h-2 rounded-full ${s.credits > 5 ? 'bg-emerald-500' : 'bg-red-500'}`}></span>
-                        </div>
-                    </div>
-                 ))}
-                 {serverStats.length === 0 && <p className="text-xs text-slate-400 mb-2">Sem servidores.</p>}
-              </div>
-              <div className="pt-3 border-t dark:border-slate-800 grid grid-cols-2 gap-2">
-                 <div className="p-2 bg-indigo-50 dark:bg-indigo-900/20 rounded text-center">
-                    <span className="block text-xl font-black text-indigo-600 dark:text-indigo-400">{templates.length}</span>
-                    <span className="text-[9px] font-bold uppercase text-indigo-400">Templates</span>
-                 </div>
-                 <div className="p-2 bg-purple-50 dark:bg-purple-900/20 rounded text-center">
-                    <span className="block text-xl font-black text-purple-600 dark:text-purple-400">{archived}</span>
-                    <span className="text-[9px] font-bold uppercase text-purple-400">Arquivados</span>
-                 </div>
-              </div>
-           </div>
-        </div>
-
-      </div>
-    </div>
-  );
-};
-
 const PublicSignupScreen = ({ onSignup }: { onSignup: (data: any) => void }) => {
   const [formData, setFormData] = useState({ name: '', phone: '', username: '' });
   return (
@@ -832,7 +719,7 @@ export default function App() {
 
   const [session, setSession] = useState<Session | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  const [view, setView] = useState<'dashboard' | 'clients' | 'history' | 'add' | 'packages' | 'messages' | 'scheduling' | 'database' | 'servers' | 'subscription'>('dashboard');
+  const [view, setView] = useState<'dashboard' | 'clients' | 'reports' | 'history' | 'add' | 'packages' | 'messages' | 'scheduling' | 'database' | 'servers' | 'subscription'>('dashboard');
   const [selectedClientForMsg, setSelectedClientForMsg] = useState<Client | null>(null);
   const [selectedClientForRenewal, setSelectedClientForRenewal] = useState<Client | null>(null);
   const [selectedClientDetails, setSelectedClientDetails] = useState<Client | null>(null);
@@ -1531,6 +1418,209 @@ export default function App() {
       );
   }
 
+  /* --- PARTE 4: LÓGICA DE UI E RENDERIZAÇÃO FINAL --- */
+
+  // PULL TO REFRESH LOGIC
+  const handleTouchStart = (e: React.TouchEvent) => {
+      if (mainRef.current?.scrollTop === 0) {
+          touchStartRef.current = e.targetTouches[0].clientY;
+      }
+  };
+
+  const handleTouchMove = (e: React.TouchEvent) => {
+      const touchY = e.targetTouches[0].clientY;
+      const diff = touchY - touchStartRef.current;
+      
+      if (mainRef.current?.scrollTop === 0 && diff > 0) {
+          setPullDistance(Math.min(diff * 0.4, 120)); // Resistance
+      }
+  };
+
+  const handleTouchEnd = () => {
+      if (pullDistance > 60) {
+          handleRefreshData();
+      }
+      setPullDistance(0);
+  };
+
+  const handlePublicSignup = (data: any) => {
+      const text = `Olá! Quero me cadastrar.\nNome: ${data.name}\nUsuário: ${data.username}`;
+      window.location.href = `https://wa.me/5585992780931?text=${encodeURIComponent(text)}`;
+  };
+
+  // Função genérica de atualização de cliente no Supabase
+  const updateClientInSupabase = async (clientId: string, updates: Partial<Client>) => {
+      // Optimistic Update
+      setClients(prev => prev.map(c => c.id === clientId ? { ...c, ...updates } : c));
+      
+      try {
+          const { error } = await supabase.from('clients').update(updates).eq('id', clientId);
+          if(error) throw error;
+      } catch (err) {
+          console.error("Erro ao atualizar cliente:", err);
+          showToast("Erro ao salvar alterações.", "error");
+      }
+  };
+
+  const handleToggleStatus = (client: Client) => {
+      const newStatus = client.status === 'active' ? 'blocked' : 'active';
+      updateClientInSupabase(client.id, { status: newStatus });
+      if (newStatus === 'blocked') {
+          sendNotification("🚫 Cliente Bloqueado", `${client.name} foi bloqueado.`);
+      }
+  };
+
+  const handleTogglePayment = (client: Client) => updateClientInSupabase(client.id, { paymentStatus: client.paymentStatus === 'paid' ? 'pending' : 'paid' });
+
+  // --- FUNÇÃO DE BACKUP (CSV) ---
+  const handleExportCSV = () => {
+    if (clients.length === 0) {
+       showToast("Sem dados para exportar.", "error");
+       return;
+    }
+    const headers = "Nome,Usuario,Senha,Telefone,Vencimento,Plano,Status,Preco,Notas\n";
+    const rows = clients.map(c => 
+       `"${c.name}","${c.username}","${c.password || ''}","${c.phone}","${new Date(c.expiresAt).toLocaleDateString()}","${c.packageName}","${c.status}","${c.price}","${c.notes || ''}"`
+    ).join("\n");
+
+    const blob = new Blob([headers + rows], { type: 'text/csv;charset=utf-8;' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.setAttribute('download', `backup_painel_${new Date().toISOString().split('T')[0]}.csv`);
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    showToast("Backup baixado com sucesso!");
+  };
+
+  // HANDLER ADICIONAR CLIENTE
+  const handleAddClient = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!session) return;
+    
+    // 1. VALIDAÇÃO DE CRÉDITOS DO SERVIDOR
+    let selectedServer = null;
+    if (addFormData.serverId) {
+        selectedServer = servers.find(s => s.id === addFormData.serverId);
+        if (selectedServer) {
+            if (selectedServer.credits <= 0) {
+                alert(`O servidor "${selectedServer.name}" está sem créditos! Ação cancelada.`);
+                return;
+            }
+        }
+    }
+    
+    const pkg = packages.find(p => p.id === addFormData.packageId);
+    const expiryDate = new Date(`${addFormData.expiryDate}T${addFormData.expiryTime || '00:00'}`);
+    
+    const newClient: Client = {
+      id: Math.random().toString(36).substr(2, 9),
+      user_id: session.user.id,
+      name: addFormData.name,
+      username: addFormData.username, 
+      password: addFormData.password,
+      status: 'active',
+      paymentStatus: addFormData.isPaid ? 'paid' : 'pending',
+      phone: addFormData.phone,
+      packageName: pkg?.name || 'Personalizado',
+      packageId: addFormData.packageId,
+      serverId: addFormData.serverId || null,
+      price: Number(addFormData.price) || 0,
+      expenses: Number(addFormData.expenses) || 0,
+      notes: addFormData.notes || '',
+      appName: addFormData.appName || '',
+      macKey: addFormData.macKey || '',
+      createdAt: new Date().toISOString(),
+      expiresAt: expiryDate.toISOString(),
+      paymentHistory: addFormData.isPaid ? [{ id: Math.random().toString(36).substr(2,5), amount: Number(addFormData.price), date: new Date().toISOString(), monthsPaid: pkg?.months || 1, method: 'Cadastro' }] : [],
+      totalPaid: addFormData.isPaid ? Number(addFormData.price) : 0
+    };
+
+    setClients(prev => [...prev, newClient]);
+    setView('clients');
+    setAddFormData({
+        name: '', username: '', password: '', phone: '', packageId: '', price: '', expenses: '',
+        expiryDate: '', expiryTime: '23:59', isPaid: true, notes: '', appName: '', macKey: '', serverId: ''
+    });
+    
+    showToast("Cliente cadastrado com sucesso!");
+
+    try {
+        const { error } = await supabase.from('clients').insert([newClient]);
+        if (error) throw error;
+
+        // DESCONTA O CRÉDITO DO SERVIDOR (Se houve seleção)
+        if (selectedServer) {
+            const newCredits = selectedServer.credits - 1;
+            setServers(prev => prev.map(s => s.id === selectedServer.id ? {...s, credits: newCredits} : s));
+            await supabase.from('servers').update({ credits: newCredits }).eq('id', selectedServer.id);
+            showToast(`1 Crédito descontado de ${selectedServer.name}`);
+        }
+    } catch(err) {
+        console.error(err);
+        showToast("Erro ao sincronizar dados.", "error");
+    }
+  };
+
+  const handleDeleteClient = async (id: string) => {
+      if(!confirm('Excluir cliente permanentemente?')) return;
+      setClients(prev => prev.filter(c => c.id !== id));
+      try {
+          await supabase.from('clients').delete().eq('id', id);
+      } catch(err) { console.error(err); }
+  };
+
+  const handleArchiveClient = async (client: Client) => {
+      if(!confirm(`Deseja arquivar ${client.name}? Ele sairá da lista principal, mas poderá ser restaurado.`)) return;
+      updateClientInSupabase(client.id, { status: 'archived' });
+      showToast("Cliente arquivado com sucesso!");
+  };
+
+  const handleRestoreClient = async (client: Client) => {
+      if(!confirm(`Restaurar ${client.name} para a lista de ativos?`)) return;
+      updateClientInSupabase(client.id, { status: 'active' });
+      showToast("Cliente restaurado com sucesso!");
+  };
+
+  const handleCopyCredentials = (client: Client) => {
+      const text = `📺 *SEUS DADOS DE ACESSO*\n\n👤 Usuário: ${client.username}\n🔑 Senha: ${client.password}\n📅 Vencimento: ${new Date(client.expiresAt).toLocaleDateString('pt-BR')}\n\nBom divertimento!`;
+      navigator.clipboard.writeText(text).then(() => {
+          showToast("Credenciais copiadas!");
+      }).catch(() => {
+          showToast("Erro ao copiar.", "error");
+      });
+  };
+
+  const getTrafficLightColor = (client: Client) => {
+      if (client.status === 'blocked') return 'border-l-slate-400';
+      const now = new Date();
+      const expiry = new Date(client.expiresAt);
+      const diffTime = expiry.getTime() - now.getTime();
+      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+      if (diffDays <= 0) return 'border-l-red-500';
+      if (diffDays <= 3) return 'border-l-amber-400';
+      return 'border-l-emerald-500';
+  };
+
+  const handleShareSignupLink = () => {
+      const link = `${window.location.origin}?mode=signup`;
+      navigator.clipboard.writeText(link);
+      showToast("Link de cadastro copiado! Envie para seu cliente.");
+  };
+
+  const handleEditClient = async (form: any) => {
+    const pkg = packages.find(p => p.id === form.packageId);
+    const expiryDate = new Date(`${form.expiryDate}T${form.expiryTime || '00:00'}`);
+    const updates = {
+      name: form.name, phone: form.phone, username: form.username, password: form.password,
+      packageName: pkg?.name || 'Personalizado', packageId: form.packageId, price: Number(form.price),
+      expenses: Number(form.expenses), expiresAt: expiryDate.toISOString(), appName: form.appName, macKey: form.macKey, notes: form.notes
+    };
+    updateClientInSupabase(selectedClientForEdit!.id, updates);
+    setSelectedClientForEdit(null);
+  };
+
   return (
     <div className={`flex flex-col md:flex-row h-screen overflow-hidden font-normal transition-colors duration-300 ${theme === 'dark' ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-800'}`}>
       
@@ -1548,7 +1638,9 @@ export default function App() {
         
         <nav className="flex-1 px-3 space-y-0.5 overflow-y-auto py-2 hide-scrollbar">
           <SidebarItem icon={<LayoutDashboard size={18} className="text-blue-500"/>} label="Visão Geral" active={view === 'dashboard'} onClick={() => setView('dashboard')} />
-          <SidebarItem icon={<PieChart size={18} className="text-indigo-500"/>} label="Relatórios" active={view === 'reports'} onClick={() => setView('reports')} />
+          {/* BOTÃO DA NOVA PÁGINA DE RELATÓRIOS */}
+          <SidebarItem icon={<PieChart size={18} className="text-pink-500"/>} label="Relatórios e Métricas" active={view === 'reports'} onClick={() => setView('reports')} />
+          
           <SidebarItem icon={<Users size={18} className="text-orange-500"/>} label="Meus Clientes" active={view === 'clients'} onClick={() => setView('clients')} />
           <SidebarItem icon={<UserPlus size={18} className="text-cyan-500"/>} label="Novo Cadastro" active={view === 'add'} onClick={() => setView('add')} />
           <SidebarItem icon={<History size={18} className="text-red-500"/>} label="Histórico" active={view === 'history'} onClick={() => setView('history')} />
@@ -1592,7 +1684,7 @@ export default function App() {
               {view === 'subscription' && 'Minha Assinatura'}
             </h2>
             <div className="flex items-center gap-2">
-                 {userProfile && !isAccessBlocked && (
+                {userProfile && !isAccessBlocked && (
                      <div className="hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
                          <Crown size={12} />
                          <span className="text-[9px] font-bold uppercase">
@@ -1603,7 +1695,7 @@ export default function App() {
                                     : `Teste: Restam ${Math.max(0, Math.ceil((new Date(userProfile.trial_ends_at).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)))} dias`}
                          </span>
                      </div>
-                 )}
+                )}
                 <button onClick={notificationsEnabled ? () => {} : requestPermission} className={`p-1.5 rounded-md transition-colors ${notificationsEnabled ? 'text-emerald-500 bg-emerald-500/10' : 'text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
                   {notificationsEnabled ? <Bell size={16}/> : <BellOff size={16}/>}
                 </button>
@@ -1660,6 +1752,11 @@ export default function App() {
                <div className="flex items-center justify-center min-h-[500px]">
                   <SubscriptionContent theme={theme} />
                </div>
+            )}
+
+            {/* NOVA TELA DE RELATÓRIOS INTEGRADA AQUI */}
+            {view === 'reports' && (
+                <ReportsView clients={clients} packages={packages} servers={servers} templates={templates} theme={theme} />
             )}
 
             {view === 'dashboard' && (
@@ -1728,16 +1825,6 @@ export default function App() {
                 </div>
               </div>
             )}
-
-            {view === 'reports' && (
-       <ReportsView 
-          clients={clients} 
-          packages={packages} 
-          servers={servers} 
-          templates={templates} 
-          theme={theme} 
-       />
-    )}
 
             {view === 'clients' && (
               <div className="space-y-3">
@@ -2223,18 +2310,20 @@ export default function App() {
 
         <nav className={`md:hidden fixed bottom-0 left-0 right-0 border-t grid grid-cols-5 items-center justify-items-center py-2 z-[100] pb-safe shadow-xl transition-colors ${theme === 'dark' ? 'bg-slate-900/98 border-slate-800 backdrop-blur-xl' : 'bg-white/98 border-slate-100 backdrop-blur-xl'}`}>
           <BottomNavItem icon={<LayoutDashboard size={22}/>} label="Painel" active={view === 'dashboard'} onClick={() => setView('dashboard')} />
-          <BottomNavItem icon={<Users size={22}/>} label="Clientes" active={view === 'clients'} onClick={() => setView('clients')} />
+          {/* BOTÃO MOBILE RELATÓRIOS */}
+          <BottomNavItem icon={<PieChart size={22}/>} label="Relat." active={view === 'reports'} onClick={() => setView('reports')} />
+          
           <div className="relative flex items-center justify-center w-full h-full">
             <button onClick={() => setView('add')} className="w-12 h-12 bg-blue-600 text-white rounded-full flex items-center justify-center shadow-lg -mt-8 border-4 border-slate-50 dark:border-slate-950 transition-all active:scale-95 z-[120]">
               <Plus size={24} />
             </button>
           </div>
-          <BottomNavItem icon={<History size={22}/>} label="Histórico" active={view === 'history'} onClick={() => setView('history')} />
+          <BottomNavItem icon={<Users size={22}/>} label="Clientes" active={view === 'clients'} onClick={() => setView('clients')} />
           <div className="relative flex flex-col items-center justify-center">
-              <BottomNavItem icon={<MoreHorizontal size={22}/>} label="Mais" active={['scheduling', 'packages', 'messages', 'database', 'servers', 'subscription'].includes(view)} onClick={() => setShowMobileMenu(!showMobileMenu)} />
+              <BottomNavItem icon={<MoreHorizontal size={22}/>} label="Mais" active={['scheduling', 'packages', 'messages', 'database', 'servers', 'subscription', 'history'].includes(view)} onClick={() => setShowMobileMenu(!showMobileMenu)} />
               {showMobileMenu && (
                 <div className="absolute bottom-14 right-2 bg-slate-900 rounded-lg shadow-2xl p-1.5 w-48 flex flex-col z-[110] border border-slate-800 animate-in slide-in-from-bottom-2">
-                  <MobileSubItem icon={<PieChart size={16} className="text-indigo-500"/>} label="Relatórios" onClick={() => { setView('reports'); setShowMobileMenu(false); }} />
+                  <MobileSubItem icon={<History size={16} className="text-white"/>} label="Histórico" onClick={() => { setView('history'); setShowMobileMenu(false); }} />
                   <MobileSubItem icon={<CreditCard size={16} className="text-yellow-500"/>} label="Minha Assinatura" onClick={() => { setView('subscription'); setShowMobileMenu(false); }} />
                   <MobileSubItem icon={<ServerIcon size={16} className="text-purple-500"/>} label="Servidores" onClick={() => { setView('servers'); setShowMobileMenu(false); }} />
                   <MobileSubItem icon={<Database size={16} className="text-blue-500"/>} label="Banco de Dados" onClick={() => { setView('database'); setShowMobileMenu(false); }} />
