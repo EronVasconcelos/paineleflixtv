@@ -1564,13 +1564,13 @@ export default function App() {
         </div>
         
         <nav className="flex-1 px-3 space-y-0.5 overflow-y-auto py-2 hide-scrollbar">
-          <SidebarItem icon={<LayoutDashboard size={18} className="text-blue-500"/>} label="Visão Geral" active={view === 'dashboard'} onClick={() => setView('dashboard')} />
-          
+                    
           {/* ITEM EXCLUSIVO DO DONO */}
-          {isAdmin && (
-             <SidebarItem icon={<Crown size={18} className="text-yellow-500"/>} label="Painel SaaS" active={view === 'saas_admin'} onClick={() => setView('saas_admin')} />
+          <SidebarItem icon={<Crown size={18} className="text-yellow-500"/>} label="Painel SaaS" active={view === 'saas_admin'} onClick={() => setView('saas_admin')} />
           )}
 
+          <SidebarItem icon={<LayoutDashboard size={18} className="text-blue-500"/>} label="Visão Geral" active={view === 'dashboard'} onClick={() => setView('dashboard')} />
+          
           <SidebarItem icon={<PieChart size={18} className="text-pink-500"/>} label="Relatórios" active={view === 'reports'} onClick={() => setView('reports')} />
           
           <SidebarItem icon={<Users size={18} className="text-orange-500"/>} label="Meus Clientes" active={view === 'clients'} onClick={() => setView('clients')} />
