@@ -291,7 +291,7 @@ const SaaSAdminView = ({ users, theme, onSimulate }: { users: UserProfile[], the
           <p className="text-sm text-slate-500 font-medium">Visão geral do negócio de software</p>
         </div>
         <div className="px-3 py-1 bg-yellow-500/10 text-yellow-600 rounded-full text-xs font-bold uppercase border border-yellow-500/20 flex items-center gap-2">
-          <Crown size={14} /> Modo Super Admin
+          <Crown size={14} /> Modo Admin
         </div>
       </div>
 
@@ -1568,7 +1568,7 @@ export default function App() {
           
           {/* ITEM EXCLUSIVO DO DONO */}
           {isAdmin && (
-             <SidebarItem icon={<Crown size={18} className="text-yellow-500"/>} label="Painel Dono (SaaS)" active={view === 'saas_admin'} onClick={() => setView('saas_admin')} />
+             <SidebarItem icon={<Crown size={18} className="text-yellow-500"/>} label="Painel SaaS" active={view === 'saas_admin'} onClick={() => setView('saas_admin')} />
           )}
 
           <SidebarItem icon={<PieChart size={18} className="text-pink-500"/>} label="Relatórios" active={view === 'reports'} onClick={() => setView('reports')} />
@@ -1605,7 +1605,7 @@ export default function App() {
           <div className="flex items-center gap-3">
              <h2 className={`text-sm font-bold uppercase tracking-tight ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
               {view === 'dashboard' && 'Dashboard'}
-              {view === 'saas_admin' && 'Painel Administrativo (Dono)'}
+              {view === 'saas_admin' && 'Painel SaaS'}
               {view === 'reports' && 'Relatórios e Métricas'}
               {view === 'history' && 'Histórico Anual'}
               {view === 'clients' && 'Gestão de Clientes'}
@@ -2165,7 +2165,7 @@ export default function App() {
               <BottomNavItem icon={<MoreHorizontal size={22}/>} label="Mais" active={['scheduling', 'packages', 'messages', 'database', 'servers', 'subscription', 'history', 'saas_admin'].includes(view)} onClick={() => setShowMobileMenu(!showMobileMenu)} />
               {showMobileMenu && (
                 <div className="absolute bottom-14 right-2 bg-slate-900 rounded-lg shadow-2xl p-1.5 w-48 flex flex-col z-[110] border border-slate-800 animate-in slide-in-from-bottom-2">
-                  {isAdmin && <MobileSubItem icon={<Crown size={16} className="text-yellow-500"/>} label="Painel Dono" onClick={() => { setView('saas_admin'); setShowMobileMenu(false); }} />}
+                  {isAdmin && <MobileSubItem icon={<Crown size={16} className="text-yellow-500"/>} label="Painel SaaS" onClick={() => { setView('saas_admin'); setShowMobileMenu(false); }} />}
                   <MobileSubItem icon={<History size={16} className="text-white"/>} label="Histórico" onClick={() => { setView('history'); setShowMobileMenu(false); }} />
                   <MobileSubItem icon={<CreditCard size={16} className="text-yellow-500"/>} label="Minha Assinatura" onClick={() => { setView('subscription'); setShowMobileMenu(false); }} />
                   <MobileSubItem icon={<ServerIcon size={16} className="text-purple-500"/>} label="Servidores" onClick={() => { setView('servers'); setShowMobileMenu(false); }} />
