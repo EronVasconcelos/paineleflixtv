@@ -1566,9 +1566,10 @@ export default function App() {
         </div>
         
         <nav className="flex-1 px-3 space-y-0.5 overflow-y-auto py-2 hide-scrollbar">
-                    
-          {/* ITEM EXCLUSIVO DO DONO */}
-          <SidebarItem icon={<Crown size={18} className="text-yellow-500"/>} label="Painel SaaS" active={view === 'saas_admin'} onClick={() => setView('saas_admin')} />
+          
+          {/* --- AJUSTE FEITO AQUI: Painel Dono agora é o primeiro --- */}
+          {isAdmin && (
+             <SidebarItem icon={<Crown size={18} className="text-yellow-500"/>} label="Painel SaaS" active={view === 'saas_admin'} onClick={() => setView('saas_admin')} />
           )}
 
           <SidebarItem icon={<LayoutDashboard size={18} className="text-blue-500"/>} label="Visão Geral" active={view === 'dashboard'} onClick={() => setView('dashboard')} />
