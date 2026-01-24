@@ -1,14 +1,15 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
-  Users, LayoutDashboard, PlusCircle, Search,, ChevronRight, CheckCircle, XCircle, Clock, 
-  MessageSquare, DollarSign, TrendingUp, CreditCard, Layers, Trash2, Archive, RotateCcw, 
-  ClipboardCopy, Share2, Send, X, Activity, RefreshCw, BellRing, MoreHorizontal, Info, 
-  Tag, ArrowUpRight, History, Smartphone, ChevronLeft, UserX, AlertCircle, Clock3, Eye, 
-  CalendarDays, Calendar, Sun, Moon, Plus, Pencil, Save, Check, ChevronDown, UserPlus, 
-  Download, Upload, Database, ShieldAlert, Bell, BellOff, FileText, Wallet, Edit3, 
-  Loader2, LogOut, Lock, Mail, User, Server as ServerIcon, Link as LinkIcon, Coins, Tv, 
-  PlayCircle, Crown, Star, Zap, ShieldCheck, CheckSquare, Circle, Minus, Rocket, 
-  PartyPopper, QrCode, Copy, TestTube, Wrench, PieChart, TrendingDown, BarChart3
+  Tv, Check, Plus, Search, Calendar, 
+  LayoutDashboard, PieChart, Users, UserPlus, History, 
+  Server as ServerIcon, CalendarDays, CreditCard, 
+  Layers, MessageSquare, Database, Moon, Sun, LogOut,
+  Bell, BellOff, Share2, TrendingUp, X, Loader2, 
+  CheckCircle, AlertCircle, Clock, UserX, DollarSign, 
+  Activity, Eye, Pencil, Archive, ClipboardCopy, Trash2,
+  ChevronLeft, ChevronRight, XCircle, Minus, MoreHorizontal,
+  BellRing, Edit3, Link as LinkIcon, TestTube, Smartphone,
+  RefreshCw, Send, Star, ArrowUpRight, Mail, Lock
 } from 'lucide-react';
 import { Session } from '@supabase/supabase-js';
 import { Client, Package, MessageTemplate, MessageRule, ClientStatus, PaymentStatus, Server, CreditTransaction, UserProfile } from './types';
