@@ -143,11 +143,13 @@ const ActionButton = ({ onClick, theme, color, icon }: { onClick: () => void, th
       case 'emerald': return theme === 'dark' ? 'text-emerald-400 bg-emerald-900/20 hover:bg-emerald-900/40 border-emerald-900/30' : 'text-emerald-600 bg-emerald-50 hover:bg-emerald-100 border-emerald-100';
       case 'amber': return theme === 'dark' ? 'text-amber-400 bg-amber-900/20 hover:bg-amber-900/40 border-amber-900/30' : 'text-amber-600 bg-amber-50 hover:bg-amber-100 border-amber-100';
       case 'red': return theme === 'dark' ? 'text-red-400 bg-red-900/20 hover:bg-red-900/40 border-red-900/30' : 'text-red-600 bg-red-50 hover:bg-red-100 border-red-100';
-      default: return 'text-slate-500 bg-slate-100';
+      // Ajuste no Slate/Default para seguir o padrão translúcido e com borda
+      default: return theme === 'dark' ? 'text-slate-400 bg-slate-800/40 hover:bg-slate-800/60 border-slate-800' : 'text-slate-500 bg-slate-50 hover:bg-slate-100 border-slate-200';
     }
   };
+
   return (
-    <button onClick={onClick} className={`p-1.5 rounded-md border transition-all active:scale-95 ${getColors()}`}>
+    <button onClick={onClick} className={`p-1.5 rounded-md border transition-all active:scale-95 flex items-center justify-center ${getColors()}`}>
       {React.cloneElement(icon as React.ReactElement<any>, { size: 16 })}
     </button>
   );
