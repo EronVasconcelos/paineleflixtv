@@ -8,10 +8,9 @@ import {
   Download, Upload, Database, ShieldAlert, Bell, BellOff, FileText, Wallet, Edit3, 
   Loader2, LogOut, Lock, Mail, User, Server as ServerIcon, Link as LinkIcon, Coins, Tv, 
   PlayCircle, Crown, Star, Zap, ShieldCheck, CheckSquare, Circle, Minus, Rocket, 
-  PartyPopper, QrCode, Copy, TestTube, Wrench, PieChart, TrendingDown
+  PartyPopper, QrCode, Copy, TestTube, Wrench, PieChart, TrendingDown, BarChart3
 } from 'lucide-react';
 import { Session } from '@supabase/supabase-js';
-// Certifique-se de que estes arquivos existem ou defina as interfaces aqui mesmo
 import { Client, Package, MessageTemplate, MessageRule, ClientStatus, PaymentStatus, Server, CreditTransaction, UserProfile } from './types';
 import { geminiService } from './services/geminiService';
 import { supabase } from './services/supabaseClient';
@@ -26,7 +25,8 @@ const STRIPE_LINKS = {
   annual: "https://buy.stripe.com/test_7sYcN42zCggcgH9eQ24ZG03"
 };
 
-/* COMPONENTES DE UI */
+/* --- COMPONENTES DE UI BÁSICOS --- */
+
 const Toast = ({ message, onClose, type = 'success' }: { message: string, onClose: () => void, type?: 'success' | 'error' }) => {
   useEffect(() => {
     const timer = setTimeout(onClose, 3000);
@@ -91,6 +91,7 @@ const StatCard = ({ title, value, icon, color, theme }: { title: string, value: 
       case 'amber': return theme === 'dark' ? 'bg-amber-900/20 text-amber-400 border-amber-900/30' : 'bg-amber-50 text-amber-600 border-amber-100';
       case 'red': return theme === 'dark' ? 'bg-red-900/20 text-red-400 border-red-900/30' : 'bg-red-50 text-red-600 border-red-100';
       case 'blue': return theme === 'dark' ? 'bg-blue-900/20 text-blue-400 border-blue-900/30' : 'bg-blue-50 text-blue-600 border-blue-100';
+      case 'purple': return theme === 'dark' ? 'bg-purple-900/20 text-purple-400 border-purple-900/30' : 'bg-purple-50 text-purple-600 border-purple-100';
       default: return theme === 'dark' ? 'bg-slate-800 text-slate-400 border-slate-700' : 'bg-slate-50 text-slate-600 border-slate-100';
     }
   };
@@ -168,7 +169,7 @@ const ModalOverlay = ({ onClose, children, theme }: { onClose: () => void, child
   </div>
 );
 
-/* NOVOS COMPONENTES PARA RELATÓRIOS (ADICIONADOS) */
+/* --- COMPONENTES DE RELATÓRIO (GRÁFICOS) --- */
 
 const RevenueChart = ({ data, theme }: { data: any[], theme: 'light' | 'dark' }) => {
   if (!data || data.length === 0) return null;
@@ -263,6 +264,108 @@ const ReportsView = ({ clients, packages, servers, templates, theme }: any) => {
         <div className={`p-5 rounded-xl border ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
            <h4 className="text-xs font-bold uppercase mb-4 flex items-center gap-2"><ServerIcon size={16} /> Servidores</h4>
            <div className="space-y-2 text-xs max-h-40 overflow-y-auto">{serverStats.map((s: any, i: number) => <div key={i} className="flex justify-between"><span>{s.name}</span><span className="font-bold text-purple-500">{s.count} users</span></div>)}</div>
+        </div>
+      </div>
+    </div>
+  );
+};
+
+/* --- SAAS ADMIN VIEW (PAINEL DO DONO + DEVELOPER TOOLS) --- */
+
+const SaaSAdminView = ({ users, theme, onSimulate }: { users: UserProfile[], theme: 'light' | 'dark', onSimulate: (mode: string) => void }) => {
+  const stats = useMemo(() => {
+    const totalUsers = users.length;
+    const activeUsers = users.filter(u => u.subscription_status === 'active' || u.subscription_status === 'trialing').length;
+    const premiumUsers = users.filter(u => u.plan_type === 'premium').length;
+    const mrr = premiumUsers * 29.90;
+    
+    return { totalUsers, activeUsers, premiumUsers, mrr };
+  }, [users]);
+
+  return (
+    <div className="space-y-6 animate-in fade-in duration-500">
+      {/* Cabeçalho do Admin */}
+      <div className="flex items-center justify-between">
+        <div>
+          <h2 className={`text-2xl font-black uppercase tracking-tight ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>Painel SaaS</h2>
+          <p className="text-sm text-slate-500 font-medium">Visão geral do negócio de software</p>
+        </div>
+        <div className="px-3 py-1 bg-yellow-500/10 text-yellow-600 rounded-full text-xs font-bold uppercase border border-yellow-500/20 flex items-center gap-2">
+          <Crown size={14} /> Modo Super Admin
+        </div>
+      </div>
+
+      {/* ÁREA DE TESTES (DEVELOPER TOOLS) - AGORA AQUI DENTRO */}
+      <div className={`p-5 rounded-xl border border-dashed relative overflow-hidden group ${theme === 'dark' ? 'bg-slate-900/50 border-slate-700' : 'bg-slate-50 border-slate-300'}`}>
+         <div className="absolute top-0 right-0 p-2 opacity-10 rotate-12 group-hover:opacity-20 transition-opacity"><TestTube size={60} /></div>
+         <div className="flex items-center gap-2 mb-4">
+             <div className="p-1.5 bg-slate-200 dark:bg-slate-800 rounded-md text-slate-600 dark:text-slate-400"><TestTube size={16}/></div>
+             <h3 className="text-xs font-bold uppercase tracking-widest text-slate-500">Developer Tools (Simulações)</h3>
+         </div>
+         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 relative z-10">
+             <button onClick={() => onSimulate('trial_expired')} className="py-3 px-3 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-lg text-[10px] font-bold uppercase shadow-sm hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors text-red-500 flex items-center justify-center gap-2"><Clock size={14}/> Simular Fim Teste</button>
+             <button onClick={() => onSimulate('sub_expired')} className="py-3 px-3 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-lg text-[10px] font-bold uppercase shadow-sm hover:bg-orange-50 dark:hover:bg-orange-900/10 transition-colors text-orange-500 flex items-center justify-center gap-2"><AlertCircle size={14}/> Simular Vencimento</button>
+             <button onClick={() => onSimulate('payment_success')} className="py-3 px-3 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-lg text-[10px] font-bold uppercase shadow-sm hover:bg-emerald-50 dark:hover:bg-emerald-900/10 transition-colors text-emerald-500 flex items-center justify-center gap-2"><CheckCircle size={14}/> Simular Pagamento</button>
+             <button onClick={() => onSimulate('none')} className="py-3 px-3 bg-slate-200 dark:bg-slate-700 rounded-lg text-[10px] font-bold uppercase hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors text-slate-600 dark:text-slate-300 flex items-center justify-center gap-2"><RotateCcw size={14}/> Resetar Estado</button>
+         </div>
+      </div>
+
+      {/* Cards de Métricas SaaS */}
+      <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+        <StatCard title="MRR (Receita Mensal)" value={`R$ ${stats.mrr.toFixed(2)}`} icon={<DollarSign/>} color="emerald" theme={theme}/>
+        <StatCard title="Usuários Totais" value={stats.totalUsers} icon={<Users/>} color="blue" theme={theme}/>
+        <StatCard title="Assinantes Premium" value={stats.premiumUsers} icon={<Star/>} color="purple" theme={theme}/>
+        <StatCard title="Ativos (Trial + Pagos)" value={stats.activeUsers} icon={<Activity/>} color="amber" theme={theme}/>
+      </div>
+
+      {/* Tabela de Usuários */}
+      <div className={`rounded-xl border shadow-sm overflow-hidden ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
+        <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 flex justify-between items-center">
+           <h3 className="text-xs font-bold uppercase flex items-center gap-2 tracking-wide"><Database size={16} className="text-blue-500"/> Base de Usuários</h3>
+        </div>
+        <div className="overflow-x-auto">
+          <table className="w-full text-left border-collapse">
+            <thead className={`text-[10px] uppercase font-bold text-slate-400 tracking-widest ${theme === 'dark' ? 'bg-slate-800/50' : 'bg-slate-50'}`}>
+              <tr>
+                <th className="px-6 py-3">Usuário / Email</th>
+                <th className="px-6 py-3">Plano</th>
+                <th className="px-6 py-3">Status</th>
+                <th className="px-6 py-3">Entrou em</th>
+                <th className="px-6 py-3 text-right">Ações</th>
+              </tr>
+            </thead>
+            <tbody className={`text-xs font-medium divide-y ${theme === 'dark' ? 'divide-slate-800' : 'divide-slate-100'}`}>
+              {users.map((user) => (
+                <tr key={user.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                  <td className="px-6 py-3">
+                    <div className="font-bold text-slate-700 dark:text-slate-200">{user.full_name || 'Usuário Sem Nome'}</div>
+                    <div className="text-[10px] text-slate-400">{user.email}</div>
+                  </td>
+                  <td className="px-6 py-3">
+                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                      user.plan_type === 'premium' ? 'bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400' : 
+                      'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
+                    }`}>
+                      {user.plan_type || 'Free'}
+                    </span>
+                  </td>
+                  <td className="px-6 py-3">
+                     <div className="flex items-center gap-1.5">
+                       <div className={`w-1.5 h-1.5 rounded-full ${user.subscription_status === 'active' ? 'bg-emerald-500' : 'bg-red-500'}`}></div>
+                       <span className="uppercase text-[10px] font-bold">{user.subscription_status || 'Inativo'}</span>
+                     </div>
+                  </td>
+                  <td className="px-6 py-3 text-slate-500">
+                    {new Date(user.created_at).toLocaleDateString('pt-BR')}
+                  </td>
+                  <td className="px-6 py-3 text-right">
+                    <button className="text-slate-400 hover:text-blue-500 transition-colors mr-2"><Eye size={16}/></button>
+                    <button className="text-slate-400 hover:text-red-500 transition-colors"><UserX size={16}/></button>
+                  </td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
         </div>
       </div>
     </div>
@@ -597,6 +700,7 @@ const SubscriptionContent = ({ theme, onLogout, isBlocking, blockReason }: { the
     { id: 'annual', name: 'Anual', price: '199,90', period: '/ano', link: STRIPE_LINKS.annual, badge: 'Melhor Valor', months: 12 },
   ];
   const selectedPlan = plans.find(p => p.id === selectedPlanId) || plans[0];
+  
   const handlePaymentClick = () => {
       localStorage.setItem('pending_plan_months', selectedPlan.months.toString());
   };
@@ -616,13 +720,13 @@ const SubscriptionContent = ({ theme, onLogout, isBlocking, blockReason }: { the
                     {blockReason === 'trial_expired' ? "Seu período de avaliação gratuita terminou. Para continuar cadastrando e gerenciando seus clientes sem perder dados, escolha seu plano." : "Identificamos uma pendência na sua assinatura. Para restabelecer seu acesso ao painel imediatamente, realize a renovação abaixo."}
                 </p>
                 <div className="flex items-center gap-4">
-                     <div className="w-14 h-14 bg-white/20 rounded-xl flex items-center justify-center shadow-lg border border-white/20 backdrop-blur-md">
-                        <Tv size={32} className="text-white"/>
-                     </div>
-                     <div>
-                        <span className="text-xs font-bold text-white/70 uppercase tracking-wider block mb-0.5">Assinatura</span>
-                        <span className="text-2xl font-black text-white uppercase tracking-tight">Plano Premium</span>
-                     </div>
+                      <div className="w-14 h-14 bg-white/20 rounded-xl flex items-center justify-center shadow-lg border border-white/20 backdrop-blur-md">
+                         <Tv size={32} className="text-white"/>
+                      </div>
+                      <div>
+                         <span className="text-xs font-bold text-white/70 uppercase tracking-wider block mb-0.5">Assinatura</span>
+                         <span className="text-2xl font-black text-white uppercase tracking-tight">Plano Premium</span>
+                      </div>
                 </div>
              </div>
           ) : (
@@ -719,14 +823,17 @@ export default function App() {
 
   const [session, setSession] = useState<Session | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  const [view, setView] = useState<'dashboard' | 'clients' | 'reports' | 'history' | 'add' | 'packages' | 'messages' | 'scheduling' | 'database' | 'servers' | 'subscription'>('dashboard');
+  // Estados para o Painel SaaS
+  const [allUsers, setAllUsers] = useState<UserProfile[]>([]); 
+  
+  const [view, setView] = useState<'dashboard' | 'clients' | 'reports' | 'history' | 'add' | 'packages' | 'messages' | 'scheduling' | 'database' | 'servers' | 'subscription' | 'saas_admin'>('dashboard');
   const [selectedClientForMsg, setSelectedClientForMsg] = useState<Client | null>(null);
   const [selectedClientForRenewal, setSelectedClientForRenewal] = useState<Client | null>(null);
   const [selectedClientDetails, setSelectedClientDetails] = useState<Client | null>(null);
   const [selectedClientForEdit, setSelectedClientForEdit] = useState<Client | null>(null);
   const [showWelcomeModal, setShowWelcomeModal] = useState(false);
   const [showSuccessModal, setShowSuccessModal] = useState(false);
-  const [simulationMode, setSimulationMode] = useState<'none' | 'trial_expired' | 'sub_expired'>('none'); 
+  const [simulationMode, setSimulationMode] = useState<'none' | 'trial_expired' | 'sub_expired' | 'payment_success'>('none'); 
   
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
@@ -768,11 +875,13 @@ export default function App() {
   const [rules, setRules] = useState<MessageRule[]>([]);
   const [servers, setServers] = useState<Server[]>([]);
 
-  // Lógica para verificar retorno do Stripe
+  // Lógica para verificar retorno do Stripe e Simulações
   useEffect(() => {
     const handlePaymentReturn = async () => {
         const urlParams = new URLSearchParams(window.location.search);
-        if (urlParams.get('payment_success') === 'true' && session) {
+        const isSimulated = simulationMode === 'payment_success';
+        
+        if ((urlParams.get('payment_success') === 'true' || isSimulated) && session) {
             window.history.replaceState({}, document.title, window.location.pathname);
             setShowSuccessModal(true);
             
@@ -787,16 +896,17 @@ export default function App() {
                 }).eq('id', session.user.id);
                 
                 if (error) throw error;
-                setUserProfile(prev => prev ? ({ ...prev, subscription_ends_at: newExpiry.toISOString() }) : null);
+                setUserProfile(prev => prev ? ({ ...prev, subscription_ends_at: newExpiry.toISOString(), plan_type: 'premium' }) : null);
                 showToast(`Assinatura renovada por ${pendingMonths} mês(es) com sucesso!`);
                 localStorage.removeItem('pending_plan_months');
+                if (isSimulated) setSimulationMode('none');
             } catch (err) {
                 console.error("Erro ao ativar assinatura:", err);
             }
         }
     };
     if (session) handlePaymentReturn();
-  }, [session]);
+  }, [session, simulationMode]);
 
   // Gestão da Sessão e Carregamento de Dados
   useEffect(() => {
@@ -822,17 +932,25 @@ export default function App() {
     try {
       const { data: sessionData } = await supabase.auth.getSession();
       const userId = sessionData.session?.user.id;
+      const userEmail = sessionData.session?.user.email;
       if (!userId) return;
 
       const { data: profileData } = await supabase.from('profiles').select('*').eq('id', userId).single();
       if (profileData) setUserProfile(profileData);
       else {
           const tempProfile: UserProfile = {
-              id: userId, email: sessionData.session?.user.email || '',
-              trial_ends_at: new Date(Date.now() + 86400000).toISOString(),
-              subscription_ends_at: null, plan_type: null
+              id: userId, email: userEmail || '',
+              trial_ends_at: new Date(Date.now() + 86400000).toISOString(), // 24h trial
+              subscription_ends_at: null, plan_type: null, 
+              created_at: new Date().toISOString(), subscription_status: 'trialing', full_name: userEmail?.split('@')[0] || 'User'
           };
           setUserProfile(tempProfile);
+      }
+
+      // Se for o Admin (Dono), busca todos os usuários
+      if (userEmail === 'eronvasconcelos.br@gmail.com') {
+          const { data: allProfiles } = await supabase.from('profiles').select('*');
+          if (allProfiles) setAllUsers(allProfiles);
       }
 
       const { data: clientsData } = await supabase.from('clients').select('*').eq('user_id', userId);
@@ -1267,6 +1385,12 @@ export default function App() {
     try { await supabase.from('servers').update(updatedServer).eq('id', updatedServer.id); } catch(e) { console.error(e); }
   };
 
+  // Função para controlar a simulação (vinda da tela de admin)
+  const handleSimulation = (mode: string) => {
+      setSimulationMode(mode as any);
+      showToast(`Modo simulação: ${mode}`);
+  };
+
   const requestPermission = async () => {
       const permission = await Notification.requestPermission();
       setNotificationsEnabled(permission === 'granted');
@@ -1391,14 +1515,17 @@ export default function App() {
   const isPublicSignup = urlParams.get('mode') === 'signup';
   
   const getBlockReason = () => {
-      if (simulationMode !== 'none') return simulationMode;
+      if (simulationMode === 'trial_expired' || simulationMode === 'sub_expired') return simulationMode;
       if (!userProfile) return null;
-      if (isAdmin) return null;
+      if (isAdmin) return null; // Dono nunca é bloqueado
+      
       const now = new Date();
       const trialEnd = new Date(userProfile.trial_ends_at);
       const subEnd = userProfile.subscription_ends_at ? new Date(userProfile.subscription_ends_at) : null;
-      if (subEnd && subEnd > now) return null;
-      if (trialEnd > now) return null;
+      
+      if (subEnd && subEnd > now) return null; // Assinatura válida
+      if (trialEnd > now) return null; // Trial válido
+      
       if (subEnd && subEnd <= now) return 'sub_expired';
       return 'trial_expired';
   };
@@ -1418,7 +1545,7 @@ export default function App() {
       );
   }
 
-  /* --- PARTE 4 CORRIGIDA: APENAS O RENDER VISUAL (Cole isso após o bloqueio if(isAccessBlocked)) --- */
+  /* --- PARTE 4 CORRIGIDA: RENDER VISUAL E ROTEAMENTO --- */
 
   return (
     <div className={`flex flex-col md:flex-row h-screen overflow-hidden font-normal transition-colors duration-300 ${theme === 'dark' ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-800'}`}>
@@ -1438,7 +1565,12 @@ export default function App() {
         
         <nav className="flex-1 px-3 space-y-0.5 overflow-y-auto py-2 hide-scrollbar">
           <SidebarItem icon={<LayoutDashboard size={18} className="text-blue-500"/>} label="Visão Geral" active={view === 'dashboard'} onClick={() => setView('dashboard')} />
-          {/* Item de Relatórios (definido na Parte 1) */}
+          
+          {/* ITEM EXCLUSIVO DO DONO */}
+          {isAdmin && (
+             <SidebarItem icon={<Crown size={18} className="text-yellow-500"/>} label="Painel Dono (SaaS)" active={view === 'saas_admin'} onClick={() => setView('saas_admin')} />
+          )}
+
           <SidebarItem icon={<PieChart size={18} className="text-pink-500"/>} label="Relatórios" active={view === 'reports'} onClick={() => setView('reports')} />
           
           <SidebarItem icon={<Users size={18} className="text-orange-500"/>} label="Meus Clientes" active={view === 'clients'} onClick={() => setView('clients')} />
@@ -1473,6 +1605,7 @@ export default function App() {
           <div className="flex items-center gap-3">
              <h2 className={`text-sm font-bold uppercase tracking-tight ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
               {view === 'dashboard' && 'Dashboard'}
+              {view === 'saas_admin' && 'Painel Administrativo (Dono)'}
               {view === 'reports' && 'Relatórios e Métricas'}
               {view === 'history' && 'Histórico Anual'}
               {view === 'clients' && 'Gestão de Clientes'}
@@ -1490,7 +1623,7 @@ export default function App() {
                          <Crown size={12} />
                          <span className="text-[9px] font-bold uppercase">
                              {isAdmin 
-                                ? 'Vitalício' 
+                                ? 'Dono / Admin' 
                                 : userProfile.subscription_ends_at 
                                     ? 'Premium' 
                                     : `Teste: ${Math.max(0, Math.ceil((new Date(userProfile.trial_ends_at).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)))} dias`}
@@ -1550,6 +1683,13 @@ export default function App() {
               </div>
             )}
 
+            {/* RENDERIZAÇÃO CONDICIONAL DAS VIEWS */}
+            
+            {/* VIEW DO DONO (ADMIN) */}
+            {view === 'saas_admin' && isAdmin && (
+                <SaaSAdminView users={allUsers} theme={theme} onSimulate={handleSimulation} />
+            )}
+
             {view === 'subscription' && (
                <div className="flex items-center justify-center min-h-[500px]">
                   <SubscriptionContent theme={theme} />
@@ -1561,23 +1701,7 @@ export default function App() {
             )}
 
             {view === 'dashboard' && (
-              <div className="space-y-5">
-                {isAdmin && (
-                    <div className={`p-5 rounded-xl border border-dashed ${theme === 'dark' ? 'bg-slate-900/50 border-slate-700' : 'bg-slate-100 border-slate-300'}`}>
-                        <div className="flex items-center gap-2 mb-4">
-                            <div className="p-1.5 bg-slate-200 dark:bg-slate-800 rounded-md text-slate-600 dark:text-slate-400">
-                                <TestTube size={16}/>
-                            </div>
-                            <h3 className="text-xs font-bold uppercase tracking-widest text-slate-500">Área de Testes (Admin)</h3>
-                        </div>
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-3">
-                            <button onClick={() => setSimulationMode('trial_expired')} className="py-3 px-3 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-lg text-[10px] font-bold uppercase shadow-sm">Simular Fim Teste</button>
-                            <button onClick={() => setSimulationMode('sub_expired')} className="py-3 px-3 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-lg text-[10px] font-bold uppercase shadow-sm">Simular Vencimento</button>
-                            <button onClick={() => setShowSuccessModal(true)} className="py-3 px-3 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-lg text-[10px] font-bold uppercase shadow-sm">Simular Pagamento</button>
-                            <button onClick={() => { setSimulationMode('none'); setShowSuccessModal(false); showToast("Ambiente resetado"); }} className="py-3 px-3 bg-slate-200 dark:bg-slate-700 rounded-lg text-[10px] font-bold uppercase">Resetar</button>
-                        </div>
-                    </div>
-                )}
+              <div className="space-y-5 animate-in fade-in">
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                   <StatCard title="Ativos" value={stats.activeCount} icon={<CheckCircle/>} color="emerald" theme={theme} />
                   <StatCard title="A Vencer" value={stats.pendingPaymentCount} icon={<AlertCircle/>} color="amber" theme={theme} />
@@ -2038,9 +2162,10 @@ export default function App() {
           </div>
           <BottomNavItem icon={<Users size={22}/>} label="Clientes" active={view === 'clients'} onClick={() => setView('clients')} />
           <div className="relative flex flex-col items-center justify-center">
-              <BottomNavItem icon={<MoreHorizontal size={22}/>} label="Mais" active={['scheduling', 'packages', 'messages', 'database', 'servers', 'subscription', 'history'].includes(view)} onClick={() => setShowMobileMenu(!showMobileMenu)} />
+              <BottomNavItem icon={<MoreHorizontal size={22}/>} label="Mais" active={['scheduling', 'packages', 'messages', 'database', 'servers', 'subscription', 'history', 'saas_admin'].includes(view)} onClick={() => setShowMobileMenu(!showMobileMenu)} />
               {showMobileMenu && (
                 <div className="absolute bottom-14 right-2 bg-slate-900 rounded-lg shadow-2xl p-1.5 w-48 flex flex-col z-[110] border border-slate-800 animate-in slide-in-from-bottom-2">
+                  {isAdmin && <MobileSubItem icon={<Crown size={16} className="text-yellow-500"/>} label="Painel Dono" onClick={() => { setView('saas_admin'); setShowMobileMenu(false); }} />}
                   <MobileSubItem icon={<History size={16} className="text-white"/>} label="Histórico" onClick={() => { setView('history'); setShowMobileMenu(false); }} />
                   <MobileSubItem icon={<CreditCard size={16} className="text-yellow-500"/>} label="Minha Assinatura" onClick={() => { setView('subscription'); setShowMobileMenu(false); }} />
                   <MobileSubItem icon={<ServerIcon size={16} className="text-purple-500"/>} label="Servidores" onClick={() => { setView('servers'); setShowMobileMenu(false); }} />
