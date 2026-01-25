@@ -414,14 +414,12 @@ const SaaSAdminView = ({
             <tbody className={`text-xs font-medium divide-y ${theme === 'dark' ? 'divide-slate-800' : 'divide-slate-100'}`}>
               {users.map((user) => {
                 // Lógica de Expiração Corrigida
-                const expiryDate = user.subscription_ends_at || user.trial_ends_at || user.expires_at;
-                const isExpired = expiryDate ? new Date(expiryDate) < new Date() : true;
-                
-                // Texto de Status: "ATIVO" se não expirou, "INATIVO" se expirou
-                const statusText = isExpired ? 'INATIVO' : 'ATIVO';
+                const expiryDate = user.subscription_ends_at || user.trial_ends_at;
+                const isActive = expiryDate ? new Date(expiryDate) > new Date() : false;
+                const statusText = isActive ? 'ATIVO' : 'INATIVO';
 
                 // Nome do Usuário: Fallback para o email se o nome não existir
-                const userName = user.full_name || user.name || user.display_name || user.email.split('@')[0];
+                const userName = user.full_name || user.email?.split('@')[0] || "Usuário";
 
                 return (
                   <tr key={user.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
@@ -1083,22 +1081,15 @@ const fetchAllData = async (silent = false) => {
       // --- BLOCO ADMIN ATUALIZADO (PAINEL SAAS) ---
       // Se for o Admin (Dono), busca a lista de TODOS os assinantes do sistema
       if (userEmail === 'eronvasconcelos.br@gmail.com') {
-          const { data: allProfiles, error: adminError } = await supabase
-              .from('profiles')
+          const { data: allSaasUsers, error: adminError } = await supabase
+              .from('saas_customers') // <--- ALTERADO AQUI
               .select('*')
-              .order('created_at', { ascending: false }); // Mostra os novos primeiro
+              .order('created_at', { ascending: false });
 
           if (adminError) {
-              console.error("Erro Admin ao buscar perfis:", adminError);
-          } else if (allProfiles) {
-              // Mapeia os dados para garantir que o status apareça corretamente na tabela
-              const formattedUsers = allProfiles.map(u => ({
-                  ...u,
-                  // Caso o banco não tenha o status salvo, calculamos na hora pela data de vencimento
-                  subscription_status: u.subscription_status || 
-                  (u.subscription_ends_at && new Date(u.subscription_ends_at) > new Date() ? 'active' : 'expired')
-              }));
-              setAllUsers(formattedUsers);
+              console.error("Erro Admin:", adminError);
+          } else if (allSaasUsers) {
+              setAllUsers(allSaasUsers);
           }
       }
       // --------------------------------------------
@@ -1891,7 +1882,13 @@ const handleExportCSV = () => {
             {/* RENDERIZAÇÃO CONDICIONAL DAS VIEWS */}
             
             {view === 'saas_admin' && isAdmin && (
-                <SaaSAdminView users={allUsers} theme={theme} onSimulate={handleSimulation} />
+                <SaaSAdminView 
+                  users={allUsers} 
+                  theme={theme} 
+                  onSimulate={handleSimulation}
+                  onDeleteUser={handleDeleteClient} // <--- ADICIONADO
+                  onViewUser={(user) => setSelectedClientDetails(user)} // <--- ADICIONADO (Botão Ver)
+                /> 
             )}
 
             {view === 'subscription' && (
