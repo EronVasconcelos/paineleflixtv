@@ -1535,17 +1535,23 @@ const handleUpdateSaaSExpiry = async (userId: string, newDate: string) => {
 
         if (error) throw error;
 
-        // Atualiza a lista na tela imediatamente
+        // 1. Atualiza a lista geral do admin (allUsers)
         setAllUsers(prev => prev.map(u => 
             u.id === userId ? { ...u, subscription_ends_at: newDate } : u
         ));
         
-        // Atualiza os dados no modal que está aberto
+        // 2. Atualiza os dados no modal que está aberto na sua frente
         setSelectedClientDetails(prev => 
             prev && prev.id === userId ? { ...prev, subscription_ends_at: newDate } : prev
         );
 
-        showToast("Vencimento atualizado com sucesso!");
+        // 3. SINCRONIZAÇÃO: Se você estiver editando seu próprio perfil ou de um usuário logado
+        // isso fará com que o selo de "Acesso: X dias" mude na hora sem F5
+        if (userProfile && userProfile.id === userId) {
+            setUserProfile(prev => prev ? { ...prev, subscription_ends_at: newDate } : prev);
+        }
+
+        showToast("Vencimento atualizado e sincronizado!");
     } catch (err) {
         console.error("Erro ao atualizar data:", err);
         showToast("Erro ao processar alteração.", "error");
