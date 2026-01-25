@@ -1453,17 +1453,20 @@ export default function App() {
   };
 
   // INSTRUÇÃO DO USUÁRIO: Adicionar data na compra de créditos
-  const handleAddCredits = async (amount: number, totalCost: number) => {
+  const handleAddCredits = async (amount: number, totalCost: number, customDate: string) => {
     if (!session || !selectedServerForCredit) return;
     
-    // Cria transação com a data ATUAL (para entrar no Financeiro do mês corrente)
+    // Usa a data escolhida ou a data atual se estiver vazio
+    const dateRecord = customDate ? new Date(customDate).toISOString() : new Date().toISOString();
+
     const transaction: CreditTransaction = {
         id: Math.random().toString(36).substr(2, 5),
-        date: new Date().toISOString(), 
+        date: dateRecord, 
         amount: amount,
         cost: totalCost
     };
     
+    // Adiciona a nova transação no topo da lista
     const updatedServer = { 
         ...selectedServerForCredit, 
         credits: selectedServerForCredit.credits + amount,
@@ -1472,8 +1475,15 @@ export default function App() {
     
     setServers(prev => prev.map(s => s.id === updatedServer.id ? updatedServer : s));
     setSelectedServerForCredit(null);
-    try { await supabase.from('servers').update(updatedServer).eq('id', updatedServer.id); } catch(e) { console.error(e); }
-    showToast("Créditos adicionados e custo registrado!");
+    
+    try { 
+        await supabase.from('servers').update({ 
+            credits: updatedServer.credits,
+            transactions: updatedServer.transactions 
+        }).eq('id', updatedServer.id); 
+    } catch(e) { console.error(e); }
+    
+    showToast("Créditos e Data registrados com sucesso!");
   };
 
   const handleSimulation = (mode: string) => {
@@ -1912,15 +1922,15 @@ export default function App() {
                    <form className="space-y-3" onSubmit={(e) => {
                      e.preventDefault();
                      const fd = new FormData(e.currentTarget);
-                     // REMOVIDO CAMPO CRÉDITOS INICIAIS
                      handleSaveServer({ name: fd.get('name'), url: fd.get('url') });
                      e.currentTarget.reset();
                    }}>
                      <FormInput theme={theme} name="name" label="Nome do Servidor" placeholder="Ex: Servidor Principal" required />
                      <FormInput theme={theme} name="url" label="Link / DNS" placeholder="http://..." required />
-                     <button type="submit" className="w-full bg-purple-600 text-white rounded-md font-bold uppercase text-[11px] py-3 hover:bg-purple-700">Salvar Servidor</button>
+                     <button type="submit" className="w-full bg-purple-600 text-white rounded-md font-bold uppercase text-[11px] py-3 hover:bg-purple-700 transition-colors">Salvar Servidor</button>
                    </form>
                 </div>
+                
                  {servers.map(s => (
                   <div key={s.id} className={`p-4 rounded-lg border relative shadow-sm ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
                     <div className="flex justify-between items-start mb-2">
@@ -1928,15 +1938,38 @@ export default function App() {
                             <span className="text-[13px] font-bold uppercase text-slate-800 dark:text-white block">{s.name}</span>
                             <div className="flex items-center gap-1.5 text-[10px] text-slate-400 font-medium mt-1"><LinkIcon size={12}/> {s.url}</div>
                         </div>
-                        <button onClick={() => handleDeleteServer(s.id)} className="text-red-300 hover:text-red-500"><Trash2 size={16}/></button>
+                        <button onClick={() => handleDeleteServer(s.id)} className="text-red-300 hover:text-red-500 transition-colors"><Trash2 size={16}/></button>
                     </div>
+                    
                     <div className="bg-slate-50 dark:bg-slate-800/50 p-3 rounded-md border border-slate-100 dark:border-slate-800 mt-3 flex items-center justify-between">
                         <div>
-                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest block mb-0.5">Saldo</span>
+                            <span className="text-[9px] font-bold text-slate-400 uppercase tracking-widest block mb-0.5">Saldo Atual</span>
                             <span className="text-xl font-bold text-purple-600 dark:text-purple-400">{s.credits}</span>
                         </div>
-                        <button onClick={() => setSelectedServerForCredit(s)} className="px-3 py-2 bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 rounded-md text-[10px] font-bold uppercase border border-purple-100 dark:border-purple-800 hover:bg-purple-100 flex items-center gap-2"><Plus size={14}/> Add Créditos</button>
+                        <button onClick={() => setSelectedServerForCredit(s)} className="px-3 py-2 bg-purple-50 dark:bg-purple-900/20 text-purple-600 dark:text-purple-400 rounded-md text-[10px] font-bold uppercase border border-purple-100 dark:border-purple-800 hover:bg-purple-100 dark:hover:bg-purple-900/40 flex items-center gap-2 transition-colors">
+                            <Plus size={14}/> Add / Custo
+                        </button>
                     </div>
+
+                    {/* --- NOVO: HISTÓRICO DE COMPRAS DENTRO DO CARD --- */}
+                    {s.transactions && s.transactions.length > 0 && (
+                        <div className="mt-4 pt-3 border-t border-dashed border-slate-200 dark:border-slate-700">
+                            <p className="text-[9px] font-bold text-slate-400 uppercase tracking-widest mb-2">Histórico de Compras</p>
+                            <div className="space-y-1.5 max-h-32 overflow-y-auto pr-1 custom-scrollbar">
+                                {s.transactions.map((t: any) => (
+                                    <div key={t.id} className="flex justify-between items-center text-[10px]">
+                                        <span className="text-slate-500 dark:text-slate-400">
+                                            {new Date(t.date).toLocaleDateString('pt-BR')}
+                                        </span>
+                                        <div className="flex gap-3">
+                                            <span className="font-bold text-slate-700 dark:text-slate-300">+{t.amount} Créditos</span>
+                                            <span className="font-bold text-red-500">- R$ {Number(t.cost).toFixed(2)}</span>
+                                        </div>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
                   </div>
                 ))}
               </div>
@@ -2289,22 +2322,43 @@ export default function App() {
         <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
           <div className={`w-full max-w-sm rounded-lg shadow-2xl overflow-hidden border animate-in zoom-in-95 duration-200 ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
              <div className="bg-purple-600 px-5 py-4 text-white flex justify-between items-center">
-              <h3 className="text-sm font-bold uppercase tracking-tight">Comprar Créditos</h3>
+              <h3 className="text-sm font-bold uppercase tracking-tight">Registrar Compra</h3>
               <button onClick={() => setSelectedServerForCredit(null)} className="p-1.5 bg-white/10 rounded-md hover:bg-white/20 transition-all"><X size={18}/></button>
             </div>
             <form className="p-5 space-y-3" onSubmit={(e) => {
                 e.preventDefault();
                 const fd = new FormData(e.currentTarget);
-                handleAddCredits(Number(fd.get('amount')), Number(fd.get('totalCost')));
+                // Passa a data para a função
+                handleAddCredits(
+                    Number(fd.get('amount')), 
+                    Number(fd.get('totalCost')),
+                    fd.get('purchaseDate') as string
+                );
             }}>
                 <div className="p-3 bg-purple-50 dark:bg-purple-900/20 border border-purple-100 dark:border-purple-800 rounded-md mb-2">
                     <span className="text-[10px] font-bold text-slate-400 uppercase">Servidor</span>
                     <div className="font-bold text-slate-800 dark:text-white">{selectedServerForCredit.name}</div>
                 </div>
-                <FormInput theme={theme} name="amount" label="Quantidade de Créditos" type="number" required autoFocus />
-                {/* CAMPO NOVO: CUSTO TOTAL */}
-                <FormInput theme={theme} name="totalCost" label="Custo Total da Compra (R$)" type="number" step="0.01" required placeholder="Ex: 50.00" />
-                <button type="submit" className="w-full bg-purple-600 text-white py-3 rounded-md font-bold uppercase text-[12px] shadow-sm mt-2 hover:bg-purple-700">Adicionar e Registrar Custo</button>
+                
+                <div className="grid grid-cols-2 gap-3">
+                    <FormInput theme={theme} name="amount" label="Qtd. Créditos" type="number" required autoFocus />
+                    <FormInput theme={theme} name="totalCost" label="Custo Total (R$)" type="number" step="0.01" required placeholder="0.00" />
+                </div>
+
+                {/* --- NOVO CAMPO DE DATA --- */}
+                <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase ml-1 tracking-wider">Data da Compra</label>
+                    <input 
+                        type="date" 
+                        name="purchaseDate"
+                        defaultValue={new Date().toISOString().split('T')[0]}
+                        className={`w-full px-3 py-2.5 rounded-md border text-[13px] font-medium outline-none ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50 border-slate-200 text-slate-800 shadow-sm'}`}
+                    />
+                </div>
+
+                <button type="submit" className="w-full bg-purple-600 text-white py-3 rounded-md font-bold uppercase text-[12px] shadow-sm mt-2 hover:bg-purple-700 transition-colors">
+                    Salvar Registro
+                </button>
             </form>
           </div>
         </div>
