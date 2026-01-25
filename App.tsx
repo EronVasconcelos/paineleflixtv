@@ -1078,15 +1078,16 @@ const fetchAllData = async (silent = false) => {
 
           if (allProfiles) {
               setAllUsers(allProfiles.map(u => ({
-                  ...u,
-                  // Exibe o nome ou o e-mail se estiver vazio
-                  display_name: u.full_name || u.email.split('@')[0],
-                  // Muda o rótulo visual
-                  plan_label: u.plan_type === 'premium' ? 'PREMIUM' : 'TESTE',
-                  // Status: Ativo se houver data de vencimento futura
-                  subscription_status: (u.subscription_ends_at && new Date(u.subscription_ends_at) > new Date()) 
-                                      ? 'active' : 'expired'
-              })));
+                ...u,
+                // Se o nome for nulo, pega a parte antes do @ do email (Resolve "Usuário Sem Nome")
+                display_name: u.full_name || u.email.split('@')[0], 
+                
+                // Força o rótulo visual (Resolve "Mudar Free para Teste")
+                plan_label: u.plan_type === 'premium' ? 'PREMIUM' : 'TESTE', 
+                
+                // Se não houver data de vencimento, o sistema marca como Inativo por segurança
+                subscription_status: (u.subscription_ends_at && new Date(u.subscription_ends_at) > new Date()) ? 'active' : 'expired'
+            })));
           }
       }
       // --------------------------------------------
