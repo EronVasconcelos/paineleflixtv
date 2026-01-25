@@ -990,7 +990,7 @@ const SaaSDetailsModal = ({
       </div>
     </div>
   );
-}; // ESTA CHAVE FECHA O COMPONENTE CORRETAMENTE
+};
   // Estado para a data no input
   const [newDate, setNewDate] = useState(user.subscription_ends_at || user.trial_ends_at || '');
 
