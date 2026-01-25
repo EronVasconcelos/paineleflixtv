@@ -1146,13 +1146,34 @@ const fetchAllData = async (silent = false) => {
       setIsLoading(false);
     }
   };
+const handleRefreshData = async () => {
+    setIsRefreshing(true);
+    await fetchAllData(true);
+    setIsRefreshing(false);
+    showToast("Dados atualizados com sucesso!");
+};
 
-  const handleRefreshData = async () => {
-      setIsRefreshing(true);
-      await fetchAllData(true);
-      setIsRefreshing(false);
-      showToast("Dados atualizados com sucesso!");
-  };
+// 2. Função de Exportação (Backup CSV)
+const handleExportCSV = () => {
+  if (clients.length === 0) {
+      showToast("Sem dados para exportar.", "error");
+      return;
+  }
+  const headers = "Nome,Usuario,Senha,Telefone,Vencimento,Plano,Status,Preco,Notas\n";
+  const rows = clients.map(c => 
+      `"${c.name}","${c.username}","${c.password || ''}","${c.phone}","${new Date(c.expiresAt).toLocaleDateString()}","${c.packageName}","${c.status}","${c.price}","${c.notes || ''}"`
+  ).join("\n");
+
+  const blob = new Blob([headers + rows], { type: 'text/csv;charset=utf-8;' });
+  const url = URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = url;
+  link.setAttribute('download', `backup_painel_${new Date().toISOString().split('T')[0]}.csv`);
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  showToast("Backup baixado com sucesso!");
+};
 
   useEffect(() => {
     localStorage.setItem('eflixtv_theme', theme);
