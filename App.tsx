@@ -1064,95 +1064,69 @@ useEffect(() => {
 const fetchAllData = async (silent = false) => {
     if (!silent) setIsLoading(true);
     try {
-      const { data: sessionData } = await supabase.auth.getSession();
-      const userId = sessionData.session?.user.id;
-      const userEmail = sessionData.session?.user.email;
-      if (!userId) return;
+        const { data: sessionData } = await supabase.auth.getSession();
+        const userId = sessionData.session?.user.id;
+        const userEmail = sessionData.session?.user.email;
+        if (!userId) return;
 
-      // 1. Busca o perfil do usuário logado
-      const { data: profileData } = await supabase.from('profiles').select('*').eq('id', userId).single();
-      if (profileData) setUserProfile(profileData);
-      else {
-          const tempProfile: UserProfile = {
-              id: userId, email: userEmail || '',
-              trial_ends_at: new Date(Date.now() + 86400000).toISOString(),
-              subscription_ends_at: null, plan_type: null, 
-              created_at: new Date().toISOString(), subscription_status: 'trialing', full_name: userEmail?.split('@')[0] || 'User'
-          };
-          setUserProfile(tempProfile);
-      }
+        // 1. Perfil do Usuário Logado (Auth)
+        const { data: profileData } = await supabase.from('profiles').select('*').eq('id', userId).single();
+        if (profileData) setUserProfile(profileData);
 
-      // --- BLOCO ADMIN ATUALIZADO (PAINEL SAAS) ---
-      // Se for o Admin (Dono), busca a lista de TODOS os assinantes do sistema
-      if (userEmail === 'eronvasconcelos.br@gmail.com') {
-          const { data: allSaasUsers, error: adminError } = await supabase
-              .from('saas_customers') // <--- ALTERADO AQUI
-              .select('*')
-              .order('created_at', { ascending: false });
+        // -----------------------------------------------------------
+        // 2. BLOCO ADMIN: BUSCA CLIENTES DO SEU SAAS (PAINEL STREAM)
+        // -----------------------------------------------------------
+          if (userEmail === 'eronvasconcelos.br@gmail.com') {
+              const { data: allSaasUsers } = await supabase
+                  .from('saas_customers') // <--- Certifique-se que o nome aqui é IGUAL ao do SQL
+                  .select('*')
+                  .order('created_at', { ascending: false });
 
-          if (adminError) {
-              console.error("Erro Admin:", adminError);
-          } else if (allSaasUsers) {
-              setAllUsers(allSaasUsers);
+              if (allSaasUsers) {
+                  setAllUsers(allSaasUsers); // Isso vai fazer a lista aparecer novamente
+              }
           }
-      }
-      // --------------------------------------------
 
-      // 2. Busca e mapeia os Clientes (IPTV) do usuário
-      const { data: clientsData } = await supabase.from('clients').select('*').eq('user_id', userId);
-      if (clientsData) {
-          const mappedClients = clientsData.map((d: any) => ({
-              ...d,
-              paymentStatus: d.payment_status,
-              packageName: d.package_name,
-              packageId: d.package_id,
-              serverId: d.server_id,
-              appName: d.app_name,
-              macKey: d.mac_key,
-              expiresAt: d.expires_at,
-              createdAt: d.created_at,
-              paymentHistory: d.payment_history || [],
-              totalPaid: d.total_paid
-          }));
-          setClients(mappedClients);
-      }
+        // -----------------------------------------------------------
+        // 3. BLOCO IPTV: BUSCA CLIENTES DE TV DO USUÁRIO LOGADO
+        // -----------------------------------------------------------
+        const { data: clientsData } = await supabase
+            .from('clients') // <--- TABELA DE CLIENTES IPTV
+            .select('*')
+            .eq('user_id', userId);
 
-      // 3. Busca e mapeia os Pacotes
-      const { data: packagesData } = await supabase.from('packages').select('*').eq('user_id', userId);
-      if (packagesData) {
-          setPackages(packagesData.map((p: any) => ({
-              ...p,
-              credits_qty: p.credits_qty || 1
-          })));
-      }
+        if (clientsData) {
+            const mappedClients = clientsData.map((d: any) => ({
+                ...d,
+                paymentStatus: d.payment_status,
+                packageName: d.package_name,
+                packageId: d.package_id,
+                serverId: d.server_id,
+                expiresAt: d.expires_at,
+                createdAt: d.created_at,
+                paymentHistory: d.payment_history || [],
+            }));
+            setClients(mappedClients);
+        }
 
-      // 4. Busca Templates de Mensagem
-      const { data: templatesData } = await supabase.from('templates').select('*').eq('user_id', userId);
-      if (templatesData && templatesData.length > 0) setTemplates(templatesData);
-      else {
-          const initialTemplates = [
-              { id: 't1', user_id: userId, title: 'BOAS-VINDAS', body: 'Olá {{nome}}! Seja bem-vindo(a)!. \n\nSeus dados de acesso:\n👤 Usuário: {{usuario}}\n🔑 Senha: {{senha}}\n\nQualquer dúvida, estou à disposição!' },
-              { id: 't2', user_id: userId, title: 'COBRANÇA - PRÉ', body: 'Opa {{nome}}, tudo certo? Passando pra lembrar que seu plano vence em {{vencimento}}. O valor é R$ {{valor}}. Posso enviar o PIX para renovação?' },
-              { id: 't3', user_id: userId, title: 'COBRANÇA - HOJE', body: 'Olá {{nome}}! Seu plano vence HOJE ({{vencimento}}). Para evitar bloqueio automático, segue a chave PIX para renovação no valor de R$ {{valor}}.\n\nAguardo seu comprovante!' },
-              { id: 't4', user_id: userId, title: 'COBRANÇA - ATRASO', body: 'Oi {{nome}}, notei que seu pagamento não caiu. Seu acesso foi suspenso temporariamente. Para liberar agora mesmo, faça o PIX de R$ {{valor}} e me envie o comprovante.' },
-              { id: 't5', user_id: userId, title: 'RENOVAÇÃO CONFIRMADA', body: 'Pagamento recebido, {{nome}}! ✅\nSeu acesso foi renovado com sucesso. Muito obrigado pela preferência!' }
-          ];
-          setTemplates(initialTemplates);
-      }
+        // 4. Outros dados (Pacotes, Templates, Servidores...)
+        const { data: packagesData } = await supabase.from('packages').select('*').eq('user_id', userId);
+        if (packagesData) setPackages(packagesData);
 
-      // 5. Busca Regras e Servidores
-      const { data: rulesData } = await supabase.from('rules').select('*').eq('user_id', userId);
-      if (rulesData) setRules(rulesData);
-      
-      const { data: serversData } = await supabase.from('servers').select('*').eq('user_id', userId);
-      if (serversData) setServers(serversData);
+        const { data: templatesData } = await supabase.from('templates').select('*').eq('user_id', userId);
+        if (templatesData) setTemplates(templatesData);
+        
+        const { data: serversData } = await supabase.from('servers').select('*').eq('user_id', userId);
+        if (serversData) setServers(serversData);
 
     } catch (error) {
-      console.error("Erro ao carregar dados do Supabase:", error);
+        console.error("Erro crítico ao sincronizar:", error);
+        showToast("Erro na conexão com o banco.", "error");
     } finally {
-      setIsLoading(false);
+        setIsLoading(false);
     }
-  };
+};
+
 const handleRefreshData = async () => {
     setIsRefreshing(true);
     await fetchAllData(true);
