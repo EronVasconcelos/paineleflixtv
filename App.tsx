@@ -1312,6 +1312,8 @@ export default function App() {
   
     } catch (error: any) {
       console.error("Erro detalhado:", error);
+      alert("ERRO DO SUPABASE:\n" + (error.message || JSON.stringify(error)));
+      
       showToast("Erro ao sincronizar dados.", "error");
     }
   };
