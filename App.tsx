@@ -1953,19 +1953,24 @@ const handleDeleteSaaSUser = async (id: string) => {
             </h2>
             <div className="flex items-center gap-2">
                 {userProfile && (
-                     <div className="hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                         <Crown size={12} />
-                         <span className="text-[9px] font-bold uppercase">
-                             {isAdmin 
-                                ? 'Dono / Admin' 
-                                : userProfile.subscription_ends_at 
-                                  ? 'Premium' 
-                                  : checkIsExpired(userProfile.subscription_ends_at || userProfile.trial_ends_at) 
-                                  ? 'Acesso Expirado' 
-                                  : `Acesso: ${Math.max(0, Math.ceil((new Date(userProfile.subscription_ends_at || userProfile.trial_ends_at).getTime() - Date.now()) / 86400000))} dias`
-                         </span>
-                     </div>
-                )}
+                    <div className="hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                      <Crown size={12} />
+                      <span className="text-[9px] font-bold uppercase">
+                        {isAdmin 
+                          ? 'Dono / Admin' 
+                          : (() => {
+                              const finalDate = userProfile.subscription_ends_at || userProfile.trial_ends_at;
+                              if (checkIsExpired(finalDate)) return 'Acesso Expirado';
+                              
+                              const diffInMs = new Date(finalDate).getTime() - Date.now();
+                              const daysLeft = Math.max(0, Math.ceil(diffInMs / 86400000));
+                              
+                              return `Acesso: ${daysLeft} dias`;
+                            })()
+                        }
+                      </span>
+                    </div>
+                  )}
                 <button onClick={notificationsEnabled ? () => {} : requestPermission} className={`p-1.5 rounded-md transition-colors ${notificationsEnabled ? 'text-emerald-500 bg-emerald-500/10' : 'text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
                   {notificationsEnabled ? <Bell size={16}/> : <BellOff size={16}/>}
                 </button>
