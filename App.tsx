@@ -1861,7 +1861,7 @@ const fetchAllData = async (silent = false) => {
                 <SubscriptionContent theme={theme} onLogout={handleLogout} />
               </div>
             )}
-
+          
             {view === 'finance' && (
                 <FinanceView clients={clients} packages={packages} servers={servers} theme={theme} />
             )}
