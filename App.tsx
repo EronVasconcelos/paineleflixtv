@@ -1963,9 +1963,9 @@ const handleDeleteSaaSUser = async (id: string) => {
                       <Crown size={12} />
                       <span className="text-[9px] font-bold uppercase">
                         console.log("DADOS DO BANCO:", {
-  assinatura: userProfile.subscription_ends_at,
-  teste: userProfile.trial_ends_at
-});
+                          assinatura: userProfile.subscription_ends_at,
+                          teste: userProfile.trial_ends_at
+                        });
                         {isAdmin 
                           ? 'Dono / Admin' 
                           : (() => {
