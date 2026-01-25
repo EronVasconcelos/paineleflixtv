@@ -483,7 +483,6 @@ const SaaSAdminView = ({
         </div>
       </div>
   );
-};
 
 /* --- MODAIS INICIAIS E TELA DE LOGIN --- */
 
