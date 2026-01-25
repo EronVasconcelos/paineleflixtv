@@ -1823,46 +1823,60 @@ const filteredClients = useMemo(() => {
                     const expired = isExpired(c.expiresAt);
                     return (
                       <div key={c.id} className={`p-4 rounded-lg border shadow-sm relative overflow-hidden transition-all active:scale-[0.99] border-l-[6px] ${getTrafficLightColor(c)} ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
+                        
+                        {/* Cabeçalho do Card */}
                         <div className="flex justify-between items-start mb-3">
                           <div className="flex-1 min-w-0 pr-3">
                             <h4 className="font-bold text-[15px] truncate leading-tight text-slate-900 dark:text-white">{c.name}</h4>
                             <div className="text-[11px] opacity-60 font-medium mt-0.5">{c.username}</div>
                           </div>
                           <div className="flex gap-1.5 shrink-0">
-                             <button onClick={() => handleToggleStatus(c)} className={`px-2.5 py-1 rounded-md text-[9px] font-bold uppercase border ${c.status === 'blocked' ? 'bg-slate-100 text-slate-400 border-slate-200 dark:bg-slate-800' : expired ? 'bg-red-500 text-white border-red-600' : 'bg-emerald-500 text-white border-emerald-600'}`}>{c.status === 'blocked' ? 'Bloqueado' : expired ? 'Vencido' : 'Ativo'}</button>
-                             <button onClick={() => handleTogglePayment(c)} className={`px-2.5 py-1 rounded-md text-[9px] font-bold uppercase border ${c.paymentStatus === 'paid' ? 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-900/30' : 'bg-amber-50 text-amber-600 border-amber-100 dark:bg-amber-900/30'}`}>{c.paymentStatus === 'paid' ? 'Pago' : 'Pendente'}</button>
+                              <button onClick={() => handleToggleStatus(c)} className={`px-2.5 py-1 rounded-md text-[9px] font-bold uppercase border ${c.status === 'blocked' ? 'bg-slate-100 text-slate-400 border-slate-200 dark:bg-slate-800' : c.status === 'archived' ? 'bg-gray-100 text-gray-500 border-gray-200' : expired ? 'bg-red-500 text-white border-red-600' : 'bg-emerald-500 text-white border-emerald-600'}`}>
+                                {c.status === 'blocked' ? 'Bloqueado' : c.status === 'archived' ? 'Arquivado' : expired ? 'Vencido' : 'Ativo'}
+                              </button>
+                              <button onClick={() => handleTogglePayment(c)} className={`px-2.5 py-1 rounded-md text-[9px] font-bold uppercase border ${c.paymentStatus === 'paid' ? 'bg-emerald-50 text-emerald-600 border-emerald-100 dark:bg-emerald-900/30' : 'bg-amber-50 text-amber-600 border-amber-100 dark:bg-amber-900/30'}`}>
+                                {c.paymentStatus === 'paid' ? 'Pago' : 'Pendente'}
+                              </button>
                           </div>
                         </div>
+
+                        {/* Informações do Card */}
                         <div className="flex gap-2.5 mb-3">
                           <div className="flex-1 bg-slate-50 dark:bg-slate-800/50 p-2.5 rounded-md border dark:border-slate-800">
-                             <div className="text-[9px] font-bold text-slate-400 uppercase mb-1">Vencimento</div>
-                             <div className={`text-[12px] font-bold truncate ${expired && c.status === 'active' ? 'text-red-500' : ''}`}>{new Date(c.expiresAt).toLocaleDateString('pt-BR')}</div>
+                              <div className="text-[9px] font-bold text-slate-400 uppercase mb-1">Vencimento</div>
+                              <div className={`text-[12px] font-bold truncate ${expired && c.status === 'active' ? 'text-red-500' : ''}`}>{new Date(c.expiresAt).toLocaleDateString('pt-BR')}</div>
                           </div>
                           <div className="flex-1 bg-slate-50 dark:bg-slate-800/50 p-2.5 rounded-md border dark:border-slate-800">
-                             <div className="text-[9px] font-bold text-slate-400 uppercase mb-1">Pacote</div>
-                             <div className="text-[12px] font-bold truncate uppercase">{c.packageName}</div>
+                              <div className="text-[9px] font-bold text-slate-400 uppercase mb-1">Pacote</div>
+                              <div className="text-[12px] font-bold truncate uppercase">{c.packageName}</div>
                           </div>
                         </div>
+
+                        {/* Rodapé com Ações (AQUI ESTAVA O ERRO) */}
                         <div className="flex gap-2 justify-between items-center border-t border-slate-100 dark:border-slate-800 pt-3">
                           {c.status === 'archived' ? (
-                            /* --- BOTÕES PARA ARQUIVADOS (Resgate) --- */
+                            // Lógica para Arquivados (Resgate)
                             <div className="flex gap-2 justify-end w-full">
                               <ActionButton onClick={() => setSelectedClientForMsg(c)} theme={theme} color="emerald" icon={<MessageSquare size={16}/>} />
                               <ActionButton onClick={() => handleRestoreClient(c)} theme={theme} color="blue" icon={<RotateCcw size={16}/>} />
                               <ActionButton onClick={() => handleDeleteClient(c.id)} theme={theme} color="red" icon={<Trash2 size={16}/>} />
                             </div>
                           ) : (
-    /* --- BOTÕES PADRÃO (Clientes Ativos/Vencidos) --- */
-                          <div className="flex gap-2">
-                             <ActionButton onClick={() => setSelectedClientDetails(c)} theme={theme} color="blue" icon={<Eye size={16}/>} />
-                             <ActionButton onClick={() => setSelectedClientForEdit(c)} theme={theme} color="blue" icon={<Pencil size={16}/>} />
-                             <ActionButton onClick={() => setSelectedClientForMsg(c)} theme={theme} color="emerald" icon={<MessageSquare size={16}/>} />
-                             <ActionButton onClick={() => setSelectedClientForRenewal(c)} theme={theme} color="amber" icon={<RefreshCw size={16}/>} />
-                             <ActionButton onClick={() => handleArchiveClient(c)} theme={theme} color="amber" icon={<Archive size={16}/>} />
-                             <ActionButton onClick={() => handleCopyCredentials(c)} theme={theme} color="slate" icon={<ClipboardCopy size={16}/>} />
-                          </div>
-                          <ActionButton onClick={() => handleDeleteClient(c.id)} theme={theme} color="red" icon={<Trash2 size={16}/>} />
+                            // Lógica Padrão (Ativos/Vencidos) - ATENÇÃO AO FRAGMENT <>...</>
+                            <>
+                              <div className="flex gap-2">
+                                <ActionButton onClick={() => setSelectedClientDetails(c)} theme={theme} color="blue" icon={<Eye size={16}/>} />
+                                <ActionButton onClick={() => setSelectedClientForEdit(c)} theme={theme} color="blue" icon={<Pencil size={16}/>} />
+                                <ActionButton onClick={() => setSelectedClientForMsg(c)} theme={theme} color="emerald" icon={<MessageSquare size={16}/>} />
+                                <ActionButton onClick={() => setSelectedClientForRenewal(c)} theme={theme} color="amber" icon={<RefreshCw size={16}/>} />
+                                <ActionButton onClick={() => handleArchiveClient(c)} theme={theme} color="amber" icon={<Archive size={16}/>} />
+                                <ActionButton onClick={() => handleCopyCredentials(c)} theme={theme} color="slate" icon={<ClipboardCopy size={16}/>} />
+                              </div>
+                              <ActionButton onClick={() => handleDeleteClient(c.id)} theme={theme} color="red" icon={<Trash2 size={16}/>} />
+                            </>
+                          )}
                         </div>
+
                       </div>
                     );
                   })}
