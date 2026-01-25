@@ -1069,7 +1069,13 @@ export default function App() {
       }
 
       const { data: packagesData } = await supabase.from('packages').select('*').eq('user_id', userId);
-      if (packagesData) setPackages(packagesData);
+      if (packagesData) {
+          // Mapeia para garantir que o front leia "credits_qty"
+          setPackages(packagesData.map((p: any) => ({
+              ...p,
+              credits_qty: p.credits_qty || 1 // Se não tiver, assume 1
+          })));
+      }
 
       const { data: templatesData } = await supabase.from('templates').select('*').eq('user_id', userId);
       if (templatesData && templatesData.length > 0) setTemplates(templatesData);
@@ -1232,11 +1238,12 @@ export default function App() {
     e.preventDefault();
     if (!session) return;
     
-    // Identifica o pacote selecionado para saber o custo
     const pkg = packages.find(p => p.id === addFormData.packageId);
     
-    // Define quantos créditos descontar (Se tiver pacote, usa o custo dele. Se for personalizado, usa 1)
-    const creditsToDeduct = pkg ? pkg.cost : 1;
+    // CORREÇÃO AQUI:
+    // Se tiver pacote, usa a "credits_qty" (Quantidade de Créditos). 
+    // Se não tiver essa info definida (pacote antigo), assume 1.
+    const creditsToDeduct = pkg ? (pkg.credits_qty || 1) : 1;
 
     // 1. Validação de Créditos do Servidor (AGORA VERIFICA O CUSTO CORRETO)
     let selectedServer = null;
@@ -1419,15 +1426,28 @@ export default function App() {
   // --- CRUD GERAL ---
   const handleSavePackage = async (pkg: Package) => {
       if (!session) return;
+      // Adiciona o credits_qty no objeto
       const pkgWithUser = { ...pkg, user_id: session.user.id };
       
+      // Atualiza a lista local imediatamente
       if(editingPackage) {
           setPackages(prev => prev.map(p => p.id === pkg.id ? pkgWithUser : p));
-          await supabase.from('packages').update(pkgWithUser).eq('id', pkg.id);
+          // Atualiza no banco
+          await supabase.from('packages').update({
+            name: pkg.name,
+            price: pkg.price,
+            cost: pkg.cost,
+            months: pkg.months,
+            credits_qty: pkg.credits_qty // SALVA A QUANTIDADE DE CRÉDITOS
+          }).eq('id', pkg.id);
           setEditingPackage(null);
       } else {
           setPackages(prev => [...prev, pkgWithUser]);
-          await supabase.from('packages').insert([pkgWithUser]);
+          // Insere no banco
+          await supabase.from('packages').insert([{
+            ...pkgWithUser,
+            credits_qty: pkg.credits_qty // SALVA A QUANTIDADE DE CRÉDITOS
+          }]);
       }
       showToast("Plano salvo com sucesso!");
   };
