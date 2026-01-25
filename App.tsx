@@ -1071,23 +1071,22 @@ const fetchAllData = async (silent = false) => {
       // --- BLOCO ADMIN ATUALIZADO (PAINEL SAAS) ---
       // Se for o Admin (Dono), busca a lista de TODOS os assinantes do sistema
       if (userEmail === 'eronvasconcelos.br@gmail.com') {
-          const { data: allProfiles } = await supabase
+          const { data: allProfiles, error: adminError } = await supabase
               .from('profiles')
               .select('*')
-              .order('created_at', { ascending: false });
+              .order('created_at', { ascending: false }); // Mostra os novos primeiro
 
-          if (allProfiles) {
-              setAllUsers(allProfiles.map(u => ({
-                ...u,
-                // Se o nome for nulo, pega a parte antes do @ do email (Resolve "Usuário Sem Nome")
-                display_name: u.full_name || u.email.split('@')[0], 
-                
-                // Força o rótulo visual (Resolve "Mudar Free para Teste")
-                plan_label: u.plan_type === 'premium' ? 'PREMIUM' : 'TESTE', 
-                
-                // Se não houver data de vencimento, o sistema marca como Inativo por segurança
-                subscription_status: (u.subscription_ends_at && new Date(u.subscription_ends_at) > new Date()) ? 'active' : 'expired'
-            })));
+          if (adminError) {
+              console.error("Erro Admin ao buscar perfis:", adminError);
+          } else if (allProfiles) {
+              // Mapeia os dados para garantir que o status apareça corretamente na tabela
+              const formattedUsers = allProfiles.map(u => ({
+                  ...u,
+                  // Caso o banco não tenha o status salvo, calculamos na hora pela data de vencimento
+                  subscription_status: u.subscription_status || 
+                  (u.subscription_ends_at && new Date(u.subscription_ends_at) > new Date() ? 'active' : 'expired')
+              }));
+              setAllUsers(formattedUsers);
           }
       }
       // --------------------------------------------
@@ -1838,26 +1837,16 @@ const fetchAllData = async (silent = false) => {
 
             {/* RENDERIZAÇÃO CONDICIONAL DAS VIEWS */}
             
-            {view === 'saas-admin' && (
-              <SaaSAdminView 
-                users={allUsers} 
-                theme={theme} 
-                onSimulate={handleSimulation}
-                onDeleteUser={async (id) => {
-                    if(!confirm("Excluir conta permanentemente?")) return;
-                    await supabase.from('profiles').delete().eq('id', id);
-                    setAllUsers(prev => prev.filter(u => u.id !== id));
-                    showToast("Usuário removido.");
-                }}
-                onViewUser={(user) => setSelectedUserDetail(user)}
-              />
+            {view === 'saas_admin' && isAdmin && (
+                <SaaSAdminView users={allUsers} theme={theme} onSimulate={handleSimulation} />
             )}
+
             {view === 'subscription' && (
-              <div className="flex items-center justify-center min-h-[500px] animate-in fade-in">
-                <SubscriptionContent theme={theme} onLogout={handleLogout} />
-              </div>
+               <div className="flex items-center justify-center min-h-[500px]">
+                  <SubscriptionContent theme={theme} />
+               </div>
             )}
-          
+
             {view === 'finance' && (
                 <FinanceView clients={clients} packages={packages} servers={servers} theme={theme} />
             )}
