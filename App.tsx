@@ -2646,7 +2646,22 @@ const handleDeleteSaaSUser = async (id: string) => {
 
       {selectedClientForRenewal && <RenewalModal theme={theme} client={selectedClientForRenewal} packages={packages} onRenew={registerRenewal} onClose={() => setSelectedClientForRenewal(null)} />}
       {selectedClientForMsg && <MessageModal theme={theme} client={selectedClientForMsg} templates={templates} onSend={sendWhatsApp} onClose={() => setSelectedClientForMsg(null)} />}
-      {selectedClientDetails && <ClientDetailsModal theme={theme} client={selectedClientDetails} onClose={() => setSelectedClientDetails(null)} />}
+      {/* Lógica para escolher o modal correto (SaaS ou IPTV) */}
+      {selectedClientDetails && (
+        view === 'saas_admin' ? (
+          <SaaSDetailsModal 
+            user={selectedClientDetails} 
+            theme={theme} 
+            onClose={() => setSelectedClientDetails(null)} 
+          />
+        ) : (
+          <ClientDetailsModal 
+            theme={theme} 
+            client={selectedClientDetails} 
+            onClose={() => setSelectedClientDetails(null)} 
+          />
+        )
+      )}
       {selectedClientForEdit && <EditClientModal theme={theme} client={selectedClientForEdit} packages={packages} onEdit={handleEditClient} onClose={() => setSelectedClientForEdit(null)} />}
     </div>
   );
