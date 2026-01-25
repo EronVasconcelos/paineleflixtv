@@ -17,6 +17,12 @@ import { Client, Package, MessageTemplate, MessageRule, ClientStatus, PaymentSta
 import { geminiService } from './services/geminiService';
 import { supabase } from './services/supabaseClient';
 
+// Função utilitária global para verificar expiração de datas
+const checkIsExpired = (date: string | null | undefined) => {
+  if (!date) return true;
+  return new Date(date) < new Date();
+};
+
 const PANEL_NAME = "STREAM MANAGER";
 const MONTHS = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'];
 
@@ -362,11 +368,12 @@ const SaaSAdminView = ({
   onDeleteUser: (id: string) => void,
   onViewUser: (user: any) => void 
 }) => {
+  // Cálculo de estatísticas usando a função global
   const stats = useMemo(() => {
     const totalUsers = users.length;
     const activeUsers = users.filter(u => {
-      const expiry = u.subscription_ends_at || u.trial_ends_at || u.expires_at;
-      return expiry ? new Date(expiry) > new Date() : false;
+      const expiry = u.subscription_ends_at || u.trial_ends_at;
+      return !checkIsExpired(expiry); // Se não está expirado, está ativo
     }).length;
     const premiumUsers = users.filter(u => u.plan_type === 'premium').length;
     const mrr = premiumUsers * 29.90;
@@ -413,12 +420,9 @@ const SaaSAdminView = ({
             </thead>
             <tbody className={`text-xs font-medium divide-y ${theme === 'dark' ? 'divide-slate-800' : 'divide-slate-100'}`}>
               {users.map((user) => {
-                // Lógica de Expiração Corrigida
                 const expiryDate = user.subscription_ends_at || user.trial_ends_at;
-                const isActive = expiryDate ? new Date(expiryDate) > new Date() : false;
-                const statusText = isActive ? 'ATIVO' : 'INATIVO';
-
-                // Nome do Usuário: Fallback para o email se o nome não existir
+                const expired = checkIsExpired(expiryDate);
+                const statusText = expired ? 'INATIVO' : 'ATIVO';
                 const userName = user.full_name || user.email?.split('@')[0] || "Usuário";
 
                 return (
@@ -434,8 +438,8 @@ const SaaSAdminView = ({
                     </td>
                     <td className="px-6 py-3 text-center">
                       <div className="flex items-center justify-center gap-1.5">
-                        <div className={`w-1.5 h-1.5 rounded-full ${!isExpired ? 'bg-emerald-500' : 'bg-red-500'}`}></div>
-                        <span className={`uppercase text-[10px] font-bold ${!isExpired ? 'text-emerald-500' : 'text-red-500'}`}>
+                        <div className={`w-1.5 h-1.5 rounded-full ${!expired ? 'bg-emerald-500' : 'bg-red-500'}`}></div>
+                        <span className={`uppercase text-[10px] font-bold ${!expired ? 'text-emerald-500' : 'text-red-500'}`}>
                           {statusText}
                         </span>
                       </div>
@@ -443,7 +447,7 @@ const SaaSAdminView = ({
                     <td className="px-6 py-3 text-center text-slate-500 font-bold">
                       {new Date(user.created_at).toLocaleDateString('pt-BR')}
                     </td>
-                    <td className={`px-6 py-3 text-center font-bold ${isExpired ? 'text-red-400' : 'text-slate-500'}`}>
+                    <td className={`px-6 py-3 text-center font-bold ${expired ? 'text-red-400' : 'text-slate-500'}`}>
                       {expiryDate ? new Date(expiryDate).toLocaleDateString('pt-BR') : '--/--/--'}
                     </td>
                     <td className="px-6 py-3 text-right">
@@ -1077,13 +1081,19 @@ const fetchAllData = async (silent = false) => {
         // 2. BLOCO ADMIN: BUSCA CLIENTES DO SEU SAAS (PAINEL STREAM)
         // -----------------------------------------------------------
           if (userEmail === 'eronvasconcelos.br@gmail.com') {
-              const { data: allSaasUsers } = await supabase
-                  .from('saas_customers') // <--- Certifique-se que o nome aqui é IGUAL ao do SQL
+              const { data: allSaasUsers, error: adminError } = await supabase
+                  .from('saas_customers') // Tabela que criamos via SQL
                   .select('*')
                   .order('created_at', { ascending: false });
 
-              if (allSaasUsers) {
-                  setAllUsers(allSaasUsers); // Isso vai fazer a lista aparecer novamente
+              if (adminError) {
+                  console.error("Erro ao carregar Clientes SaaS:", adminError.message);
+                  // Se a tabela saas_customers falhar, tentamos o fallback para profiles
+                  const { data: fallbackUsers } = await supabase.from('profiles').select('*');
+                  if (fallbackUsers) setAllUsers(fallbackUsers);
+              } else if (allSaasUsers) {
+                  // Atualiza o estado que alimenta a tabela do Painel SaaS
+                  setAllUsers(allSaasUsers);
               }
           }
 
@@ -1415,12 +1425,11 @@ const handleExportCSV = () => {
     return totalCreditsBought > 0 ? (totalSpent / totalCreditsBought) : 0;
   };
 
-  const handleDeleteClient = async (id: string) => {
-    // 1. Mensagem de confirmação mais clara
-    if(!window.confirm('Tem certeza que deseja excluir este cliente do SaaS permanentemente?')) return;
+  // Função exclusiva para deletar usuários do seu SaaS (Painel Admin)
+const handleDeleteSaaSUser = async (id: string) => {
+    if(!window.confirm('Tem certeza que deseja excluir este usuário do SaaS permanentemente?')) return;
 
     try {
-        // 2. Deleta na tabela específica do SaaS
         const { error } = await supabase
             .from('saas_customers') 
             .delete()
@@ -1428,18 +1437,42 @@ const handleExportCSV = () => {
 
         if (error) {
             console.error("Erro Supabase:", error.message);
-            alert("Erro ao excluir no banco: " + error.message);
+            showToast("Erro ao excluir no banco de dados.", "error");
             return;
         }
 
-        // 3. Atualiza a lista na tela (usando o set que alimenta sua tabela)
-        // Se sua tabela usa 'allUsers', mude para setAllUsers
+        // Remove da lista do Admin (allUsers) para sumir da tela na hora
         setAllUsers(prev => prev.filter(user => user.id !== id));
+        showToast("Usuário do SaaS removido!");
         
-        alert("Cliente removido com sucesso!");
-
     } catch(err) { 
         console.error("Erro inesperado:", err); 
+        showToast("Erro ao processar exclusão.", "error");
+    }
+};
+
+  const handleDeleteClient = async (id: string) => {
+    if(!window.confirm('Deseja excluir este cliente de IPTV permanentemente?')) return;
+
+    try {
+        const { error } = await supabase
+            .from('clients') // Alvo: Tabela de clientes de TV
+            .delete()
+            .eq('id', id);
+
+        if (error) {
+            console.error("Erro ao deletar cliente:", error.message);
+            showToast("Erro ao excluir do banco.", "error");
+            return;
+        }
+
+        // Atualiza a lista de clientes de IPTV na tela
+        setClients(prev => prev.filter(c => c.id !== id));
+        showToast("Cliente de IPTV removido!");
+        
+    } catch(err) {
+        console.error("Erro inesperado:", err);
+        showToast("Erro ao processar exclusão.", "error");
     }
 };
 
@@ -1860,14 +1893,14 @@ const handleExportCSV = () => {
             {/* RENDERIZAÇÃO CONDICIONAL DAS VIEWS */}
             
             {view === 'saas_admin' && isAdmin && (
-                <SaaSAdminView 
-                  users={allUsers} 
-                  theme={theme} 
-                  onSimulate={handleSimulation}
-                  onDeleteUser={handleDeleteClient} // <--- ADICIONADO
-                  onViewUser={(user) => setSelectedClientDetails(user)} // <--- ADICIONADO (Botão Ver)
-                /> 
-            )}
+              <SaaSAdminView 
+                users={allUsers} 
+                theme={theme} 
+                onSimulate={handleSimulation}
+                onDeleteUser={handleDeleteSaaSUser} // <--- ATENÇÃO: Mudamos para a função do Passo 4
+                onViewUser={(user) => setSelectedClientDetails(user)} 
+              />
+          )}
 
             {view === 'subscription' && (
                <div className="flex items-center justify-center min-h-[500px]">
