@@ -424,53 +424,58 @@ const SaaSAdminView = ({
             </thead>
             <tbody className={`text-xs font-medium divide-y ${theme === 'dark' ? 'divide-slate-800' : 'divide-slate-100'}`}>
               {users.map((user) => {
-                // LÓGICA INATIVO: Se não houver data de expiração ou se ela já passou.
-                const isExpired = user.expires_at ? new Date(user.expires_at) < new Date() : false;
-                const statusLabel = isExpired ? 'INATIVO' : (user.subscription_status || 'INATIVO');
+                // LÓGICA DE STATUS: Consideramos Inativo se a assinatura expirou
+                const isExpired = user.subscription_ends_at 
+                  ? new Date(user.subscription_ends_at) < new Date() 
+                  : (user.trial_ends_at ? new Date(user.trial_ends_at) < new Date() : true);
 
                 return (
                   <tr key={user.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                     <td className="px-6 py-3">
-                      <div className="font-bold text-slate-700 dark:text-slate-200">
-                        {/* CORREÇÃO: Fallback para garantir que o nome apareça */}
-                        {user.full_name || user.name || user.display_name || 'Usuário Sem Nome'}
+                      <div className="flex flex-col">
+                        {/* CORREÇÃO: Nome do usuário vindo do campo full_name do Supabase */}
+                        <div className="font-bold text-slate-700 dark:text-slate-200">
+                          {user.full_name || 'Usuário sem Nome'}
+                        </div>
+                        <div className="text-[10px] text-slate-400">{user.email}</div>
                       </div>
-                      <div className="text-[10px] text-slate-400">{user.email}</div>
                     </td>
                     <td className="px-6 py-3">
+                      {/* CORREÇÃO: Plano Free agora aparece como TESTE */}
                       <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
-                        user.plan_type === 'premium' ? 'bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400' : 
-                        'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
+                        user.plan_type === 'premium' 
+                          ? 'bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400' 
+                          : 'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
                       }`}>
-                        {/* CORREÇÃO: Plano Free vira TESTE */}
-                        {user.plan_type === 'free' || !user.plan_type ? 'TESTE' : user.plan_type}
+                        {user.plan_type === 'premium' ? 'PREMIUM' : 'TESTE'}
                       </span>
                     </td>
                     <td className="px-6 py-3">
                         <div className="flex items-center gap-1.5">
-                          <div className={`w-1.5 h-1.5 rounded-full ${statusLabel === 'active' || statusLabel === 'trialing' ? 'bg-emerald-500' : 'bg-red-500'}`}></div>
-                          <span className={`uppercase text-[10px] font-bold ${isExpired ? 'text-red-500' : ''}`}>
-                            {statusLabel}
+                          <div className={`w-1.5 h-1.5 rounded-full ${!isExpired ? 'bg-emerald-500' : 'bg-red-500'}`}></div>
+                          <span className={`uppercase text-[10px] font-bold ${isExpired ? 'text-red-500' : 'text-emerald-500'}`}>
+                            {!isExpired ? 'Ativo' : 'Inativo'}
                           </span>
                         </div>
                     </td>
                     <td className="px-6 py-3 text-slate-500">
-                      {new Date(user.created_at).toLocaleDateString('pt-BR')}
+                      {/* Data de criação do acesso ao painel */}
+                      <div className="text-[10px] font-bold">
+                        {new Date(user.created_at).toLocaleDateString('pt-BR')}
+                      </div>
+                    </td>
+                    <td className="px-6 py-3">
+                      {/* Data de expiração da assinatura do painel */}
+                      <div className={`text-[10px] font-bold ${isExpired ? 'text-red-400' : 'text-slate-500'}`}>
+                        {user.subscription_ends_at 
+                          ? new Date(user.subscription_ends_at).toLocaleDateString('pt-BR') 
+                          : new Date(user.trial_ends_at).toLocaleDateString('pt-BR')}
+                      </div>
                     </td>
                     <td className="px-6 py-3 text-right">
-                      {/* CORREÇÃO: Ações agora chamam funções reais */}
-                      <button 
-                        onClick={() => onViewUser(user)}
-                        className="text-slate-400 hover:text-blue-500 transition-colors mr-3"
-                      >
-                        <Eye size={16}/>
-                      </button>
-                      <button 
-                        onClick={() => { if(confirm('Excluir este usuário permanentemente?')) onDeleteUser(user.id) }}
-                        className="text-slate-400 hover:text-red-500 transition-colors"
-                      >
-                        <UserX size={16}/>
-                      </button>
+                      {/* Botões que ativaremos no próximo passo */}
+                      <button className="text-slate-400 hover:text-blue-500 transition-colors mr-2"><Eye size={16}/></button>
+                      <button className="text-slate-400 hover:text-red-500 transition-colors"><UserX size={16}/></button>
                     </td>
                   </tr>
                 );
