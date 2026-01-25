@@ -1958,24 +1958,26 @@ const handleDeleteSaaSUser = async (id: string) => {
               {view === 'subscription' && 'Minha Assinatura'}
             </h2>
             <div className="flex items-center gap-2">
-                {userProfile && (
+               {userProfile && (
                     <div className="hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
                       <Crown size={12} />
                       <span className="text-[9px] font-bold uppercase">
-                        console.log("DADOS DO BANCO:", {
-                          assinatura: userProfile.subscription_ends_at,
-                          teste: userProfile.trial_ends_at
-                        });
                         {isAdmin 
                           ? 'Dono / Admin' 
                           : (() => {
-                              // REGRA DE OURO: Se você definiu uma assinatura, ela manda no painel
+                              // Diagnóstico: Verifique o console do navegador (F12) para ver esses valores
+                              console.log("DADOS DO BANCO:", {
+                                  assinatura: userProfile.subscription_ends_at,
+                                  teste: userProfile.trial_ends_at
+                              });
+
                               const isPremium = !!userProfile.subscription_ends_at;
                               const finalDate = isPremium ? userProfile.subscription_ends_at : userProfile.trial_ends_at;
                               
                               if (checkIsExpired(finalDate)) return 'Acesso Expirado';
                               
                               const diffInMs = new Date(finalDate).getTime() - Date.now();
+                              // Usamos um número inteiro para evitar o erro de Regex no Build do Vercel
                               const daysLeft = Math.max(0, Math.ceil(diffInMs / 86400000));
                               
                               return `${isPremium ? 'Acesso' : 'Teste'}: ${daysLeft} dias`;
