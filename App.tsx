@@ -1071,27 +1071,24 @@ const fetchAllData = async (silent = false) => {
       // --- BLOCO ADMIN ATUALIZADO (PAINEL SAAS) ---
       // Se for o Admin (Dono), busca a lista de TODOS os assinantes do sistema
       if (userEmail === 'eronvasconcelos.br@gmail.com') {
-    const { data: allProfiles, error: adminError } = await supabase
-        .from('profiles')
-        .select('*')
-        .order('created_at', { ascending: false });
+          const { data: allProfiles } = await supabase
+              .from('profiles')
+              .select('*')
+              .order('created_at', { ascending: false });
 
-    if (adminError) {
-        console.error("Erro Admin:", adminError);
-    } else if (allProfiles) {
-        const formattedUsers = allProfiles.map(u => ({
-            ...u,
-            // Exibe o Nome Real ou o início do e-mail se estiver vazio
-            display_name: u.full_name || u.email.split('@')[0],
-            // Altera o rótulo visual para TESTE
-            plan_label: u.plan_type === 'premium' ? 'PREMIUM' : 'TESTE',
-            // Define o status baseado no tempo de assinatura
-            subscription_status: (u.subscription_ends_at && new Date(u.subscription_ends_at) > new Date()) 
-                                 ? 'active' : 'expired'
-        }));
-        setAllUsers(formattedUsers);
-    }
-}
+          if (allProfiles) {
+              setAllUsers(allProfiles.map(u => ({
+                  ...u,
+                  // Exibe o nome ou o e-mail se estiver vazio
+                  display_name: u.full_name || u.email.split('@')[0],
+                  // Muda o rótulo visual
+                  plan_label: u.plan_type === 'premium' ? 'PREMIUM' : 'TESTE',
+                  // Status: Ativo se houver data de vencimento futura
+                  subscription_status: (u.subscription_ends_at && new Date(u.subscription_ends_at) > new Date()) 
+                                      ? 'active' : 'expired'
+              })));
+          }
+      }
       // --------------------------------------------
 
       // 2. Busca e mapeia os Clientes (IPTV) do usuário
