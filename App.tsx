@@ -929,7 +929,6 @@ const SaaSDetailsModal = ({
   onClose: () => void,
   onUpdateExpiry: (id: string, date: string) => void
 }) => {
-  // Criamos um estado para controlar a data que você escolher no modal
   const [selectedDate, setSelectedDate] = React.useState(
     user.trial_ends_at ? new Date(user.trial_ends_at).toISOString().split('T')[0] : ''
   );
@@ -941,36 +940,39 @@ const SaaSDetailsModal = ({
       }`}>
         <div className="flex justify-between items-center mb-6">
           <h3 className="text-xl font-bold flex items-center gap-2">
-            <User size={20} className="text-emerald-500" />
+            <span className="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-500 flex items-center justify-center">
+              <User size={18} />
+            </span>
             Detalhes do Cliente
           </h3>
-          <button onClick={onClose} className="p-2 hover:bg-zinc-500/10 rounded-full transition-colors">
+          <button onClick={onClose} className="p-2 hover:bg-zinc-500/10 rounded-full transition-colors text-zinc-500">
             <X size={20} />
           </button>
         </div>
 
         <div className="space-y-4 mb-8">
-          <div>
-            <p className="text-xs uppercase font-bold text-zinc-500 mb-1">Nome</p>
-            <p className="font-medium">{user.full_name || 'Usuário sem nome'}</p>
-          </div>
-          <div>
-            <p className="text-xs uppercase font-bold text-zinc-500 mb-1">E-mail</p>
-            <p className="font-medium text-zinc-400">{user.email}</p>
+          <div className="p-3 rounded-xl bg-zinc-500/5 border border-zinc-500/10">
+            <p className="text-[10px] uppercase font-black text-zinc-500 mb-1 tracking-widest">Nome Completo</p>
+            <p className="font-bold text-sm">{user.full_name || 'Usuário sem nome'}</p>
           </div>
           
-          <div className={`p-4 rounded-xl border ${
-            theme === 'dark' ? 'bg-zinc-800/50 border-zinc-700' : 'bg-zinc-50 border-zinc-200'
+          <div className="p-3 rounded-xl bg-zinc-500/5 border border-zinc-500/10">
+            <p className="text-[10px] uppercase font-black text-zinc-500 mb-1 tracking-widest">E-mail de Acesso</p>
+            <p className="font-medium text-sm text-zinc-400">{user.email}</p>
+          </div>
+          
+          <div className={`p-4 rounded-2xl border-2 ${
+            theme === 'dark' ? 'bg-zinc-800/50 border-emerald-500/20' : 'bg-emerald-50/30 border-emerald-500/10'
           }`}>
-            <p className="text-xs uppercase font-bold text-emerald-500 mb-3 flex items-center gap-1.5">
-              <Calendar size={14} /> Prorrogar Acesso
+            <p className="text-[10px] uppercase font-black text-emerald-500 mb-3 flex items-center gap-2 tracking-widest">
+              <Calendar size={14} /> Nova Data de Vencimento
             </p>
             <input 
               type="date" 
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
-              className={`w-full p-2.5 rounded-lg border focus:ring-2 focus:ring-emerald-500 outline-none transition-all ${
-                theme === 'dark' ? 'bg-zinc-900 border-zinc-700' : 'bg-white border-zinc-300'
+              className={`w-full p-3 rounded-xl border-2 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 outline-none transition-all font-bold ${
+                theme === 'dark' ? 'bg-zinc-900 border-zinc-700 text-white' : 'bg-white border-zinc-200 text-zinc-900'
               }`}
             />
           </div>
@@ -978,17 +980,17 @@ const SaaSDetailsModal = ({
 
         <button
           onClick={() => {
-            if (!selectedDate) return alert("Selecione uma data!");
+            if (!selectedDate) return;
             onUpdateExpiry(user.id, selectedDate);
           }}
-          className="w-full py-3 bg-emerald-500 hover:bg-emerald-600 active:scale-[0.98] text-white rounded-xl text-sm font-black uppercase tracking-wider transition-all shadow-lg shadow-emerald-500/20"
+          className="w-full py-4 bg-emerald-500 hover:bg-emerald-600 active:scale-[0.98] text-white rounded-2xl text-xs font-black uppercase tracking-[2px] transition-all shadow-xl shadow-emerald-500/20 flex items-center justify-center gap-2"
         >
-          Atualizar Vencimento
+          Confirmar Prorrogação
         </button>
       </div>
     </div>
   );
-};
+}; // ESTA CHAVE FECHA O COMPONENTE CORRETAMENTE
   // Estado para a data no input
   const [newDate, setNewDate] = useState(user.subscription_ends_at || user.trial_ends_at || '');
 
