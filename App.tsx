@@ -1081,11 +1081,11 @@ const fetchAllData = async (silent = false) => {
     } else if (allProfiles) {
         const formattedUsers = allProfiles.map(u => ({
             ...u,
-            // 1. Resolve "Usuário Sem Nome": usa full_name ou o prefixo do email
+            // Exibe o Nome Real ou o início do e-mail se estiver vazio
             display_name: u.full_name || u.email.split('@')[0],
-            // 2. Muda "FREE" para "TESTE"
+            // Altera o rótulo visual para TESTE
             plan_label: u.plan_type === 'premium' ? 'PREMIUM' : 'TESTE',
-            // 3. Define se o status é Ativo ou Inativo
+            // Define o status baseado no tempo de assinatura
             subscription_status: (u.subscription_ends_at && new Date(u.subscription_ends_at) > new Date()) 
                                  ? 'active' : 'expired'
         }));
@@ -1845,18 +1845,21 @@ const fetchAllData = async (silent = false) => {
                   users={allUsers} 
                   theme={theme} 
                   onSimulate={handleSimulation}
-                  // FUNÇÕES DE AÇÃO:
-                  onDeleteUser={handleAdminDeleteUser} 
+                  // FUNÇÕES QUE FALTAVAM:
+                  onDeleteUser={async (id) => {
+                      if(!confirm("Excluir conta permanentemente?")) return;
+                      await supabase.from('profiles').delete().eq('id', id);
+                      setAllUsers(prev => prev.filter(u => u.id !== id));
+                      showToast("Usuário removido.");
+                  }}
                   onViewUser={(user) => {
-                      setSelectedUserDetail(user); // Abre um modal com detalhes
-                      showToast("Carregando detalhes...");
+                      setSelectedUserDetail(user); // Abre modal de detalhes
                   }}
                 />
-
             {view === 'subscription' && (
-               <div className="flex items-center justify-center min-h-[500px]">
-                  <SubscriptionContent theme={theme} />
-               </div>
+              <div className="flex items-center justify-center min-h-[500px] animate-in fade-in">
+                <SubscriptionContent theme={theme} onLogout={handleLogout} />
+              </div>
             )}
 
             {view === 'finance' && (
