@@ -940,38 +940,31 @@ const SaaSDetailsModal = ({
       }`}>
         <div className="flex justify-between items-center mb-6">
           <h3 className="text-xl font-bold flex items-center gap-2">
-            <span className="w-8 h-8 rounded-lg bg-emerald-500/20 text-emerald-500 flex items-center justify-center">
-              <User size={18} />
-            </span>
+            <User size={20} className="text-emerald-500" />
             Detalhes do Cliente
           </h3>
-          <button onClick={onClose} className="p-2 hover:bg-zinc-500/10 rounded-full transition-colors text-zinc-500">
+          <button onClick={onClose} className="p-2 hover:bg-zinc-500/10 rounded-full transition-colors">
             <X size={20} />
           </button>
         </div>
 
         <div className="space-y-4 mb-8">
           <div className="p-3 rounded-xl bg-zinc-500/5 border border-zinc-500/10">
-            <p className="text-[10px] uppercase font-black text-zinc-500 mb-1 tracking-widest">Nome Completo</p>
-            <p className="font-bold text-sm">{user.full_name || 'Usuário sem nome'}</p>
-          </div>
-          
-          <div className="p-3 rounded-xl bg-zinc-500/5 border border-zinc-500/10">
-            <p className="text-[10px] uppercase font-black text-zinc-500 mb-1 tracking-widest">E-mail de Acesso</p>
+            <p className="text-[10px] uppercase font-black text-zinc-500 mb-1">E-mail de Acesso</p>
             <p className="font-medium text-sm text-zinc-400">{user.email}</p>
           </div>
           
           <div className={`p-4 rounded-2xl border-2 ${
             theme === 'dark' ? 'bg-zinc-800/50 border-emerald-500/20' : 'bg-emerald-50/30 border-emerald-500/10'
           }`}>
-            <p className="text-[10px] uppercase font-black text-emerald-500 mb-3 flex items-center gap-2 tracking-widest">
+            <p className="text-[10px] uppercase font-black text-emerald-500 mb-3 flex items-center gap-2">
               <Calendar size={14} /> Nova Data de Vencimento
             </p>
             <input 
               type="date" 
               value={selectedDate}
               onChange={(e) => setSelectedDate(e.target.value)}
-              className={`w-full p-3 rounded-xl border-2 focus:border-emerald-500 focus:ring-4 focus:ring-emerald-500/10 outline-none transition-all font-bold ${
+              className={`w-full p-3 rounded-xl border-2 focus:border-emerald-500 outline-none font-bold ${
                 theme === 'dark' ? 'bg-zinc-900 border-zinc-700 text-white' : 'bg-white border-zinc-200 text-zinc-900'
               }`}
             />
@@ -983,7 +976,7 @@ const SaaSDetailsModal = ({
             if (!selectedDate) return;
             onUpdateExpiry(user.id, selectedDate);
           }}
-          className="w-full py-4 bg-emerald-500 hover:bg-emerald-600 active:scale-[0.98] text-white rounded-2xl text-xs font-black uppercase tracking-[2px] transition-all shadow-xl shadow-emerald-500/20 flex items-center justify-center gap-2"
+          className="w-full py-4 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl text-xs font-black uppercase tracking-widest transition-all shadow-lg"
         >
           Confirmar Prorrogação
         </button>
