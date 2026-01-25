@@ -1447,12 +1447,32 @@ const handleExportCSV = () => {
   };
 
   const handleDeleteClient = async (id: string) => {
-      if(!confirm('Excluir cliente permanentemente?')) return;
-      setClients(prev => prev.filter(c => c.id !== id));
-      try {
-          await supabase.from('clients').delete().eq('id', id);
-      } catch(err) { console.error(err); }
-  };
+    // 1. Mensagem de confirmação mais clara
+    if(!window.confirm('Tem certeza que deseja excluir este cliente do SaaS permanentemente?')) return;
+
+    try {
+        // 2. Deleta na tabela específica do SaaS
+        const { error } = await supabase
+            .from('saas_customers') 
+            .delete()
+            .eq('id', id);
+
+        if (error) {
+            console.error("Erro Supabase:", error.message);
+            alert("Erro ao excluir no banco: " + error.message);
+            return;
+        }
+
+        // 3. Atualiza a lista na tela (usando o set que alimenta sua tabela)
+        // Se sua tabela usa 'allUsers', mude para setAllUsers
+        setAllUsers(prev => prev.filter(user => user.id !== id));
+        
+        alert("Cliente removido com sucesso!");
+
+    } catch(err) { 
+        console.error("Erro inesperado:", err); 
+    }
+};
 
   const handleArchiveClient = async (client: Client) => {
       if(!confirm(`Deseja arquivar ${client.name}?`)) return;
