@@ -8,9 +8,11 @@ import {
   Download, Upload, Database, ShieldAlert, Bell, BellOff, FileText, Wallet, Edit3, 
   Loader2, LogOut, Lock, Mail, User, Server as ServerIcon, Link as LinkIcon, Coins, Tv, 
   PlayCircle, Crown, Star, Zap, ShieldCheck, CheckSquare, Circle, Minus, Rocket, 
-  PartyPopper, QrCode, Copy, TestTube, Wrench, PieChart, TrendingDown, BarChart3
+  PartyPopper, QrCode, Copy, TestTube, Wrench, PieChart, TrendingDown, BarChart3,
+  ArrowDownLeft, ArrowUpRight as ArrowUp
 } from 'lucide-react';
 import { Session } from '@supabase/supabase-js';
+// Certifique-se de que seus tipos (types.ts) suportam os campos novos, se não, o TypeScript avisará.
 import { Client, Package, MessageTemplate, MessageRule, ClientStatus, PaymentStatus, Server, CreditTransaction, UserProfile } from './types';
 import { geminiService } from './services/geminiService';
 import { supabase } from './services/supabaseClient';
@@ -84,7 +86,7 @@ const MobileSubItem = ({ icon, label, onClick }: { icon: React.ReactNode, label:
   </button>
 );
 
-const StatCard = ({ title, value, icon, color, theme }: { title: string, value: string | number, icon: React.ReactNode, color: string, theme: 'light' | 'dark' }) => {
+const StatCard = ({ title, value, icon, color, theme, trend }: { title: string, value: string | number, icon: React.ReactNode, color: string, theme: 'light' | 'dark', trend?: string }) => {
   const getColors = () => {
     switch(color) {
       case 'emerald': return theme === 'dark' ? 'bg-emerald-900/20 text-emerald-400 border-emerald-900/30' : 'bg-emerald-50 text-emerald-600 border-emerald-100';
@@ -96,38 +98,55 @@ const StatCard = ({ title, value, icon, color, theme }: { title: string, value: 
     }
   };
   return (
-    <div className={`p-3.5 rounded-lg border shadow-sm flex flex-col items-center text-center ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
-      <div className={`w-8 h-8 flex items-center justify-center rounded-md mb-2 border ${getColors()}`}>
-        {React.cloneElement(icon as React.ReactElement<any>, { size: 16 })}
+    <div className={`p-4 rounded-xl border shadow-sm flex flex-col items-start relative overflow-hidden transition-all hover:shadow-md ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
+      <div className="flex w-full justify-between items-start mb-2">
+          <div className={`p-2 rounded-lg ${getColors()}`}>
+            {React.cloneElement(icon as React.ReactElement<any>, { size: 18 })}
+          </div>
+          {trend && (
+             <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded-full flex items-center gap-1 ${trend.startsWith('+') ? 'text-emerald-500 bg-emerald-50 dark:bg-emerald-900/20' : 'text-red-500 bg-red-50 dark:bg-red-900/20'}`}>
+                {trend.startsWith('+') ? <ArrowUp size={10}/> : <ArrowDownLeft size={10}/>} {trend}
+             </span>
+          )}
       </div>
-      <div className="text-[20px] font-bold tracking-tight leading-none mb-1 text-slate-800 dark:text-slate-100">{value}</div>
-      <div className="text-[9px] font-bold uppercase tracking-wider opacity-60">{title}</div>
+      <div className="text-[24px] font-black tracking-tight leading-none mb-1 text-slate-800 dark:text-slate-100 mt-1">{value}</div>
+      <div className="text-[10px] font-bold uppercase tracking-wider opacity-60 text-slate-500">{title}</div>
     </div>
   );
 };
 
 const RecentActivityCard = ({ title, theme, items }: { title: string, theme: 'light' | 'dark', items: any[] }) => (
-  <div className={`rounded-lg border shadow-sm overflow-hidden flex flex-col ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
-    <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
-      <h3 className="text-xs font-bold uppercase flex items-center gap-2 tracking-wide"><Clock3 size={16} className="text-blue-500"/> {title}</h3>
+  <div className={`rounded-xl border shadow-sm overflow-hidden flex flex-col h-full ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
+    <div className="px-5 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
+      <h3 className="text-xs font-bold uppercase flex items-center gap-2 tracking-wide text-slate-600 dark:text-slate-300">
+        <Clock3 size={16} className="text-blue-500"/> {title}
+      </h3>
     </div>
-    <div className="flex-1 overflow-y-auto max-h-[250px] p-1 space-y-0.5">
+    <div className="flex-1 overflow-y-auto max-h-[300px] p-2 space-y-1">
       {items.length === 0 ? (
-        <div className="p-6 text-center text-slate-400 text-xs">Nenhuma atividade recente</div>
+        <div className="p-8 text-center text-slate-400 text-xs flex flex-col items-center">
+            <InboxIcon size={24} className="mb-2 opacity-50"/>
+            Nenhuma atividade recente
+        </div>
       ) : items.map((item, i) => (
-        <div key={i} className="flex items-center gap-3 p-2.5 rounded-md hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-          <div className="w-7 h-7 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
-            <DollarSign size={12} />
+        <div key={i} className="flex items-center gap-3 p-3 rounded-lg hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors border border-transparent hover:border-slate-100 dark:hover:border-slate-800">
+          <div className="w-8 h-8 rounded-full bg-emerald-100 dark:bg-emerald-900/30 text-emerald-600 dark:text-emerald-400 flex items-center justify-center shrink-0">
+            <DollarSign size={14} strokeWidth={3} />
           </div>
           <div className="flex-1 min-w-0">
-            <div className="text-[12px] font-semibold truncate">{item.clientName || 'Cliente'}</div>
-            <div className="text-[9px] text-slate-400 uppercase">{new Date(item.date).toLocaleDateString('pt-BR')} • {item.method}</div>
+            <div className="text-[12px] font-bold truncate text-slate-700 dark:text-slate-200">{item.clientName || 'Cliente'}</div>
+            <div className="text-[10px] text-slate-400 uppercase font-medium">{new Date(item.date).toLocaleDateString('pt-BR')} • {item.method}</div>
           </div>
-          <div className="text-[12px] font-bold text-emerald-600">+R$ {item.amount.toFixed(2)}</div>
+          <div className="text-[12px] font-black text-emerald-600">+R$ {item.amount.toFixed(2)}</div>
         </div>
       ))}
     </div>
   </div>
+);
+
+// Ícone Auxiliar para Empty State
+const InboxIcon = ({size, className}: any) => (
+    <svg xmlns="http://www.w3.org/2000/svg" width={size} height={size} viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round" className={className}><polyline points="22 12 16 12 14 15 10 15 8 12 2 12"/><path d="M5.45 5.11L2 12v6a2 2 0 0 0 2 2h16a2 2 0 0 0 2-2v-6l-3.45-6.89A2 2 0 0 0 16.76 4H7.24a2 2 0 0 0-1.79 1.11z"/></svg>
 );
 
 const FilterChip = ({ active, label, theme, onClick }: { active: boolean, label: string, theme: 'light' | 'dark', onClick: () => void }) => (
@@ -143,7 +162,6 @@ const ActionButton = ({ onClick, theme, color, icon }: { onClick: () => void, th
       case 'emerald': return theme === 'dark' ? 'text-emerald-400 bg-emerald-900/20 hover:bg-emerald-900/40 border-emerald-900/30' : 'text-emerald-600 bg-emerald-50 hover:bg-emerald-100 border-emerald-100';
       case 'amber': return theme === 'dark' ? 'text-amber-400 bg-amber-900/20 hover:bg-amber-900/40 border-amber-900/30' : 'text-amber-600 bg-amber-50 hover:bg-amber-100 border-amber-100';
       case 'red': return theme === 'dark' ? 'text-red-400 bg-red-900/20 hover:bg-red-900/40 border-red-900/30' : 'text-red-600 bg-red-50 hover:bg-red-100 border-red-100';
-      // Ajuste no Slate/Default para seguir o padrão translúcido e com borda
       default: return theme === 'dark' ? 'text-slate-400 bg-slate-800/40 hover:bg-slate-800/60 border-slate-800' : 'text-slate-500 bg-slate-50 hover:bg-slate-100 border-slate-200';
     }
   };
@@ -171,19 +189,29 @@ const ModalOverlay = ({ onClose, children, theme }: { onClose: () => void, child
   </div>
 );
 
-/* --- COMPONENTES DE RELATÓRIO (GRÁFICOS) --- */
+/* --- COMPONENTES GRÁFICOS (AGORA PARTE DA PÁGINA FINANCEIRA) --- */
 
 const RevenueChart = ({ data, theme }: { data: any[], theme: 'light' | 'dark' }) => {
   if (!data || data.length === 0) return null;
   const maxVal = Math.max(...data.map(d => d.value)) || 1;
   const points = data.map((d, i) => `${(i / (data.length - 1)) * 300},${100 - (d.value / maxVal) * 100}`).join(' ');
   return (
-    <div className={`p-4 rounded-lg border shadow-sm ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
-       <div className="flex justify-between items-center mb-4"><h3 className="text-xs font-bold uppercase tracking-wide flex items-center gap-2"><TrendingUp size={16} className="text-emerald-500"/> Crescimento (6 Meses)</h3></div>
-       <div className="relative h-32 w-full flex items-end justify-between px-2">
+    <div className={`p-5 rounded-xl border shadow-sm ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
+       <div className="flex justify-between items-center mb-6">
+          <h3 className="text-xs font-bold uppercase tracking-wide flex items-center gap-2">
+            <TrendingUp size={16} className="text-emerald-500"/> Crescimento (6 Meses)
+          </h3>
+       </div>
+       <div className="relative h-40 w-full flex items-end justify-between px-2">
           <svg className="absolute inset-0 h-full w-full overflow-visible" preserveAspectRatio="none" viewBox="0 0 300 100">
+             <defs>
+                <linearGradient id="gradient" x1="0%" y1="0%" x2="0%" y2="100%">
+                  <stop offset="0%" stopColor={theme === 'dark' ? '#34d399' : '#059669'} stopOpacity="0.2" />
+                  <stop offset="100%" stopColor={theme === 'dark' ? '#34d399' : '#059669'} stopOpacity="0" />
+                </linearGradient>
+             </defs>
              <polyline fill="none" stroke={theme === 'dark' ? '#34d399' : '#059669'} strokeWidth="3" points={points} strokeLinecap="round" strokeLinejoin="round" />
-             <polyline fill={theme === 'dark' ? 'rgba(52, 211, 153, 0.1)' : 'rgba(5, 150, 105, 0.1)'} stroke="none" points={`${points} 300,100 0,100`} />
+             <polygon fill="url(#gradient)" stroke="none" points={`${points} 300,100 0,100`} />
           </svg>
           {data.map((d, i) => <div key={i} className="relative flex flex-col items-center justify-end h-full w-full"><span className="text-[9px] font-bold text-slate-400 uppercase mt-2 absolute bottom-[-20px]">{d.label}</span></div>)}
        </div><div className="h-4"></div>
@@ -201,17 +229,17 @@ const ClientMovementChart = ({ clients, theme }: { clients: any[], theme: 'light
   }), [clients]);
   const maxVal = Math.max(...data.map(d => Math.max(d.gained, d.lost))) || 1;
   return (
-    <div className={`p-4 rounded-lg border shadow-sm ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
-       <div className="flex justify-between items-center mb-4">
+    <div className={`p-5 rounded-xl border shadow-sm ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
+       <div className="flex justify-between items-center mb-6">
           <h3 className="text-xs font-bold uppercase tracking-wide flex items-center gap-2"><Users size={16} className="text-blue-500"/> Entradas vs Saídas</h3>
           <div className="flex gap-3 text-[9px] font-bold uppercase"><span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-emerald-500"></div> Novos</span><span className="flex items-center gap-1"><div className="w-2 h-2 rounded-full bg-red-500"></div> Perdidos</span></div>
        </div>
-       <div className="flex items-end justify-between h-32 px-2 gap-2">
+       <div className="flex items-end justify-between h-40 px-2 gap-2">
           {data.map((d, i) => (
              <div key={i} className="flex-1 flex flex-col items-center justify-end h-full group relative">
-                <div className="w-full max-w-[12px] bg-emerald-500 rounded-t-sm" style={{ height: `${(d.gained / maxVal) * 50}%`, minHeight: d.gained > 0 ? '4px' : '0' }}></div>
+                <div className="w-full max-w-[12px] bg-emerald-500 rounded-t-sm transition-all hover:bg-emerald-400" style={{ height: `${(d.gained / maxVal) * 50}%`, minHeight: d.gained > 0 ? '4px' : '0' }}></div>
                 <div className="w-full h-[1px] bg-slate-300 dark:bg-slate-600 my-0.5"></div>
-                <div className="w-full max-w-[12px] bg-red-500 rounded-b-sm" style={{ height: `${(d.lost / maxVal) * 50}%`, minHeight: d.lost > 0 ? '4px' : '0' }}></div>
+                <div className="w-full max-w-[12px] bg-red-500 rounded-b-sm transition-all hover:bg-red-400" style={{ height: `${(d.lost / maxVal) * 50}%`, minHeight: d.lost > 0 ? '4px' : '0' }}></div>
                 <span className="text-[9px] font-bold text-slate-400 uppercase mt-3">{d.label}</span>
              </div>
           ))}
@@ -220,52 +248,113 @@ const ClientMovementChart = ({ clients, theme }: { clients: any[], theme: 'light
   );
 };
 
-const ReportsView = ({ clients, packages, servers, templates, theme }: any) => {
-  const summary = useMemo(() => {
-    const totalRev = clients.reduce((acc: number, c: any) => acc + (c.price || 0), 0);
-    const totalExp = clients.reduce((acc: number, c: any) => acc + (c.expenses || 0), 0);
-    return { totalRev, totalExp, profit: totalRev - totalExp, 
-             active: clients.filter((c: any) => c.status === 'active' && new Date(c.expiresAt) > new Date()).length,
-             pending: clients.filter((c: any) => c.paymentStatus === 'pending').length,
-             blocked: clients.filter((c: any) => c.status === 'blocked').length };
-  }, [clients]);
+/* --- NOVA PÁGINA: FINANCEIRO (Substitui Relatórios e expande Visão Geral Financeira) --- */
 
-  const planStats = useMemo(() => packages.map((pkg: any) => ({ name: pkg.name, count: clients.filter((c: any) => c.packageId === pkg.id).length })).sort((a: any, b: any) => b.count - a.count), [clients, packages]);
-  const serverStats = useMemo(() => servers.map((srv: any) => ({ ...srv, count: clients.filter((c: any) => c.serverId === srv.id).length })).sort((a: any, b: any) => b.count - a.count), [clients, servers]);
-  
-  const chartData = useMemo(() => Array.from({length: 6}, (_, i) => {
+const FinanceView = ({ clients, packages, servers, theme }: any) => {
+  // Lógica de Cálculo Financeiro
+  const financialSummary = useMemo(() => {
+    const now = new Date();
+    const currentMonth = now.getMonth();
+    const currentYear = now.getFullYear();
+
+    // 1. Receita (Pagamentos de Clientes neste mês)
+    const monthlyRevenue = clients.reduce((sum: number, c: any) => {
+        const paidInMonth = c.paymentHistory?.filter((h: any) => {
+            const hDate = new Date(h.date);
+            return hDate.getMonth() === currentMonth && hDate.getFullYear() === currentYear;
+        }).reduce((pSum: number, h: any) => pSum + h.amount, 0) || 0;
+        return sum + paidInMonth;
+    }, 0);
+
+    // 2. Despesas Fixas (Custo por cliente ativo neste mês)
+    const clientExpenses = clients.reduce((sum: number, c: any) => {
+        // Consideramos custo se o cliente estiver ativo ou tiver pago este mês
+        const isActiveOrPaid = c.status === 'active' || c.paymentHistory?.some((h:any) => {
+            const hDate = new Date(h.date);
+            return hDate.getMonth() === currentMonth && hDate.getFullYear() === currentYear;
+        });
+        return sum + (isActiveOrPaid ? (c.expenses || 0) : 0);
+    }, 0);
+
+    // 3. Despesas Variáveis (Compra de Créditos de Servidor neste mês)
+    // AQUI ESTÁ A LÓGICA SOLICITADA: O valor entra no mês da compra.
+    const serverExpenses = servers.reduce((sum: number, s: any) => {
+        const serverCostMonth = s.transactions?.filter((t: any) => {
+            const tDate = new Date(t.date);
+            return tDate.getMonth() === currentMonth && tDate.getFullYear() === currentYear;
+        }).reduce((tSum: number, t: any) => tSum + (t.cost || 0), 0) || 0;
+        return sum + serverCostMonth;
+    }, 0);
+
+    const totalExpenses = clientExpenses + serverExpenses;
+
+    // Dados para Gráficos
+    const chartData = Array.from({length: 6}, (_, i) => {
         const d = new Date(); d.setMonth(d.getMonth() - (5 - i));
-        const rev = clients.reduce((sum: number, c: any) => sum + (c.paymentHistory?.filter((h: any) => new Date(h.date).getMonth() === d.getMonth()).reduce((p: number, h: any) => p + h.amount, 0) || 0), 0);
-        return { label: MONTHS[d.getMonth()], value: rev };
-  }), [clients]);
+        const monthIdx = d.getMonth(); const year = d.getFullYear();
+        
+        const rev = clients.reduce((sum: number, c: any) => sum + (c.paymentHistory?.filter((h: any) => new Date(h.date).getMonth() === monthIdx && new Date(h.date).getFullYear() === year).reduce((p: number, h: any) => p + h.amount, 0) || 0), 0);
+        return { label: MONTHS[monthIdx], value: rev };
+    });
+
+    const planStats = packages.map((pkg: any) => ({ name: pkg.name, count: clients.filter((c: any) => c.packageId === pkg.id).length })).sort((a: any, b: any) => b.count - a.count);
+    
+    // Top Servidores por Custo
+    const serverStats = servers.map((srv: any) => {
+        const totalCost = srv.transactions?.reduce((acc: number, t: any) => acc + (t.cost || 0), 0) || 0;
+        return { name: srv.name, totalCost, credits: srv.credits };
+    }).sort((a: any, b: any) => b.totalCost - a.totalCost);
+
+    return { monthlyRevenue, totalExpenses, profit: monthlyRevenue - totalExpenses, chartData, planStats, serverStats };
+  }, [clients, packages, servers]);
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <StatCard title="Receita Estimada" value={`R$ ${summary.totalRev.toFixed(2)}`} icon={<DollarSign/>} color="emerald" theme={theme}/>
-        <StatCard title="Despesas Totais" value={`R$ ${summary.totalExp.toFixed(2)}`} icon={<TrendingDown/>} color="red" theme={theme}/>
-        <StatCard title="Lucro Líquido" value={`R$ ${summary.profit.toFixed(2)}`} icon={<Wallet/>} color="blue" theme={theme}/>
+        <StatCard title="Faturamento (Mês)" value={`R$ ${financialSummary.monthlyRevenue.toFixed(2)}`} icon={<DollarSign/>} color="emerald" theme={theme} trend="+ Receita"/>
+        <StatCard title="Despesas Totais (Mês)" value={`R$ ${financialSummary.totalExpenses.toFixed(2)}`} icon={<TrendingDown/>} color="red" theme={theme} trend="- Custos"/>
+        <StatCard title="Lucro Líquido (Mês)" value={`R$ ${financialSummary.profit.toFixed(2)}`} icon={<Wallet/>} color="blue" theme={theme} trend="Resultado"/>
       </div>
+      
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-         <div><h4 className="text-xs font-bold uppercase mb-3 text-slate-500">Fluxo de Caixa</h4><RevenueChart data={chartData} theme={theme} /></div>
-         <div><h4 className="text-xs font-bold uppercase mb-3 text-slate-500">Churn Rate</h4><ClientMovementChart clients={clients} theme={theme} /></div>
+         <div>
+            <h4 className="text-xs font-bold uppercase mb-3 text-slate-500 ml-1">Fluxo de Caixa (6 Meses)</h4>
+            <RevenueChart data={financialSummary.chartData} theme={theme} />
+         </div>
+         <div>
+            <h4 className="text-xs font-bold uppercase mb-3 text-slate-500 ml-1">Movimentação de Clientes</h4>
+            <ClientMovementChart clients={clients} theme={theme} />
+         </div>
       </div>
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+
+      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className={`p-5 rounded-xl border ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
-           <h4 className="text-xs font-bold uppercase mb-4 flex items-center gap-2"><Users size={16} /> Status da Base</h4>
-           <div className="space-y-2 text-xs">
-              <div className="flex justify-between"><span>Ativos</span><span className="font-bold text-emerald-500">{summary.active}</span></div>
-              <div className="flex justify-between"><span>Pendentes</span><span className="font-bold text-amber-500">{summary.pending}</span></div>
-              <div className="flex justify-between"><span>Bloqueados</span><span className="font-bold text-slate-500">{summary.blocked}</span></div>
+           <h4 className="text-xs font-bold uppercase mb-4 flex items-center gap-2 text-indigo-500"><Layers size={16} /> Planos Mais Vendidos</h4>
+           <div className="space-y-3">
+              {financialSummary.planStats.length === 0 ? <p className="text-xs text-slate-400">Sem dados.</p> : 
+               financialSummary.planStats.map((p: any, i: number) => (
+                 <div key={i} className="flex justify-between items-center text-xs">
+                    <span className="font-medium text-slate-600 dark:text-slate-300">{p.name}</span>
+                    <span className="font-bold px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400">{p.count} ativos</span>
+                 </div>
+               ))}
            </div>
         </div>
+
         <div className={`p-5 rounded-xl border ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
-           <h4 className="text-xs font-bold uppercase mb-4 flex items-center gap-2"><Layers size={16} /> Planos Populares</h4>
-           <div className="space-y-2 text-xs max-h-40 overflow-y-auto">{planStats.map((p: any, i: number) => <div key={i} className="flex justify-between"><span>{p.name}</span><span className="font-bold text-blue-500">{p.count}</span></div>)}</div>
-        </div>
-        <div className={`p-5 rounded-xl border ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
-           <h4 className="text-xs font-bold uppercase mb-4 flex items-center gap-2"><ServerIcon size={16} /> Servidores</h4>
-           <div className="space-y-2 text-xs max-h-40 overflow-y-auto">{serverStats.map((s: any, i: number) => <div key={i} className="flex justify-between"><span>{s.name}</span><span className="font-bold text-purple-500">{s.count} users</span></div>)}</div>
+           <h4 className="text-xs font-bold uppercase mb-4 flex items-center gap-2 text-purple-500"><ServerIcon size={16} /> Custos por Servidor (Total)</h4>
+           <div className="space-y-3">
+              {financialSummary.serverStats.length === 0 ? <p className="text-xs text-slate-400">Sem servidores cadastrados.</p> : 
+               financialSummary.serverStats.map((s: any, i: number) => (
+                 <div key={i} className="flex justify-between items-center text-xs border-b border-dashed border-slate-100 dark:border-slate-800 pb-2 last:border-0 last:pb-0">
+                    <div>
+                        <span className="font-bold block text-slate-700 dark:text-slate-200">{s.name}</span>
+                        <span className="text-[10px] text-slate-400">Saldo: {s.credits} créditos</span>
+                    </div>
+                    <span className="font-bold text-red-500">- R$ {s.totalCost.toFixed(2)}</span>
+                 </div>
+               ))}
+           </div>
         </div>
       </div>
     </div>
@@ -286,7 +375,6 @@ const SaaSAdminView = ({ users, theme, onSimulate }: { users: UserProfile[], the
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
-      {/* Cabeçalho do Admin */}
       <div className="flex items-center justify-between">
         <div>
           <h2 className={`text-2xl font-black uppercase tracking-tight ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>Painel SaaS</h2>
@@ -297,7 +385,7 @@ const SaaSAdminView = ({ users, theme, onSimulate }: { users: UserProfile[], the
         </div>
       </div>
 
-      {/* ÁREA DE TESTES (DEVELOPER TOOLS) - AGORA AQUI DENTRO */}
+      {/* DEVELOPER TOOLS */}
       <div className={`p-5 rounded-xl border border-dashed relative overflow-hidden group ${theme === 'dark' ? 'bg-slate-900/50 border-slate-700' : 'bg-slate-50 border-slate-300'}`}>
          <div className="absolute top-0 right-0 p-2 opacity-10 rotate-12 group-hover:opacity-20 transition-opacity"><TestTube size={60} /></div>
          <div className="flex items-center gap-2 mb-4">
@@ -312,7 +400,6 @@ const SaaSAdminView = ({ users, theme, onSimulate }: { users: UserProfile[], the
          </div>
       </div>
 
-      {/* Cards de Métricas SaaS */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
         <StatCard title="MRR (Receita Mensal)" value={`R$ ${stats.mrr.toFixed(2)}`} icon={<DollarSign/>} color="emerald" theme={theme}/>
         <StatCard title="Usuários Totais" value={stats.totalUsers} icon={<Users/>} color="blue" theme={theme}/>
@@ -352,10 +439,10 @@ const SaaSAdminView = ({ users, theme, onSimulate }: { users: UserProfile[], the
                     </span>
                   </td>
                   <td className="px-6 py-3">
-                     <div className="flex items-center gap-1.5">
-                       <div className={`w-1.5 h-1.5 rounded-full ${user.subscription_status === 'active' ? 'bg-emerald-500' : 'bg-red-500'}`}></div>
-                       <span className="uppercase text-[10px] font-bold">{user.subscription_status || 'Inativo'}</span>
-                     </div>
+                      <div className="flex items-center gap-1.5">
+                        <div className={`w-1.5 h-1.5 rounded-full ${user.subscription_status === 'active' ? 'bg-emerald-500' : 'bg-red-500'}`}></div>
+                        <span className="uppercase text-[10px] font-bold">{user.subscription_status || 'Inativo'}</span>
+                      </div>
                   </td>
                   <td className="px-6 py-3 text-slate-500">
                     {new Date(user.created_at).toLocaleDateString('pt-BR')}
@@ -374,7 +461,7 @@ const SaaSAdminView = ({ users, theme, onSimulate }: { users: UserProfile[], the
   );
 };
 
-/* --- PARTE 2: MODAIS E TELA DE LOGIN --- */
+/* --- MODAIS INICIAIS E TELA DE LOGIN --- */
 
 const WelcomeModal = ({ theme, onClose }: { theme: 'light' | 'dark', onClose: () => void }) => (
   <div className="fixed inset-0 z-[300] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-md animate-in fade-in duration-300">
@@ -406,7 +493,7 @@ const WelcomeModal = ({ theme, onClose }: { theme: 'light' | 'dark', onClose: ()
              </div>
              <div className="flex items-center gap-3 bg-white/10 p-3 rounded-xl border border-white/5 backdrop-blur-sm">
                 <div className="w-6 h-6 rounded-full bg-white text-blue-600 flex items-center justify-center shrink-0 shadow-sm"><Check size={14} strokeWidth={4}/></div>
-                <span className="font-bold text-xs tracking-wide">Relatórios Financeiros Detalhados</span>
+                <span className="font-bold text-xs tracking-wide">Controle Financeiro & Servidores</span>
              </div>
           </div>
           <button onClick={onClose} className="w-full py-4 bg-white text-blue-700 font-black uppercase text-xs tracking-widest rounded-xl hover:bg-blue-50 transition-all shadow-xl active:scale-[0.98] flex items-center justify-center gap-2 group">
@@ -416,201 +503,6 @@ const WelcomeModal = ({ theme, onClose }: { theme: 'light' | 'dark', onClose: ()
     </div>
   </div>
 );
-
-const RenewalModal = ({ theme, client, packages, onRenew, onClose }: any) => {
-  const [selectedPkg, setSelectedPkg] = useState('');
-  return (
-    <ModalOverlay theme={theme} onClose={onClose}>
-       <div className="p-4 border-b bg-amber-500/10 border-amber-500/20 flex justify-between items-center">
-        <h3 className="text-sm font-bold uppercase text-amber-600 dark:text-amber-400 flex items-center gap-2">
-            <RefreshCw size={16}/> Renovar Assinatura
-        </h3>
-        <button onClick={onClose} className="p-1 rounded-md hover:bg-black/5 dark:hover:bg-white/10 text-slate-500"><X size={16}/></button>
-       </div>
-       <div className="p-5 space-y-4">
-          <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-md border border-slate-100 dark:border-slate-700">
-              <span className="text-[10px] font-bold text-slate-400 uppercase">Cliente</span>
-              <div className="font-bold">{client.name}</div>
-          </div>
-          <div className="space-y-1">
-              <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Escolha o Plano de Renovação</label>
-              <select className={`w-full p-3 rounded-md border outline-none text-[13px] font-medium ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-white border-slate-200 shadow-sm'}`} value={selectedPkg} onChange={(e) => setSelectedPkg(e.target.value)}>
-                  <option value="">Selecione...</option>
-                  {packages.map((p: any) => <option key={p.id} value={p.id}>{p.name} - R$ {p.price.toFixed(2)}</option>)}
-              </select>
-          </div>
-          <button disabled={!selectedPkg} onClick={() => onRenew(client.id, selectedPkg)} className="w-full bg-amber-500 hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed text-white py-3 rounded-md font-bold uppercase text-[12px] shadow-sm transition-all">
-            Confirmar Renovação
-          </button>
-       </div>
-    </ModalOverlay>
-  );
-}
-
-const MessageModal = ({ theme, client, templates, onSend, onClose }: any) => {
-  const [msg, setMsg] = useState('');
-  const [loadingAI, setLoadingAI] = useState(false);
-  
-  const handleGenerateAI = async () => {
-      setLoadingAI(true);
-      // Certifique-se que geminiService foi importado/definido na Parte 1
-      const text = await geminiService.generateRenewalMessage(client);
-      setMsg(text);
-      setLoadingAI(false);
-  };
-
-  return (
-    <ModalOverlay theme={theme} onClose={onClose}>
-       <div className="p-4 border-b bg-emerald-500/10 border-emerald-500/20 flex justify-between items-center">
-        <h3 className="text-sm font-bold uppercase text-emerald-600 dark:text-emerald-400 flex items-center gap-2">
-            <MessageSquare size={16}/> Enviar Mensagem
-        </h3>
-        <button onClick={onClose} className="p-1 rounded-md hover:bg-black/5 dark:hover:bg-white/10 text-slate-500"><X size={16}/></button>
-       </div>
-       <div className="p-5 space-y-4">
-          <div className="flex gap-2 overflow-x-auto pb-2 hide-scrollbar">
-              <button onClick={handleGenerateAI} className="whitespace-nowrap px-3 py-1.5 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-full text-[10px] font-bold uppercase border border-purple-200 dark:border-purple-800 flex items-center gap-1.5 hover:bg-purple-200 dark:hover:bg-purple-900/50 transition-colors">
-                  {loadingAI ? <Loader2 size={12} className="animate-spin"/> : <Star size={12}/>} Gerar com IA
-              </button>
-              {templates.map((t: any) => (
-                  <button key={t.id} onClick={() => setMsg(t.body.replace(/{{nome}}/g, client.name).replace(/{{usuario}}/g, client.username).replace(/{{senha}}/g, client.password || '***').replace(/{{vencimento}}/g, new Date(client.expiresAt).toLocaleDateString('pt-BR')).replace(/{{valor}}/g, client.price.toFixed(2)))} className="whitespace-nowrap px-3 py-1.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-full text-[10px] font-bold uppercase border border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
-                      {t.title}
-                  </button>
-              ))}
-          </div>
-          <textarea value={msg} onChange={(e) => setMsg(e.target.value)} className={`w-full p-3 rounded-md border outline-none text-[13px] font-medium leading-relaxed h-40 resize-none ${theme === 'dark' ? 'bg-slate-800 border-slate-700' : 'bg-slate-50 border-slate-200'}`} placeholder="Digite sua mensagem ou escolha um modelo..."></textarea>
-          <button disabled={!msg} onClick={() => onSend(msg, client)} className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white py-3 rounded-md font-bold uppercase text-[12px] shadow-sm flex items-center justify-center gap-2 transition-all">
-            <Send size={16}/> Enviar WhatsApp
-          </button>
-       </div>
-    </ModalOverlay>
-  );
-}
-
-const ClientDetailsModal = ({ theme, client, onClose }: any) => {
-    return (
-        <ModalOverlay theme={theme} onClose={onClose}>
-           <div className="p-4 border-b dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/50">
-            <h3 className="text-sm font-bold uppercase text-slate-800 dark:text-slate-100 flex items-center gap-2">
-                <User size={16}/> Detalhes do Cliente
-            </h3>
-            <button onClick={onClose} className="p-1 rounded-md hover:bg-black/5 dark:hover:bg-white/10 text-slate-500"><X size={16}/></button>
-           </div>
-           <div className="p-0 overflow-y-auto">
-               <div className="p-5 space-y-4">
-                   <div className="grid grid-cols-2 gap-4">
-                       <div className="space-y-1">
-                           <span className="text-[10px] font-bold text-slate-400 uppercase">Nome</span>
-                           <div className="text-[13px] font-medium">{client.name}</div>
-                       </div>
-                       <div className="space-y-1">
-                           <span className="text-[10px] font-bold text-slate-400 uppercase">Status</span>
-                           <div className={`text-[12px] font-bold uppercase ${client.status === 'active' ? 'text-emerald-500' : 'text-red-500'}`}>{client.status === 'active' ? 'Ativo' : 'Bloqueado'}</div>
-                       </div>
-                       <div className="space-y-1">
-                           <span className="text-[10px] font-bold text-slate-400 uppercase">Usuário</span>
-                           <div className="text-[13px] font-medium">{client.username}</div>
-                       </div>
-                       <div className="space-y-1">
-                           <span className="text-[10px] font-bold text-slate-400 uppercase">Senha</span>
-                           <div className="text-[13px] font-medium">{client.password || '---'}</div>
-                       </div>
-                       <div className="space-y-1">
-                           <span className="text-[10px] font-bold text-slate-400 uppercase">Telefone</span>
-                           <div className="text-[13px] font-medium">{client.phone}</div>
-                       </div>
-                       <div className="space-y-1">
-                           <span className="text-[10px] font-bold text-slate-400 uppercase">Vencimento</span>
-                           <div className="text-[13px] font-medium">{new Date(client.expiresAt).toLocaleDateString('pt-BR')}</div>
-                       </div>
-                   </div>
-                   
-                   {client.notes && (
-                       <div className="p-3 bg-amber-50 dark:bg-amber-900/10 rounded-md border border-amber-100 dark:border-amber-800/30 text-amber-800 dark:text-amber-200">
-                           <span className="text-[10px] font-bold uppercase block mb-1 opacity-70">Observações</span>
-                           <p className="text-[12px] leading-relaxed">{client.notes}</p>
-                       </div>
-                   )}
-                   <div className="border-t dark:border-slate-800 pt-4">
-                       <h4 className="text-[10px] font-bold uppercase text-slate-400 mb-3 tracking-widest">Histórico Financeiro</h4>
-                       <div className="space-y-2">
-                           {client.paymentHistory?.length > 0 ? client.paymentHistory.map((h: any, i: number) => (
-                               <div key={i} className="flex justify-between items-center text-[12px] p-2 rounded-md hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                                   <div className="flex flex-col">
-                                       <span className="font-bold">R$ {h.amount.toFixed(2)}</span>
-                                       <span className="text-[10px] text-slate-400">{new Date(h.date).toLocaleDateString('pt-BR')}</span>
-                                   </div>
-                                   <span className="text-[10px] font-medium uppercase px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded-md text-slate-500">{h.method}</span>
-                               </div>
-                           )) : (
-                               <p className="text-center text-[11px] text-slate-400 py-2">Sem histórico disponível.</p>
-                           )}
-                       </div>
-                   </div>
-               </div>
-           </div>
-        </ModalOverlay>
-    );
-};
-
-const EditClientModal = ({ theme, client, packages, onEdit, onClose }: any) => {
-    const [formData, setFormData] = useState({
-        name: client.name, username: client.username, password: client.password, phone: client.phone,
-        packageId: client.packageId || '', price: client.price, expenses: client.expenses,
-        expiryDate: new Date(client.expiresAt).toISOString().split('T')[0],
-        expiryTime: new Date(client.expiresAt).toTimeString().substr(0,5),
-        appName: client.appName, macKey: client.macKey, notes: client.notes
-    });
-
-    const handleChange = (e: any) => {
-        const { name, value } = e.target;
-        setFormData(prev => ({ ...prev, [name]: value }));
-        if (name === 'packageId') {
-            const pkg = packages.find((p: any) => p.id === value);
-            if (pkg) {
-                setFormData(prev => ({ ...prev, price: pkg.price, expenses: pkg.cost, packageId: value }));
-            }
-        }
-    };
-
-    return (
-        <ModalOverlay theme={theme} onClose={onClose}>
-            <div className="p-4 border-b dark:border-slate-800 flex justify-between items-center bg-blue-50/50 dark:bg-blue-900/10">
-                <h3 className="text-sm font-bold uppercase text-blue-600 dark:text-blue-400 flex items-center gap-2">
-                    <Pencil size={16}/> Editar Cliente
-                </h3>
-                <button onClick={onClose} className="p-1 rounded-md hover:bg-black/5 dark:hover:bg-white/10 text-slate-500"><X size={16}/></button>
-            </div>
-            <div className="p-0 overflow-y-auto">
-                <form className="p-5 space-y-3" onSubmit={(e) => { e.preventDefault(); onEdit(formData); }}>
-                   <FormInput theme={theme} name="name" label="Nome" value={formData.name} onChange={handleChange} required />
-                   <div className="grid grid-cols-2 gap-3">
-                       <FormInput theme={theme} name="username" label="Usuário" value={formData.username} onChange={handleChange} required />
-                       <FormInput theme={theme} name="password" label="Senha" value={formData.password} onChange={handleChange} />
-                   </div>
-                   <FormInput theme={theme} name="phone" label="Telefone" value={formData.phone} onChange={handleChange} required />
-                   <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase ml-1 tracking-wider">Plano</label>
-                    <select name="packageId" value={formData.packageId} onChange={handleChange} className={`w-full px-3 py-2.5 rounded-md border text-[13px] font-medium outline-none ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50 border-slate-200 shadow-sm'}`}>
-                      <option value="">Personalizado</option>
-                      {packages.map((p: any) => <option key={p.id} value={p.id}>{p.name}</option>)}
-                    </select>
-                   </div>
-                   <div className="grid grid-cols-2 gap-3">
-                       <FormInput theme={theme} name="price" label="Preço (R$)" type="number" step="0.01" value={formData.price} onChange={handleChange} required />
-                       <FormInput theme={theme} name="expenses" label="Custo (R$)" type="number" step="0.01" value={formData.expenses} onChange={handleChange} required />
-                   </div>
-                   <div className="grid grid-cols-2 gap-3">
-                       <FormInput theme={theme} name="expiryDate" label="Vencimento Data" type="date" value={formData.expiryDate} onChange={handleChange} required />
-                       <FormInput theme={theme} name="expiryTime" label="Hora" type="time" value={formData.expiryTime} onChange={handleChange} />
-                   </div>
-                   <FormInput theme={theme} name="notes" label="Observações" value={formData.notes} onChange={handleChange} />
-                   <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-md font-bold uppercase text-[12px] shadow-sm mt-4 transition-all">Salvar Alterações</button>
-                </form>
-            </div>
-        </ModalOverlay>
-    );
-};
 
 const AuthScreen = ({ theme }: { theme: 'light' | 'dark' }) => {
   const [isLogin, setIsLogin] = useState(true);
@@ -691,7 +583,205 @@ const AuthScreen = ({ theme }: { theme: 'light' | 'dark' }) => {
   );
 };
 
-/* --- PARTE 3: COMPONENTES FINANCEIROS E LÓGICA DO APP --- */
+/* --- PARTE 3: MODAIS OPERACIONAIS E TELAS DE PAGAMENTO/PUBLIC --- */
+
+const RenewalModal = ({ theme, client, packages, onRenew, onClose }: any) => {
+  const [selectedPkg, setSelectedPkg] = useState('');
+  return (
+    <ModalOverlay theme={theme} onClose={onClose}>
+       <div className="p-4 border-b bg-amber-500/10 border-amber-500/20 flex justify-between items-center">
+        <h3 className="text-sm font-bold uppercase text-amber-600 dark:text-amber-400 flex items-center gap-2">
+            <RefreshCw size={16}/> Renovar Assinatura
+        </h3>
+        <button onClick={onClose} className="p-1 rounded-md hover:bg-black/5 dark:hover:bg-white/10 text-slate-500"><X size={16}/></button>
+       </div>
+       <div className="p-5 space-y-4">
+          <div className="p-3 bg-slate-50 dark:bg-slate-800 rounded-md border border-slate-100 dark:border-slate-700">
+              <span className="text-[10px] font-bold text-slate-400 uppercase">Cliente</span>
+              <div className="font-bold text-slate-700 dark:text-slate-200">{client.name}</div>
+          </div>
+          <div className="space-y-1">
+              <label className="text-[10px] font-bold text-slate-400 uppercase ml-1">Escolha o Plano de Renovação</label>
+              <select className={`w-full p-3 rounded-md border outline-none text-[13px] font-medium ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200 shadow-sm'}`} value={selectedPkg} onChange={(e) => setSelectedPkg(e.target.value)}>
+                  <option value="">Selecione...</option>
+                  {packages.map((p: any) => <option key={p.id} value={p.id}>{p.name} - R$ {p.price.toFixed(2)}</option>)}
+              </select>
+          </div>
+          <button disabled={!selectedPkg} onClick={() => onRenew(client.id, selectedPkg)} className="w-full bg-amber-500 hover:bg-amber-600 disabled:opacity-50 disabled:cursor-not-allowed text-white py-3 rounded-md font-bold uppercase text-[12px] shadow-sm transition-all">
+            Confirmar Renovação
+          </button>
+       </div>
+    </ModalOverlay>
+  );
+}
+
+const MessageModal = ({ theme, client, templates, onSend, onClose }: any) => {
+  const [msg, setMsg] = useState('');
+  const [loadingAI, setLoadingAI] = useState(false);
+  
+  const handleGenerateAI = async () => {
+      setLoadingAI(true);
+      const text = await geminiService.generateRenewalMessage(client);
+      setMsg(text);
+      setLoadingAI(false);
+  };
+
+  return (
+    <ModalOverlay theme={theme} onClose={onClose}>
+       <div className="p-4 border-b bg-emerald-500/10 border-emerald-500/20 flex justify-between items-center">
+        <h3 className="text-sm font-bold uppercase text-emerald-600 dark:text-emerald-400 flex items-center gap-2">
+            <MessageSquare size={16}/> Enviar Mensagem
+        </h3>
+        <button onClick={onClose} className="p-1 rounded-md hover:bg-black/5 dark:hover:bg-white/10 text-slate-500"><X size={16}/></button>
+       </div>
+       <div className="p-5 space-y-4">
+          <div className="flex gap-2 overflow-x-auto pb-2 hide-scrollbar">
+              <button onClick={handleGenerateAI} className="whitespace-nowrap px-3 py-1.5 bg-purple-100 dark:bg-purple-900/30 text-purple-700 dark:text-purple-300 rounded-full text-[10px] font-bold uppercase border border-purple-200 dark:border-purple-800 flex items-center gap-1.5 hover:bg-purple-200 dark:hover:bg-purple-900/50 transition-colors">
+                  {loadingAI ? <Loader2 size={12} className="animate-spin"/> : <Star size={12}/>} Gerar com IA
+              </button>
+              {templates.map((t: any) => (
+                  <button key={t.id} onClick={() => setMsg(t.body.replace(/{{nome}}/g, client.name).replace(/{{usuario}}/g, client.username).replace(/{{senha}}/g, client.password || '***').replace(/{{vencimento}}/g, new Date(client.expiresAt).toLocaleDateString('pt-BR')).replace(/{{valor}}/g, client.price.toFixed(2)))} className="whitespace-nowrap px-3 py-1.5 bg-slate-100 dark:bg-slate-800 text-slate-600 dark:text-slate-300 rounded-full text-[10px] font-bold uppercase border border-slate-200 dark:border-slate-700 hover:bg-slate-200 dark:hover:bg-slate-700 transition-colors">
+                      {t.title}
+                  </button>
+              ))}
+          </div>
+          <textarea value={msg} onChange={(e) => setMsg(e.target.value)} className={`w-full p-3 rounded-md border outline-none text-[13px] font-medium leading-relaxed h-40 resize-none ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`} placeholder="Digite sua mensagem ou escolha um modelo..."></textarea>
+          <button disabled={!msg} onClick={() => onSend(msg, client)} className="w-full bg-emerald-600 hover:bg-emerald-700 disabled:opacity-50 disabled:cursor-not-allowed text-white py-3 rounded-md font-bold uppercase text-[12px] shadow-sm flex items-center justify-center gap-2 transition-all">
+            <Send size={16}/> Enviar WhatsApp
+          </button>
+       </div>
+    </ModalOverlay>
+  );
+}
+
+const ClientDetailsModal = ({ theme, client, onClose }: any) => {
+    return (
+        <ModalOverlay theme={theme} onClose={onClose}>
+           <div className="p-4 border-b dark:border-slate-800 flex justify-between items-center bg-slate-50/50 dark:bg-slate-800/50">
+            <h3 className="text-sm font-bold uppercase text-slate-800 dark:text-slate-100 flex items-center gap-2">
+                <User size={16}/> Detalhes do Cliente
+            </h3>
+            <button onClick={onClose} className="p-1 rounded-md hover:bg-black/5 dark:hover:bg-white/10 text-slate-500"><X size={16}/></button>
+           </div>
+           <div className="p-0 overflow-y-auto max-h-[70vh]">
+               <div className="p-5 space-y-4">
+                   <div className="grid grid-cols-2 gap-4">
+                       <div className="space-y-1">
+                           <span className="text-[10px] font-bold text-slate-400 uppercase">Nome</span>
+                           <div className="text-[13px] font-medium text-slate-700 dark:text-slate-200">{client.name}</div>
+                       </div>
+                       <div className="space-y-1">
+                           <span className="text-[10px] font-bold text-slate-400 uppercase">Status</span>
+                           <div className={`text-[12px] font-bold uppercase ${client.status === 'active' ? 'text-emerald-500' : 'text-red-500'}`}>{client.status === 'active' ? 'Ativo' : 'Bloqueado'}</div>
+                       </div>
+                       <div className="space-y-1">
+                           <span className="text-[10px] font-bold text-slate-400 uppercase">Usuário</span>
+                           <div className="text-[13px] font-medium text-slate-700 dark:text-slate-200">{client.username}</div>
+                       </div>
+                       <div className="space-y-1">
+                           <span className="text-[10px] font-bold text-slate-400 uppercase">Senha</span>
+                           <div className="text-[13px] font-medium text-slate-700 dark:text-slate-200">{client.password || '---'}</div>
+                       </div>
+                       <div className="space-y-1">
+                           <span className="text-[10px] font-bold text-slate-400 uppercase">Telefone</span>
+                           <div className="text-[13px] font-medium text-slate-700 dark:text-slate-200">{client.phone}</div>
+                       </div>
+                       <div className="space-y-1">
+                           <span className="text-[10px] font-bold text-slate-400 uppercase">Vencimento</span>
+                           <div className="text-[13px] font-medium text-slate-700 dark:text-slate-200">{new Date(client.expiresAt).toLocaleDateString('pt-BR')}</div>
+                       </div>
+                       <div className="space-y-1">
+                           <span className="text-[10px] font-bold text-slate-400 uppercase">Preço</span>
+                           <div className="text-[13px] font-medium text-slate-700 dark:text-slate-200">R$ {client.price?.toFixed(2)}</div>
+                       </div>
+                   </div>
+                   
+                   {client.notes && (
+                       <div className="p-3 bg-amber-50 dark:bg-amber-900/10 rounded-md border border-amber-100 dark:border-amber-800/30 text-amber-800 dark:text-amber-200">
+                           <span className="text-[10px] font-bold uppercase block mb-1 opacity-70">Observações</span>
+                           <p className="text-[12px] leading-relaxed">{client.notes}</p>
+                       </div>
+                   )}
+                   <div className="border-t dark:border-slate-800 pt-4">
+                       <h4 className="text-[10px] font-bold uppercase text-slate-400 mb-3 tracking-widest">Histórico Financeiro</h4>
+                       <div className="space-y-2 max-h-40 overflow-y-auto">
+                           {client.paymentHistory?.length > 0 ? client.paymentHistory.map((h: any, i: number) => (
+                               <div key={i} className="flex justify-between items-center text-[12px] p-2 rounded-md hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                                   <div className="flex flex-col">
+                                       <span className="font-bold text-emerald-600 dark:text-emerald-400">R$ {h.amount.toFixed(2)}</span>
+                                       <span className="text-[10px] text-slate-400">{new Date(h.date).toLocaleDateString('pt-BR')}</span>
+                                   </div>
+                                   <span className="text-[10px] font-medium uppercase px-2 py-1 bg-slate-100 dark:bg-slate-800 rounded-md text-slate-500">{h.method}</span>
+                               </div>
+                           )) : (
+                               <p className="text-center text-[11px] text-slate-400 py-2">Sem histórico disponível.</p>
+                           )}
+                       </div>
+                   </div>
+               </div>
+           </div>
+        </ModalOverlay>
+    );
+};
+
+const EditClientModal = ({ theme, client, packages, onEdit, onClose }: any) => {
+    const [formData, setFormData] = useState({
+        name: client.name, username: client.username, password: client.password, phone: client.phone,
+        packageId: client.packageId || '', price: client.price, expenses: client.expenses,
+        expiryDate: new Date(client.expiresAt).toISOString().split('T')[0],
+        expiryTime: new Date(client.expiresAt).toTimeString().substr(0,5),
+        appName: client.appName, macKey: client.macKey, notes: client.notes
+    });
+
+    const handleChange = (e: any) => {
+        const { name, value } = e.target;
+        setFormData(prev => ({ ...prev, [name]: value }));
+        if (name === 'packageId') {
+            const pkg = packages.find((p: any) => p.id === value);
+            if (pkg) {
+                setFormData(prev => ({ ...prev, price: pkg.price, expenses: pkg.cost, packageId: value }));
+            }
+        }
+    };
+
+    return (
+        <ModalOverlay theme={theme} onClose={onClose}>
+            <div className="p-4 border-b dark:border-slate-800 flex justify-between items-center bg-blue-50/50 dark:bg-blue-900/10">
+                <h3 className="text-sm font-bold uppercase text-blue-600 dark:text-blue-400 flex items-center gap-2">
+                    <Pencil size={16}/> Editar Cliente
+                </h3>
+                <button onClick={onClose} className="p-1 rounded-md hover:bg-black/5 dark:hover:bg-white/10 text-slate-500"><X size={16}/></button>
+            </div>
+            <div className="p-0 overflow-y-auto max-h-[80vh]">
+                <form className="p-5 space-y-3" onSubmit={(e) => { e.preventDefault(); onEdit(formData); }}>
+                   <FormInput theme={theme} name="name" label="Nome" value={formData.name} onChange={handleChange} required />
+                   <div className="grid grid-cols-2 gap-3">
+                       <FormInput theme={theme} name="username" label="Usuário" value={formData.username} onChange={handleChange} required />
+                       <FormInput theme={theme} name="password" label="Senha" value={formData.password} onChange={handleChange} />
+                   </div>
+                   <FormInput theme={theme} name="phone" label="Telefone" value={formData.phone} onChange={handleChange} required />
+                   <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase ml-1 tracking-wider">Plano</label>
+                    <select name="packageId" value={formData.packageId} onChange={handleChange} className={`w-full px-3 py-2.5 rounded-md border text-[13px] font-medium outline-none ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50 border-slate-200 shadow-sm'}`}>
+                      <option value="">Personalizado</option>
+                      {packages.map((p: any) => <option key={p.id} value={p.id}>{p.name}</option>)}
+                    </select>
+                   </div>
+                   <div className="grid grid-cols-2 gap-3">
+                       <FormInput theme={theme} name="price" label="Preço (R$)" type="number" step="0.01" value={formData.price} onChange={handleChange} required />
+                       <FormInput theme={theme} name="expenses" label="Custo (R$)" type="number" step="0.01" value={formData.expenses} onChange={handleChange} required />
+                   </div>
+                   <div className="grid grid-cols-2 gap-3">
+                       <FormInput theme={theme} name="expiryDate" label="Vencimento Data" type="date" value={formData.expiryDate} onChange={handleChange} required />
+                       <FormInput theme={theme} name="expiryTime" label="Hora" type="time" value={formData.expiryTime} onChange={handleChange} />
+                   </div>
+                   <FormInput theme={theme} name="notes" label="Observações" value={formData.notes} onChange={handleChange} />
+                   <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3 rounded-md font-bold uppercase text-[12px] shadow-sm mt-4 transition-all">Salvar Alterações</button>
+                </form>
+            </div>
+        </ModalOverlay>
+    );
+};
 
 const SubscriptionContent = ({ theme, onLogout, isBlocking, blockReason }: { theme: 'light' | 'dark', onLogout?: () => void, isBlocking?: boolean, blockReason?: 'trial_expired' | 'sub_expired' | null }) => {
   const [selectedPlanId, setSelectedPlanId] = useState('monthly');
@@ -828,7 +918,9 @@ export default function App() {
   // Estados para o Painel SaaS
   const [allUsers, setAllUsers] = useState<UserProfile[]>([]); 
   
-  const [view, setView] = useState<'dashboard' | 'clients' | 'reports' | 'history' | 'add' | 'packages' | 'messages' | 'scheduling' | 'database' | 'servers' | 'subscription' | 'saas_admin'>('dashboard');
+  // 'finance' substitui 'reports' como solicitado
+  const [view, setView] = useState<'dashboard' | 'clients' | 'finance' | 'history' | 'add' | 'packages' | 'messages' | 'scheduling' | 'database' | 'servers' | 'subscription' | 'saas_admin'>('dashboard');
+  
   const [selectedClientForMsg, setSelectedClientForMsg] = useState<Client | null>(null);
   const [selectedClientForRenewal, setSelectedClientForRenewal] = useState<Client | null>(null);
   const [selectedClientDetails, setSelectedClientDetails] = useState<Client | null>(null);
@@ -843,7 +935,6 @@ export default function App() {
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'expired' | 'blocked' | 'archived'>('all');
   const [paymentFilter, setPaymentFilter] = useState<'all' | 'paid' | 'pending'>('all');
-  const [sortOrder, setSortOrder] = useState<'asc' | 'desc'>('asc');
   
   const [aiAnalysis, setAiAnalysis] = useState<string | null>(null);
   const [isLoading, setIsLoading] = useState(true);
@@ -1097,11 +1188,8 @@ export default function App() {
       window.location.href = `https://wa.me/5585992780931?text=${encodeURIComponent(text)}`;
   };
 
-  // Função genérica de atualização de cliente no Supabase
   const updateClientInSupabase = async (clientId: string, updates: Partial<Client>) => {
-      // Optimistic Update
       setClients(prev => prev.map(c => c.id === clientId ? { ...c, ...updates } : c));
-      
       try {
           const { error } = await supabase.from('clients').update(updates).eq('id', clientId);
           if(error) throw error;
@@ -1121,28 +1209,6 @@ export default function App() {
 
   const handleTogglePayment = (client: Client) => updateClientInSupabase(client.id, { paymentStatus: client.paymentStatus === 'paid' ? 'pending' : 'paid' });
 
-  // --- FUNÇÃO DE BACKUP (CSV) ---
-  const handleExportCSV = () => {
-    if (clients.length === 0) {
-       showToast("Sem dados para exportar.", "error");
-       return;
-    }
-    const headers = "Nome,Usuario,Senha,Telefone,Vencimento,Plano,Status,Preco,Notas\n";
-    const rows = clients.map(c => 
-       `"${c.name}","${c.username}","${c.password || ''}","${c.phone}","${new Date(c.expiresAt).toLocaleDateString()}","${c.packageName}","${c.status}","${c.price}","${c.notes || ''}"`
-    ).join("\n");
-
-    const blob = new Blob([headers + rows], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = url;
-    link.setAttribute('download', `backup_painel_${new Date().toISOString().split('T')[0]}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    showToast("Backup baixado com sucesso!");
-  };
-
   // HANDLER ADICIONAR CLIENTE
   const handleAddClient = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -1160,17 +1226,12 @@ export default function App() {
     
     // 2. Preparação dos Dados
     const pkg = packages.find(p => p.id === addFormData.packageId);
-    
-    // Garante que a data/hora tenha formato válido
     const expiryString = `${addFormData.expiryDate}T${addFormData.expiryTime || '23:59'}:00`;
     const expiryDateObj = new Date(expiryString);
-    
-    // Lógica da Data de Pagamento
     const dateOfPayment = addFormData.paymentDate || new Date().toISOString().split('T')[0];
   
-    // 3. Objeto do Cliente (Interface Local)
     const newClient: Client = {
-      id: crypto.randomUUID(), // Gera um ID único válido
+      id: crypto.randomUUID(),
       user_id: session.user.id,
       name: addFormData.name,
       username: addFormData.username, 
@@ -1179,10 +1240,8 @@ export default function App() {
       paymentStatus: addFormData.isPaid ? 'paid' : 'pending',
       phone: addFormData.phone,
       packageName: pkg?.name || 'Personalizado',
-      packageId: addFormData.packageId || null, // Trata vazio como null
+      packageId: addFormData.packageId || null, 
       
-      // *** CORREÇÃO CRÍTICA AQUI ***
-      // Se serverId for string vazia "", envia null. O banco não aceita "" em campos UUID.
       serverId: addFormData.serverId ? addFormData.serverId : null, 
       
       price: Number(addFormData.price) || 0,
@@ -1193,7 +1252,6 @@ export default function App() {
       createdAt: new Date().toISOString(),
       expiresAt: expiryDateObj.toISOString(),
       
-      // Histórico de Pagamento
       paymentHistory: addFormData.isPaid ? [{ 
           id: crypto.randomUUID(), 
           amount: Number(addFormData.price), 
@@ -1205,19 +1263,17 @@ export default function App() {
     };
   
     try {
-      // 4. Inserção no Supabase
-      // Mapeando camelCase (React) para snake_case (Banco) se necessário
       const { error } = await supabase.from('clients').insert([{
         user_id: newClient.user_id,
         name: newClient.name,
         username: newClient.username,
         password: newClient.password,
         status: newClient.status,
-        payment_status: newClient.paymentStatus, // snake_case no banco?
+        payment_status: newClient.paymentStatus, 
         phone: newClient.phone,
         package_name: newClient.packageName,
         package_id: newClient.packageId,
-        server_id: newClient.serverId, // Aqui vai null se estiver vazio
+        server_id: newClient.serverId, 
         price: newClient.price,
         expenses: newClient.expenses,
         notes: newClient.notes,
@@ -1231,18 +1287,20 @@ export default function App() {
   
       if (error) throw error;
   
-      // 5. Sucesso: Atualiza Local e Reseta Form
       setClients(prev => [...prev, newClient]);
       
-      // Desconta crédito se necessário
+      // Lógica de Desconto de Crédito
       if (selectedServer && session.user.id) {
-          await handleDeductCredit(selectedServer.id, 1);
+          const newCredits = selectedServer.credits - 1;
+          // Atualiza servidor localmente
+          setServers(prev => prev.map(s => s.id === selectedServer.id ? { ...s, credits: newCredits } : s));
+          // Atualiza no banco
+          await supabase.from('servers').update({ credits: newCredits }).eq('id', selectedServer.id);
       }
   
       showToast("Cliente cadastrado com sucesso!", "success");
       setView('clients');
       
-      // Reset do Formulário
       setAddFormData({
           name: '', username: '', password: '', phone: '', 
           packageId: '', price: '', expenses: '',
@@ -1254,7 +1312,7 @@ export default function App() {
   
     } catch (error: any) {
       console.error("Erro detalhado:", error);
-      showToast("Erro ao sincronizar dados. Verifique o console.", "error");
+      showToast("Erro ao sincronizar dados.", "error");
     }
   };
 
@@ -1267,23 +1325,16 @@ export default function App() {
   };
 
   const handleArchiveClient = async (client: Client) => {
-      if(!confirm(`Deseja arquivar ${client.name}? Ele sairá da lista principal, mas poderá ser restaurado.`)) return;
+      if(!confirm(`Deseja arquivar ${client.name}?`)) return;
       updateClientInSupabase(client.id, { status: 'archived' });
       showToast("Cliente arquivado com sucesso!");
   };
 
   const handleRestoreClient = async (client: Client) => {
-  if (!confirm(`Deseja restaurar o cliente ${client.name}?`)) return;
-
-  // Atualiza localmente para 'active'
-  setClients(prev => prev.map(c => c.id === client.id ? { ...c, status: 'active' } : c));
-  showToast("Cliente restaurado com sucesso!", "success");
-
-  // Atualiza no banco (se estiver conectado)
-  if (session?.user?.id) {
-    await updateClientInSupabase(client.id, { status: 'active' });
-  }
-};
+    if (!confirm(`Deseja restaurar ${client.name}?`)) return;
+    updateClientInSupabase(client.id, { status: 'active' });
+    showToast("Cliente restaurado!", "success");
+  };
 
   const handleCopyCredentials = (client: Client) => {
       const text = `📺 *SEUS DADOS DE ACESSO*\n\n👤 Usuário: ${client.username}\n🔑 Senha: ${client.password}\n📅 Vencimento: ${new Date(client.expiresAt).toLocaleDateString('pt-BR')}\n\nBom divertimento!`;
@@ -1292,23 +1343,6 @@ export default function App() {
       }).catch(() => {
           showToast("Erro ao copiar.", "error");
       });
-  };
-
-  const getTrafficLightColor = (client: Client) => {
-      if (client.status === 'blocked') return 'border-l-slate-400';
-      const now = new Date();
-      const expiry = new Date(client.expiresAt);
-      const diffTime = expiry.getTime() - now.getTime();
-      const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
-      if (diffDays <= 0) return 'border-l-red-500';
-      if (diffDays <= 3) return 'border-l-amber-400';
-      return 'border-l-emerald-500';
-  };
-
-  const handleShareSignupLink = () => {
-      const link = `${window.location.origin}?mode=signup`;
-      navigator.clipboard.writeText(link);
-      showToast("Link de cadastro copiado! Envie para seu cliente.");
   };
 
   const handleEditClient = async (form: any) => {
@@ -1349,7 +1383,7 @@ export default function App() {
     showToast("Renovação realizada com sucesso!");
   };
 
-  // Funções de CRUD para Planos, Modelos e Regras
+  // --- CRUD GERAL ---
   const handleSavePackage = async (pkg: Package) => {
       if (!session) return;
       const pkgWithUser = { ...pkg, user_id: session.user.id };
@@ -1396,21 +1430,17 @@ export default function App() {
       await supabase.from('rules').delete().eq('id', id);
   };
 
-  // CRUD Servidores
+  // --- CRUD SERVIDORES (CORRIGIDO) ---
   const handleSaveServer = async (serverData: any) => {
     if (!session) return;
+    // INSTRUÇÃO DO USUÁRIO: Remover créditos iniciais. Começa com 0.
     const newServer: Server = {
         id: Math.random().toString(36).substr(2, 9),
         user_id: session.user.id,
         name: serverData.name,
         url: serverData.url,
-        credits: Number(serverData.credits),
-        transactions: [{ 
-            id: Math.random().toString(36).substr(2, 5), 
-            date: new Date().toISOString(), 
-            amount: Number(serverData.credits), 
-            cost: 0 
-        }]
+        credits: 0, 
+        transactions: []
     };
     setServers(prev => [...prev, newServer]);
     try { await supabase.from('servers').insert([newServer]); } catch(e) { console.error(e); }
@@ -1422,11 +1452,14 @@ export default function App() {
       try { await supabase.from('servers').delete().eq('id', id); } catch(e) { console.error(e); }
   };
 
+  // INSTRUÇÃO DO USUÁRIO: Adicionar data na compra de créditos
   const handleAddCredits = async (amount: number, totalCost: number) => {
     if (!session || !selectedServerForCredit) return;
+    
+    // Cria transação com a data ATUAL (para entrar no Financeiro do mês corrente)
     const transaction: CreditTransaction = {
         id: Math.random().toString(36).substr(2, 5),
-        date: new Date().toISOString(),
+        date: new Date().toISOString(), 
         amount: amount,
         cost: totalCost
     };
@@ -1440,9 +1473,9 @@ export default function App() {
     setServers(prev => prev.map(s => s.id === updatedServer.id ? updatedServer : s));
     setSelectedServerForCredit(null);
     try { await supabase.from('servers').update(updatedServer).eq('id', updatedServer.id); } catch(e) { console.error(e); }
+    showToast("Créditos adicionados e custo registrado!");
   };
 
-  // Função para controlar a simulação (vinda da tela de admin)
   const handleSimulation = (mode: string) => {
       setSimulationMode(mode as any);
       showToast(`Modo simulação: ${mode}`);
@@ -1453,92 +1486,29 @@ export default function App() {
       setNotificationsEnabled(permission === 'granted');
   };
 
-  const stats = useMemo(() => {
-      const baseStats = clients.reduce((acc, c) => {
-        acc.totalLTV += c.totalPaid || 0;
-        acc.monthlyRevenue += c.price || 0;
-        acc.monthlyCosts += c.expenses || 0;
-        const expired = isExpired(c.expiresAt);
-        if (c.status === 'blocked') acc.blockedCount++;
-        else if (c.status === 'archived') acc.archivedCount++; 
-        else if (expired) acc.expiredCount++;
-        else acc.activeCount++;
-        if (c.paymentStatus === 'pending') acc.pendingPaymentCount++;
-        return acc;
-      }, { totalLTV: 0, monthlyRevenue: 0, monthlyCosts: 0, activeCount: 0, expiredCount: 0, blockedCount: 0, archivedCount: 0, pendingPaymentCount: 0 });
+  const filteredClients = useMemo(() => {
+    return clients.filter(client => {
+      if (statusFilter === 'archived') {
+        return client.status === 'archived' && 
+               (client.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                client.username.toLowerCase().includes(searchTerm.toLowerCase()));
+      }
+      if (client.status === 'archived') return false;
 
-      const totalBase = clients.length - (baseStats.archivedCount || 0); 
-      const churnCount = baseStats.blockedCount + baseStats.expiredCount; 
-      const churnRate = totalBase > 0 ? (churnCount / totalBase) * 100 : 0;
+      const matchesSearch = client.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                            client.username.toLowerCase().includes(searchTerm.toLowerCase());
 
-      const chartData = Array.from({length: 6}, (_, i) => {
-        const d = new Date();
-        d.setMonth(d.getMonth() - (5 - i));
-        const monthIdx = d.getMonth();
-        const year = d.getFullYear();
-        const value = clients.reduce((sum, c) => {
-            const paidInMonth = c.paymentHistory?.filter((h: any) => {
-              const hDate = new Date(h.date);
-              return hDate.getMonth() === monthIdx && hDate.getFullYear() === year;
-            }).reduce((pSum: number, h: any) => pSum + h.amount, 0) || 0;
-            return sum + paidInMonth;
-        }, 0);
-        return { label: MONTHS[monthIdx], value };
-      });
+      const matchesStatus = statusFilter === 'all' 
+        ? true 
+        : statusFilter === 'expired' 
+          ? isExpired(client.expiresAt) && client.status !== 'blocked'
+          : client.status === statusFilter;
 
-      const currentMonth = new Date().getMonth();
-      const currentYear = new Date().getFullYear();
-      let serverMonthlyCosts = 0;
-      servers.forEach(s => {
-          if(s.transactions) {
-              s.transactions.forEach(t => {
-                  const tDate = new Date(t.date);
-                  if(tDate.getMonth() === currentMonth && tDate.getFullYear() === currentYear) {
-                      serverMonthlyCosts += t.cost;
-                  }
-              });
-          }
-      });
+      const matchesPayment = paymentFilter === 'all' ? true : client.paymentStatus === paymentFilter;
 
-      return {
-          ...baseStats,
-          monthlyCosts: baseStats.monthlyCosts + serverMonthlyCosts,
-          churnRate, 
-          chartData  
-      };
-    }, [clients, servers]);
-
- // Localize a constante filteredClients e substitua por isso:
-const filteredClients = useMemo(() => {
-  return clients.filter(client => {
-    // 1. Lógica dos Arquivados (PRIORIDADE)
-    // Se o filtro selecionado for 'archived', mostra APENAS arquivados.
-    if (statusFilter === 'archived') {
-      return client.status === 'archived' && 
-             (client.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-              client.username.toLowerCase().includes(searchTerm.toLowerCase()));
-    }
-
-    // Se o filtro NÃO for 'archived', ESCONDE os arquivados da lista geral
-    if (client.status === 'archived') return false;
-
-    // 2. Lógica da Busca (Nome ou Usuário)
-    const matchesSearch = client.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
-                          client.username.toLowerCase().includes(searchTerm.toLowerCase());
-
-    // 3. Lógica dos Status Normais
-    const matchesStatus = statusFilter === 'all' 
-      ? true 
-      : statusFilter === 'expired' 
-        ? isExpired(client.expiresAt) && client.status !== 'blocked' // Vencidos não bloqueados
-        : client.status === statusFilter; // Ativos ou Bloqueados
-
-    // 4. Lógica do Pagamento
-    const matchesPayment = paymentFilter === 'all' ? true : client.paymentStatus === paymentFilter;
-
-    return matchesSearch && matchesStatus && matchesPayment;
-  }).sort((a, b) => new Date(a.expiresAt).getTime() - new Date(b.expiresAt).getTime());
-}, [clients, searchTerm, statusFilter, paymentFilter]);
+      return matchesSearch && matchesStatus && matchesPayment;
+    }).sort((a, b) => new Date(a.expiresAt).getTime() - new Date(b.expiresAt).getTime());
+  }, [clients, searchTerm, statusFilter, paymentFilter]);
 
   const sendWhatsApp = (template: MessageTemplate | string, client: Client) => {
     let body = typeof template === 'string' ? template : template.body.replace(/{{nome}}/g, client.name).replace(/{{usuario}}/g, client.username).replace(/{{senha}}/g, client.password || '***').replace(/{{vencimento}}/g, new Date(client.expiresAt).toLocaleDateString('pt-BR')).replace(/{{valor}}/g, client.price.toFixed(2));
@@ -1568,30 +1538,27 @@ const filteredClients = useMemo(() => {
     return 'pending'; 
   };
 
-  const isAdmin = useMemo(() => {
-    return session?.user?.email === 'eronvasconcelos.br@gmail.com';
-  }, [session]);
-
   const urlParams = new URLSearchParams(window.location.search);
   const isPublicSignup = urlParams.get('mode') === 'signup';
   
   const getBlockReason = () => {
       if (simulationMode === 'trial_expired' || simulationMode === 'sub_expired') return simulationMode;
       if (!userProfile) return null;
-      if (isAdmin) return null; // Dono nunca é bloqueado
+      if (session?.user?.email === 'eronvasconcelos.br@gmail.com') return null;
       
       const now = new Date();
       const trialEnd = new Date(userProfile.trial_ends_at);
       const subEnd = userProfile.subscription_ends_at ? new Date(userProfile.subscription_ends_at) : null;
       
-      if (subEnd && subEnd > now) return null; // Assinatura válida
-      if (trialEnd > now) return null; // Trial válido
+      if (subEnd && subEnd > now) return null;
+      if (trialEnd > now) return null;
       
       if (subEnd && subEnd <= now) return 'sub_expired';
       return 'trial_expired';
   };
-  const currentBlockReason = useMemo(getBlockReason, [userProfile, session, isAdmin, simulationMode]);
+  const currentBlockReason = useMemo(getBlockReason, [userProfile, session, simulationMode]);
   const isAccessBlocked = !!currentBlockReason;
+  const isAdmin = session?.user?.email === 'eronvasconcelos.br@gmail.com';
 
   if (isPublicSignup) return <PublicSignupScreen onSignup={handlePublicSignup} />;
   if (!session) return <AuthScreen theme={theme} />;
@@ -1606,7 +1573,7 @@ const filteredClients = useMemo(() => {
       );
   }
 
-  /* --- PARTE 4 CORRIGIDA: RENDER VISUAL E ROTEAMENTO --- */
+  /* --- PARTE 5: RENDERIZAÇÃO VISUAL E ROTEAMENTO --- */
 
   return (
     <div className={`flex flex-col md:flex-row h-screen overflow-hidden font-normal transition-colors duration-300 ${theme === 'dark' ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-800'}`}>
@@ -1626,26 +1593,29 @@ const filteredClients = useMemo(() => {
         
         <nav className="flex-1 px-3 space-y-0.5 overflow-y-auto py-2 hide-scrollbar">
           
-          {/* --- AJUSTE FEITO AQUI: Painel Dono agora é o primeiro --- */}
           {isAdmin && (
              <SidebarItem icon={<Crown size={18} className="text-yellow-500"/>} label="Painel SaaS" active={view === 'saas_admin'} onClick={() => setView('saas_admin')} />
           )}
 
+          <div className="pt-2 pb-2 px-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Gestão</div>
           <SidebarItem icon={<LayoutDashboard size={18} className="text-blue-500"/>} label="Visão Geral" active={view === 'dashboard'} onClick={() => setView('dashboard')} />
           
-          <SidebarItem icon={<PieChart size={18} className="text-pink-500"/>} label="Relatórios" active={view === 'reports'} onClick={() => setView('reports')} />
+          {/* NOVA ABA FINANCEIRO (Substitui Relatórios) */}
+          <SidebarItem icon={<DollarSign size={18} className="text-emerald-500"/>} label="Financeiro" active={view === 'finance'} onClick={() => setView('finance')} />
           
           <SidebarItem icon={<Users size={18} className="text-orange-500"/>} label="Meus Clientes" active={view === 'clients'} onClick={() => setView('clients')} />
           <SidebarItem icon={<UserPlus size={18} className="text-cyan-500"/>} label="Novo Cadastro" active={view === 'add'} onClick={() => setView('add')} />
           <SidebarItem icon={<History size={18} className="text-red-500"/>} label="Histórico" active={view === 'history'} onClick={() => setView('history')} />
           <SidebarItem icon={<ServerIcon size={18} className="text-purple-500"/>} label="Servidores" active={view === 'servers'} onClick={() => setView('servers')} />
-          <SidebarItem icon={<CalendarDays size={18} className="text-emerald-500"/>} label="Automação Zap" active={view === 'scheduling'} onClick={() => setView('scheduling')} />
-          <SidebarItem icon={<CreditCard size={18} className="text-yellow-500"/>} label="Assinatura" active={view === 'subscription'} onClick={() => setView('subscription')} />
           
-          <div className="pt-6 pb-2 px-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Configurações</div>
+          <div className="pt-4 pb-2 px-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Ferramentas</div>
+          <SidebarItem icon={<CalendarDays size={18} className="text-emerald-500"/>} label="Automação Zap" active={view === 'scheduling'} onClick={() => setView('scheduling')} />
           <SidebarItem icon={<Layers size={18} className="text-indigo-500"/>} label="Planos e Preços" active={view === 'packages'} onClick={() => setView('packages')} />
           <SidebarItem icon={<MessageSquare size={18} className="text-emerald-500"/>} label="Mensagens" active={view === 'messages'} onClick={() => setView('messages')} />
           <SidebarItem icon={<Database size={18} className="text-slate-500"/>} label="Backup Dados" active={view === 'database'} onClick={() => setView('database')} />
+          
+          <div className="pt-4 pb-2 px-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Conta</div>
+          <SidebarItem icon={<CreditCard size={18} className="text-yellow-500"/>} label="Minha Assinatura" active={view === 'subscription'} onClick={() => setView('subscription')} />
         </nav>
 
         <div className="p-3 border-t border-slate-200 dark:border-slate-800 space-y-2">
@@ -1666,9 +1636,9 @@ const filteredClients = useMemo(() => {
         <header className={`px-5 py-3 flex items-center justify-between pt-safe shrink-0 border-b z-20 transition-colors ${theme === 'dark' ? 'bg-slate-900/50 border-slate-800 backdrop-blur-md' : 'bg-white/80 border-slate-200 backdrop-blur-md'}`}>
           <div className="flex items-center gap-3">
              <h2 className={`text-sm font-bold uppercase tracking-tight ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
-              {view === 'dashboard' && 'Dashboard'}
+              {view === 'dashboard' && 'Visão Geral'}
               {view === 'saas_admin' && 'Painel SaaS'}
-              {view === 'reports' && 'Relatórios e Métricas'}
+              {view === 'finance' && 'Financeiro & Lucros'}
               {view === 'history' && 'Histórico Anual'}
               {view === 'clients' && 'Gestão de Clientes'}
               {view === 'scheduling' && 'Automação'}
@@ -1687,8 +1657,8 @@ const filteredClients = useMemo(() => {
                              {isAdmin 
                                 ? 'Dono / Admin' 
                                 : userProfile.subscription_ends_at 
-                                    ? 'Premium' 
-                                    : `Teste: ${Math.max(0, Math.ceil((new Date(userProfile.trial_ends_at).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)))} dias`}
+                                  ? 'Premium' 
+                                  : `Teste: ${Math.max(0, Math.ceil((new Date(userProfile.trial_ends_at).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)))} dias`}
                          </span>
                      </div>
                 )}
@@ -1709,9 +1679,9 @@ const filteredClients = useMemo(() => {
               <RefreshCw size={16} />
             </button>
             <button 
-              onClick={handleShareSignupLink} 
+              onClick={() => handlePublicSignup({name: '', phone: '', username: ''})} 
               className="p-2 text-blue-600 bg-blue-50 dark:bg-blue-900/30 dark:text-blue-400 rounded-md border border-blue-100 dark:border-blue-800/50 hover:bg-blue-100 transition-all shadow-sm" 
-              title="Copiar Link de Captura"
+              title="Link de Cadastro"
             >
               <Share2 size={16} />
             </button>
@@ -1731,7 +1701,7 @@ const filteredClients = useMemo(() => {
           {/* Refresh Indicator */}
           <div style={{ height: `${pullDistance}px`, opacity: pullDistance > 0 ? 1 : 0 }} className="flex items-center justify-center overflow-hidden transition-all ease-out duration-200">
              <div className={`p-2 rounded-full bg-white dark:bg-slate-800 shadow-md border border-slate-200 dark:border-slate-700 ${isRefreshing ? 'animate-spin' : ''} ${pullDistance > 60 ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400'}`}>
-                {isRefreshing ? <Loader2 size={20}/> : <ArrowUpRight size={20} className="rotate-180"/>}
+                {isRefreshing ? <Loader2 size={20}/> : <ArrowUp size={20} className="rotate-180"/>}
              </div>
           </div>
 
@@ -1747,7 +1717,6 @@ const filteredClients = useMemo(() => {
 
             {/* RENDERIZAÇÃO CONDICIONAL DAS VIEWS */}
             
-            {/* VIEW DO DONO (ADMIN) */}
             {view === 'saas_admin' && isAdmin && (
                 <SaaSAdminView users={allUsers} theme={theme} onSimulate={handleSimulation} />
             )}
@@ -1758,24 +1727,19 @@ const filteredClients = useMemo(() => {
                </div>
             )}
 
-            {view === 'reports' && (
-                <ReportsView clients={clients} packages={packages} servers={servers} templates={templates} theme={theme} />
+            {view === 'finance' && (
+                <FinanceView clients={clients} packages={packages} servers={servers} theme={theme} />
             )}
 
             {view === 'dashboard' && (
               <div className="space-y-5 animate-in fade-in">
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                  <StatCard title="Ativos" value={stats.activeCount} icon={<CheckCircle/>} color="emerald" theme={theme} />
-                  <StatCard title="A Vencer" value={stats.pendingPaymentCount} icon={<AlertCircle/>} color="amber" theme={theme} />
-                  <StatCard title="Vencidos" value={stats.expiredCount} icon={<Clock/>} color="red" theme={theme} />
-                  <StatCard title="Blocks" value={stats.blockedCount} icon={<UserX/>} color="blue" theme={theme} />
+                  <StatCard title="Total Ativos" value={clients.filter(c => c.status === 'active').length} icon={<CheckCircle/>} color="emerald" theme={theme} />
+                  <StatCard title="Pagamento Pendente" value={clients.filter(c => c.paymentStatus === 'pending').length} icon={<AlertCircle/>} color="amber" theme={theme} />
+                  <StatCard title="Vencidos (Hoje)" value={clients.filter(c => isExpired(c.expiresAt) && c.status === 'active').length} icon={<Clock/>} color="red" theme={theme} />
+                  <StatCard title="Bloqueados" value={clients.filter(c => c.status === 'blocked').length} icon={<UserX/>} color="blue" theme={theme} />
                 </div>
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                  <StatCard title="Receita Mês" value={`R$ ${stats.monthlyRevenue.toFixed(0)}`} icon={<DollarSign/>} color="blue" theme={theme} />
-                  <StatCard title="Custos Mês" value={`R$ ${stats.monthlyCosts.toFixed(0)}`} icon={<Layers/>} color="red" theme={theme} />
-                  <StatCard title="Lucro Líq." value={`R$ ${(stats.monthlyRevenue - stats.monthlyCosts).toFixed(0)}`} icon={<TrendingUp/>} color="emerald" theme={theme} />
-                  <StatCard title="LTV Total" value={`R$ ${stats.totalLTV.toFixed(0)}`} icon={<Activity/>} color="blue" theme={theme} />
-                </div>
+                
                 <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                   <div className={`rounded-lg border shadow-sm overflow-hidden ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
                     <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
@@ -1791,6 +1755,9 @@ const filteredClients = useMemo(() => {
                           <button onClick={() => sendWhatsApp(`Olá ${c.name}, renovação pendente.`, c)} className="p-2 bg-emerald-500 text-white rounded-md shrink-0 active:scale-95 shadow-sm hover:bg-emerald-600"><MessageSquare size={14}/></button>
                         </div>
                       ))}
+                      {clients.filter(c => c.paymentStatus === 'pending' || isExpired(c.expiresAt)).length === 0 && (
+                          <div className="p-6 text-center text-xs text-slate-400">Nenhuma pendência hoje.</div>
+                      )}
                     </div>
                   </div>
                   <RecentActivityCard title="Últimas Entradas" theme={theme} items={clients.flatMap(c => c.paymentHistory?.map(h => ({...h, clientName: c.name})) || []).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 5)} />
@@ -1822,9 +1789,7 @@ const filteredClients = useMemo(() => {
                   {filteredClients.map(c => {
                     const expired = isExpired(c.expiresAt);
                     return (
-                      <div key={c.id} className={`p-4 rounded-lg border shadow-sm relative overflow-hidden transition-all active:scale-[0.99] border-l-[6px] ${getTrafficLightColor(c)} ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
-                        
-                        {/* Cabeçalho do Card */}
+                      <div key={c.id} className={`p-4 rounded-lg border shadow-sm relative overflow-hidden transition-all active:scale-[0.99] border-l-[6px] ${c.status === 'blocked' ? 'border-l-slate-400' : expired ? 'border-l-red-500' : 'border-l-emerald-500'} ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
                         <div className="flex justify-between items-start mb-3">
                           <div className="flex-1 min-w-0 pr-3">
                             <h4 className="font-bold text-[15px] truncate leading-tight text-slate-900 dark:text-white">{c.name}</h4>
@@ -1839,8 +1804,6 @@ const filteredClients = useMemo(() => {
                               </button>
                           </div>
                         </div>
-
-                        {/* Informações do Card */}
                         <div className="flex gap-2.5 mb-3">
                           <div className="flex-1 bg-slate-50 dark:bg-slate-800/50 p-2.5 rounded-md border dark:border-slate-800">
                               <div className="text-[9px] font-bold text-slate-400 uppercase mb-1">Vencimento</div>
@@ -1851,18 +1814,14 @@ const filteredClients = useMemo(() => {
                               <div className="text-[12px] font-bold truncate uppercase">{c.packageName}</div>
                           </div>
                         </div>
-
-                        {/* Rodapé com Ações (AQUI ESTAVA O ERRO) */}
                         <div className="flex gap-2 justify-between items-center border-t border-slate-100 dark:border-slate-800 pt-3">
                           {c.status === 'archived' ? (
-                            // Lógica para Arquivados (Resgate)
                             <div className="flex gap-2 justify-end w-full">
                               <ActionButton onClick={() => setSelectedClientForMsg(c)} theme={theme} color="emerald" icon={<MessageSquare size={16}/>} />
                               <ActionButton onClick={() => handleRestoreClient(c)} theme={theme} color="blue" icon={<RotateCcw size={16}/>} />
                               <ActionButton onClick={() => handleDeleteClient(c.id)} theme={theme} color="red" icon={<Trash2 size={16}/>} />
                             </div>
                           ) : (
-                            // Lógica Padrão (Ativos/Vencidos) - ATENÇÃO AO FRAGMENT <>...</>
                             <>
                               <div className="flex gap-2">
                                 <ActionButton onClick={() => setSelectedClientDetails(c)} theme={theme} color="blue" icon={<Eye size={16}/>} />
@@ -1876,7 +1835,6 @@ const filteredClients = useMemo(() => {
                             </>
                           )}
                         </div>
-
                       </div>
                     );
                   })}
@@ -1898,7 +1856,7 @@ const filteredClients = useMemo(() => {
                         {filteredClients.map(c => {
                           const expired = isExpired(c.expiresAt);
                           return (
-                            <tr key={c.id} className={`hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors border-l-4 ${getTrafficLightColor(c)}`}>
+                            <tr key={c.id} className={`hover:bg-slate-50/50 dark:hover:bg-slate-800/30 transition-colors border-l-4 ${c.status === 'blocked' ? 'border-l-slate-400' : expired ? 'border-l-red-500' : 'border-l-emerald-500'}`}>
                               <td className="px-4 py-2.5">
                                 <div className="flex flex-col">
                                   <span className="font-bold text-[13px]">{c.name}</span>
@@ -1920,14 +1878,12 @@ const filteredClients = useMemo(() => {
                               <td className="px-4 py-2.5 text-right">
                                 <div className="flex gap-1.5 justify-end">
                                   {c.status === 'archived' ? (
-                                    /* --- BOTÕES PARA ARQUIVADOS (Resgate) --- */
                                     <>
                                       <ActionButton onClick={() => setSelectedClientForMsg(c)} theme={theme} color="emerald" icon={<MessageSquare size={14}/>} />
                                       <ActionButton onClick={() => handleRestoreClient(c)} theme={theme} color="blue" icon={<RotateCcw size={14}/>} />
                                       <ActionButton onClick={() => handleDeleteClient(c.id)} theme={theme} color="red" icon={<Trash2 size={14}/>} />
                                     </>
                                   ) : (
-                                    /* --- BOTÕES PADRÃO --- */
                                     <>
                                       <ActionButton onClick={() => setSelectedClientDetails(c)} theme={theme} color="blue" icon={<Eye size={14}/>} />
                                       <ActionButton onClick={() => setSelectedClientForEdit(c)} theme={theme} color="blue" icon={<Pencil size={14}/>} />
@@ -1956,12 +1912,12 @@ const filteredClients = useMemo(() => {
                    <form className="space-y-3" onSubmit={(e) => {
                      e.preventDefault();
                      const fd = new FormData(e.currentTarget);
-                     handleSaveServer({ name: fd.get('name'), url: fd.get('url'), credits: fd.get('credits') });
+                     // REMOVIDO CAMPO CRÉDITOS INICIAIS
+                     handleSaveServer({ name: fd.get('name'), url: fd.get('url') });
                      e.currentTarget.reset();
                    }}>
                      <FormInput theme={theme} name="name" label="Nome do Servidor" placeholder="Ex: Servidor Principal" required />
                      <FormInput theme={theme} name="url" label="Link / DNS" placeholder="http://..." required />
-                     <FormInput theme={theme} name="credits" label="Créditos Iniciais" type="number" required />
                      <button type="submit" className="w-full bg-purple-600 text-white rounded-md font-bold uppercase text-[11px] py-3 hover:bg-purple-700">Salvar Servidor</button>
                    </form>
                 </div>
@@ -2144,7 +2100,7 @@ const filteredClients = useMemo(() => {
                       <FormInput theme={theme} name="password" label="Senha IPTV" value={addFormData.password} onChange={(e: any) => setAddFormData({...addFormData, password: e.target.value})} />
                     </div>
 
-                    {/* 2. WhatsApp (AJUSTADO CONFORME SOLICITADO) */}
+                    {/* 2. WhatsApp */}
                     <FormInput 
                         theme={theme} 
                         name="phone" 
@@ -2155,7 +2111,7 @@ const filteredClients = useMemo(() => {
                         onChange={(e: any) => setAddFormData({...addFormData, phone: e.target.value})} 
                     />
 
-                    {/* 3. Servidor (Saldo) */}
+                    {/* 3. Servidor */}
                     <div className="space-y-1">
                       <label className="text-[10px] font-bold text-slate-400 uppercase ml-1 tracking-wider">Servidor (Saldo)</label>
                       <select name="serverId" value={addFormData.serverId} onChange={(e: any) => setAddFormData({...addFormData, serverId: e.target.value})} className={`w-full px-3 py-2.5 rounded-md border text-[13px] font-medium outline-none transition-all focus:ring-1 focus:ring-blue-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-200 text-slate-800 shadow-sm focus:border-blue-500'}`}>
@@ -2198,7 +2154,7 @@ const filteredClients = useMemo(() => {
                       <FormInput theme={theme} name="macKey" label="Mac / Key" value={addFormData.macKey} onChange={(e: any) => setAddFormData({...addFormData, macKey: e.target.value})} />
                     </div>
 
-                    {/* 8. Pagamento e Data de Recebimento (Lógica de bloqueio aplicada) */}
+                    {/* 8. Pagamento e Data de Recebimento */}
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
                       <div 
                         className={`p-3 rounded-md border flex items-center gap-3 cursor-pointer select-none transition-all ${addFormData.isPaid ? 'bg-blue-600/10 border-blue-600/30' : 'bg-slate-50 dark:bg-slate-800/50 border-slate-100 dark:border-slate-800'}`} 
@@ -2216,7 +2172,7 @@ const filteredClients = useMemo(() => {
                         </label>
                         <input 
                           type="date" 
-                          disabled={!addFormData.isPaid} // <--- BLOQUEADO CASO NÃO ESTEJA PAGO
+                          disabled={!addFormData.isPaid}
                           value={addFormData.paymentDate} 
                           onChange={(e) => setAddFormData({...addFormData, paymentDate: e.target.value})}
                           className={`w-full px-3 py-2 rounded-md border text-[13px] font-medium outline-none transition-all ${!addFormData.isPaid ? 'opacity-40 cursor-not-allowed bg-slate-100 dark:bg-slate-900 border-slate-200 dark:border-slate-800' : 'bg-slate-50 dark:bg-slate-800 border-blue-500/50 dark:border-blue-500/50 text-slate-800 dark:text-white shadow-sm'}`}
@@ -2297,7 +2253,7 @@ const filteredClients = useMemo(() => {
 
         <nav className={`md:hidden fixed bottom-0 left-0 right-0 border-t grid grid-cols-5 items-center justify-items-center py-2 z-[100] pb-safe shadow-xl transition-colors ${theme === 'dark' ? 'bg-slate-900/98 border-slate-800 backdrop-blur-xl' : 'bg-white/98 border-slate-100 backdrop-blur-xl'}`}>
           <BottomNavItem icon={<LayoutDashboard size={22}/>} label="Painel" active={view === 'dashboard'} onClick={() => setView('dashboard')} />
-          <BottomNavItem icon={<PieChart size={22}/>} label="Relat." active={view === 'reports'} onClick={() => setView('reports')} />
+          <BottomNavItem icon={<DollarSign size={22}/>} label="Financ." active={view === 'finance'} onClick={() => setView('finance')} />
           
           <div className="relative flex items-center justify-center w-full h-full">
             <button onClick={() => setView('add')} className="w-12 h-12 bg-blue-600 text-white rounded-full flex items-center justify-center shadow-lg -mt-8 border-4 border-slate-50 dark:border-slate-950 transition-all active:scale-95 z-[120]">
@@ -2346,7 +2302,8 @@ const filteredClients = useMemo(() => {
                     <div className="font-bold text-slate-800 dark:text-white">{selectedServerForCredit.name}</div>
                 </div>
                 <FormInput theme={theme} name="amount" label="Quantidade de Créditos" type="number" required autoFocus />
-                <FormInput theme={theme} name="totalCost" label="Custo Total da Compra (R$)" type="number" step="0.01" required />
+                {/* CAMPO NOVO: CUSTO TOTAL */}
+                <FormInput theme={theme} name="totalCost" label="Custo Total da Compra (R$)" type="number" step="0.01" required placeholder="Ex: 50.00" />
                 <button type="submit" className="w-full bg-purple-600 text-white py-3 rounded-md font-bold uppercase text-[12px] shadow-sm mt-2 hover:bg-purple-700">Adicionar e Registrar Custo</button>
             </form>
           </div>
