@@ -1047,7 +1047,7 @@ useEffect(() => {
     return () => subscription.unsubscribe();
   }, []);
 
-  const fetchAllData = async (silent = false) => {
+const fetchAllData = async (silent = false) => {
     if (!silent) setIsLoading(true);
     try {
       const { data: sessionData } = await supabase.auth.getSession();
@@ -1055,37 +1055,54 @@ useEffect(() => {
       const userEmail = sessionData.session?.user.email;
       if (!userId) return;
 
+      // 1. Busca o perfil do usuário logado
       const { data: profileData } = await supabase.from('profiles').select('*').eq('id', userId).single();
       if (profileData) setUserProfile(profileData);
       else {
           const tempProfile: UserProfile = {
               id: userId, email: userEmail || '',
-              trial_ends_at: new Date(Date.now() + 86400000).toISOString(), // 24h trial
+              trial_ends_at: new Date(Date.now() + 86400000).toISOString(),
               subscription_ends_at: null, plan_type: null, 
               created_at: new Date().toISOString(), subscription_status: 'trialing', full_name: userEmail?.split('@')[0] || 'User'
           };
           setUserProfile(tempProfile);
       }
 
-      // Se for o Admin (Dono), busca todos os usuários
+      // --- BLOCO ADMIN ATUALIZADO (PAINEL SAAS) ---
+      // Se for o Admin (Dono), busca a lista de TODOS os assinantes do sistema
       if (userEmail === 'eronvasconcelos.br@gmail.com') {
-          const { data: allProfiles } = await supabase.from('profiles').select('*');
-          if (allProfiles) setAllUsers(allProfiles);
-      }
+          const { data: allProfiles, error: adminError } = await supabase
+              .from('profiles')
+              .select('*')
+              .order('created_at', { ascending: false }); // Mostra os novos primeiro
 
+          if (adminError) {
+              console.error("Erro Admin ao buscar perfis:", adminError);
+          } else if (allProfiles) {
+              // Mapeia os dados para garantir que o status apareça corretamente na tabela
+              const formattedUsers = allProfiles.map(u => ({
+                  ...u,
+                  // Caso o banco não tenha o status salvo, calculamos na hora pela data de vencimento
+                  subscription_status: u.subscription_status || 
+                  (u.subscription_ends_at && new Date(u.subscription_ends_at) > new Date() ? 'active' : 'expired')
+              }));
+              setAllUsers(formattedUsers);
+          }
+      }
+      // --------------------------------------------
+
+      // 2. Busca e mapeia os Clientes (IPTV) do usuário
       const { data: clientsData } = await supabase.from('clients').select('*').eq('user_id', userId);
       if (clientsData) {
-          // Função que traduz do Banco de Dados para o Aplicativo
           const mappedClients = clientsData.map((d: any) => ({
               ...d,
-              // Tradução das colunas com nomes diferentes
               paymentStatus: d.payment_status,
               packageName: d.package_name,
               packageId: d.package_id,
               serverId: d.server_id,
               appName: d.app_name,
               macKey: d.mac_key,
-              expiresAt: d.expires_at,  // AQUI CORRIGE A DATA 1969
+              expiresAt: d.expires_at,
               createdAt: d.created_at,
               paymentHistory: d.payment_history || [],
               totalPaid: d.total_paid
@@ -1093,19 +1110,19 @@ useEffect(() => {
           setClients(mappedClients);
       }
 
+      // 3. Busca e mapeia os Pacotes
       const { data: packagesData } = await supabase.from('packages').select('*').eq('user_id', userId);
       if (packagesData) {
-          // Mapeia para garantir que o front leia "credits_qty"
           setPackages(packagesData.map((p: any) => ({
               ...p,
-              credits_qty: p.credits_qty || 1 // Se não tiver, assume 1
+              credits_qty: p.credits_qty || 1
           })));
       }
 
+      // 4. Busca Templates de Mensagem
       const { data: templatesData } = await supabase.from('templates').select('*').eq('user_id', userId);
       if (templatesData && templatesData.length > 0) setTemplates(templatesData);
       else {
-          // Templates Padrão
           const initialTemplates = [
               { id: 't1', user_id: userId, title: 'BOAS-VINDAS', body: 'Olá {{nome}}! Seja bem-vindo(a)!. \n\nSeus dados de acesso:\n👤 Usuário: {{usuario}}\n🔑 Senha: {{senha}}\n\nQualquer dúvida, estou à disposição!' },
               { id: 't2', user_id: userId, title: 'COBRANÇA - PRÉ', body: 'Opa {{nome}}, tudo certo? Passando pra lembrar que seu plano vence em {{vencimento}}. O valor é R$ {{valor}}. Posso enviar o PIX para renovação?' },
@@ -1116,6 +1133,7 @@ useEffect(() => {
           setTemplates(initialTemplates);
       }
 
+      // 5. Busca Regras e Servidores
       const { data: rulesData } = await supabase.from('rules').select('*').eq('user_id', userId);
       if (rulesData) setRules(rulesData);
       
@@ -2126,7 +2144,7 @@ useEffect(() => {
                   <div key={p.id} className={`p-4 rounded-lg border relative shadow-sm flex justify-between items-center ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
                     <div>
                       <div className="text-[13px] font-bold uppercase text-slate-800 dark:text-white">{p.name}</div>
-                      <div className="text-[10px] text-slate-400 font-medium uppercase mt-0.5">Venda: R$ {p.price.toFixed(2)} • Custo: R$ {p.cost.toFixed(2)} • {p.months} Mês(es)</div>
+                      <div className="text-[10px] text-slate-400 font-medium uppercase mt-0.5">Venda: R$ {p.price.toFixed(2)} • {p.months} Mês(es)</div>
                     </div>
                     <div className="flex gap-2">
                         <button onClick={() => setEditingPackage(p)} className="text-blue-400 hover:text-blue-600"><Edit3 size={16}/></button>
