@@ -277,32 +277,35 @@ const FinancialFilter = ({ month, year, setMonth, setYear, theme }) => (
   </div>
 );
 
-const FinanceView = ({ clients, packages, servers, theme, selectedMonth, selectedYear }) => {
-  const financialSummary = React.useMemo(() => {
+const FinanceView = ({ clients, packages, servers, theme, selectedMonth, selectedYear }: any) => {
+  const financialSummary = useMemo(() => {
     const currentMonth = selectedMonth;
     const currentYear = selectedYear;
 
-    const monthlyRevenue = clients.reduce((sum, c) => {
-        const paidInMonth = c.paymentHistory?.filter((h) => {
+    // 1. Receita (Pagamentos realizados NESTE mês selecionado)
+    const monthlyRevenue = clients.reduce((sum: number, c: any) => {
+        const paidInMonth = c.paymentHistory?.filter((h: any) => {
             const hDate = new Date(h.date);
             return hDate.getMonth() === currentMonth && hDate.getFullYear() === currentYear;
-        }).reduce((pSum, h) => pSum + h.amount, 0) || 0;
+        }).reduce((pSum: number, h: any) => pSum + h.amount, 0) || 0;
         return sum + paidInMonth;
     }, 0);
 
-    const clientExpenses = clients.reduce((sum, c) => {
-        const isActiveOrPaid = c.status === 'active' || c.paymentHistory?.some((h) => {
+    // 2. Despesas Fixas (CORRIGIDO: Custo só entra se houver pagamento no mês)
+    const clientExpenses = clients.reduce((sum: number, c: any) => {
+        const hasPaymentInMonth = c.paymentHistory?.some((h: any) => {
             const hDate = new Date(h.date);
             return hDate.getMonth() === currentMonth && hDate.getFullYear() === currentYear;
         });
-        return sum + (isActiveOrPaid ? (c.expenses || 0) : 0);
+        return sum + (hasPaymentInMonth ? (c.expenses || 0) : 0);
     }, 0);
 
-    const serverExpenses = servers.reduce((sum, s) => {
-        const serverCostMonth = s.transactions?.filter((t) => {
+    // 3. Despesas de Servidor (Compra de créditos no mês selecionado)
+    const serverExpenses = servers.reduce((sum: number, s: any) => {
+        const serverCostMonth = s.transactions?.filter((t: any) => {
             const tDate = new Date(t.date);
             return tDate.getMonth() === currentMonth && tDate.getFullYear() === currentYear;
-        }).reduce((tSum, t) => tSum + (t.cost || 0), 0) || 0;
+        }).reduce((tSum: number, t: any) => tSum + (t.cost || 0), 0) || 0;
         return sum + serverCostMonth;
     }, 0);
 
@@ -311,57 +314,34 @@ const FinanceView = ({ clients, packages, servers, theme, selectedMonth, selecte
     const chartData = Array.from({length: 6}, (_, i) => {
         const d = new Date(currentYear, currentMonth, 1); 
         d.setMonth(d.getMonth() - (5 - i));
-        const monthIdx = d.getMonth(); 
-        const year = d.getFullYear();
-        const rev = clients.reduce((sum, c) => sum + (c.paymentHistory?.filter((h) => {
+        const mIdx = d.getMonth(); const yIdx = d.getFullYear();
+        const rev = clients.reduce((s: number, c: any) => s + (c.paymentHistory?.filter((h: any) => {
             const hDate = new Date(h.date);
-            return hDate.getMonth() === monthIdx && hDate.getFullYear() === year;
-        }).reduce((p, h) => p + h.amount, 0) || 0), 0);
-        return { label: ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'][monthIdx], value: rev };
+            return hDate.getMonth() === mIdx && hDate.getFullYear() === yIdx;
+        }).reduce((p: number, h: any) => p + h.amount, 0) || 0), 0);
+        return { label: ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'][mIdx], value: rev };
     });
 
-    return { 
-      monthlyRevenue, 
-      totalExpenses, 
-      profit: monthlyRevenue - totalExpenses, 
-      chartData,
-      planStats: packages.map(pkg => ({ name: pkg.name, count: clients.filter(c => c.packageId === pkg.id && c.status === 'active').length })).sort((a, b) => b.count - a.count),
-      serverStats: servers.map(srv => ({
-        name: srv.name, 
-        totalCost: srv.transactions?.filter(t => new Date(t.date).getMonth() === currentMonth && new Date(t.date).getFullYear() === currentYear).reduce((acc, t) => acc + (t.cost || 0), 0) || 0,
-        credits: srv.credits 
-      })).sort((a, b) => b.totalCost - a.totalCost)
-    };
+    return { monthlyRevenue, totalExpenses, profit: monthlyRevenue - totalExpenses, chartData };
   }, [clients, packages, servers, selectedMonth, selectedYear]);
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-        <StatCard title="Faturamento (Mês)" value={`R$ ${financialSummary.monthlyRevenue.toFixed(2)}`} icon={<DollarSign/>} color="emerald" theme={theme} trend="+ Receita"/>
+        <StatCard title="Faturamento" value={`R$ ${financialSummary.monthlyRevenue.toFixed(2)}`} icon={<DollarSign/>} color="emerald" theme={theme} trend="+ Receita"/>
         <StatCard title="Despesas Totais" value={`R$ ${financialSummary.totalExpenses.toFixed(2)}`} icon={<TrendingDown/>} color="red" theme={theme} trend="- Custos"/>
         <StatCard title="Lucro Líquido" value={`R$ ${financialSummary.profit.toFixed(2)}`} icon={<Wallet/>} color="blue" theme={theme} trend="Resultado"/>
       </div>
+      
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-         <div><h4 className="text-xs font-bold uppercase mb-3 text-slate-500 ml-1">Fluxo de Caixa</h4><RevenueChart data={financialSummary.chartData} theme={theme} /></div>
-         <div><h4 className="text-xs font-bold uppercase mb-3 text-slate-500 ml-1">Movimentação</h4><ClientMovementChart clients={clients} theme={theme} /></div>
-      </div>
-      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-        <div className={`p-5 rounded-xl border ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
-           <h4 className="text-xs font-bold uppercase mb-4 text-indigo-500">Planos Ativos</h4>
-           <div className="space-y-3">
-              {financialSummary.planStats.map((p, i) => (
-                 <div key={i} className="flex justify-between text-xs"><span>{p.name}</span><span className="font-bold text-indigo-500">{p.count} ativos</span></div>
-              ))}
-           </div>
-        </div>
-        <div className={`p-5 rounded-xl border ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
-           <h4 className="text-xs font-bold uppercase mb-4 text-purple-500">Custos Servidor</h4>
-           <div className="space-y-3">
-              {financialSummary.serverStats.map((s, i) => (
-                 <div key={i} className="flex justify-between text-xs"><span>{s.name}</span><span className="font-bold text-red-500">- R$ {s.totalCost.toFixed(2)}</span></div>
-              ))}
-           </div>
-        </div>
+         <div>
+            <h4 className="text-xs font-bold uppercase mb-3 text-slate-500 ml-1">Fluxo de Caixa (6 Meses)</h4>
+            <RevenueChart data={financialSummary.chartData} theme={theme} />
+         </div>
+         <div>
+            <h4 className="text-xs font-bold uppercase mb-3 text-slate-500 ml-1">Movimentação</h4>
+            <ClientMovementChart clients={clients} theme={theme} />
+         </div>
       </div>
     </div>
   );
@@ -369,7 +349,19 @@ const FinanceView = ({ clients, packages, servers, theme, selectedMonth, selecte
 
 /* --- SAAS ADMIN VIEW (PAINEL DO DONO + DEVELOPER TOOLS) --- */
 
-const SaaSAdminView = ({ users, theme, onSimulate }: { users: UserProfile[], theme: 'light' | 'dark', onSimulate: (mode: string) => void }) => {
+const SaaSAdminView = ({ 
+  users, 
+  theme, 
+  onSimulate, 
+  onDeleteUser, // Nova prop para deletar
+  onViewUser    // Nova prop para visualizar
+}: { 
+  users: any[], 
+  theme: 'light' | 'dark', 
+  onSimulate: (mode: string) => void,
+  onDeleteUser: (id: string) => void,
+  onViewUser: (user: any) => void 
+}) => {
   const stats = useMemo(() => {
     const totalUsers = users.length;
     const activeUsers = users.filter(u => u.subscription_status === 'active' || u.subscription_status === 'trialing').length;
@@ -384,7 +376,7 @@ const SaaSAdminView = ({ users, theme, onSimulate }: { users: UserProfile[], the
       <div className="flex items-center justify-between">
         <div>
           <h2 className={`text-2xl font-black uppercase tracking-tight ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>Painel SaaS</h2>
-          <p className="text-sm text-slate-500 font-medium">Visão geral do negócio de software</p>
+          <p className="text-sm text-slate-500 font-medium">Gestão de Usuários e Assinaturas</p>
         </div>
         <div className="px-3 py-1 bg-yellow-500/10 text-yellow-600 rounded-full text-xs font-bold uppercase border border-yellow-500/20 flex items-center gap-2">
           <Crown size={14} /> Modo Admin
@@ -396,7 +388,7 @@ const SaaSAdminView = ({ users, theme, onSimulate }: { users: UserProfile[], the
          <div className="absolute top-0 right-0 p-2 opacity-10 rotate-12 group-hover:opacity-20 transition-opacity"><TestTube size={60} /></div>
          <div className="flex items-center gap-2 mb-4">
              <div className="p-1.5 bg-slate-200 dark:bg-slate-800 rounded-md text-slate-600 dark:text-slate-400"><TestTube size={16}/></div>
-             <h3 className="text-xs font-bold uppercase tracking-widest text-slate-500">Developer Tools (Simulações)</h3>
+             <h3 className="text-xs font-bold uppercase tracking-widest text-slate-500">Developer Tools</h3>
          </div>
          <div className="grid grid-cols-2 md:grid-cols-4 gap-3 relative z-10">
              <button onClick={() => onSimulate('trial_expired')} className="py-3 px-3 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-lg text-[10px] font-bold uppercase shadow-sm hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors text-red-500 flex items-center justify-center gap-2"><Clock size={14}/> Simular Fim Teste</button>
@@ -406,17 +398,18 @@ const SaaSAdminView = ({ users, theme, onSimulate }: { users: UserProfile[], the
          </div>
       </div>
 
+      {/* CARDS DE ESTATÍSTICAS */}
       <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
-        <StatCard title="MRR (Receita Mensal)" value={`R$ ${stats.mrr.toFixed(2)}`} icon={<DollarSign/>} color="emerald" theme={theme}/>
+        <StatCard title="MRR Estimado" value={`R$ ${stats.mrr.toFixed(2)}`} icon={<DollarSign/>} color="emerald" theme={theme}/>
         <StatCard title="Usuários Totais" value={stats.totalUsers} icon={<Users/>} color="blue" theme={theme}/>
         <StatCard title="Assinantes Premium" value={stats.premiumUsers} icon={<Star/>} color="purple" theme={theme}/>
-        <StatCard title="Ativos (Trial + Pagos)" value={stats.activeUsers} icon={<Activity/>} color="amber" theme={theme}/>
+        <StatCard title="Ativos" value={stats.activeUsers} icon={<Activity/>} color="amber" theme={theme}/>
       </div>
 
-      {/* Tabela de Usuários */}
+      {/* TABELA DE USUÁRIOS */}
       <div className={`rounded-xl border shadow-sm overflow-hidden ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
-        <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30 flex justify-between items-center">
-           <h3 className="text-xs font-bold uppercase flex items-center gap-2 tracking-wide"><Database size={16} className="text-blue-500"/> Base de Usuários</h3>
+        <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
+           <h3 className="text-xs font-bold uppercase flex items-center gap-2 tracking-wide"><Database size={16} className="text-blue-500"/> Base de Usuários Cloud</h3>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
@@ -430,35 +423,58 @@ const SaaSAdminView = ({ users, theme, onSimulate }: { users: UserProfile[], the
               </tr>
             </thead>
             <tbody className={`text-xs font-medium divide-y ${theme === 'dark' ? 'divide-slate-800' : 'divide-slate-100'}`}>
-              {users.map((user) => (
-                <tr key={user.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
-                  <td className="px-6 py-3">
-                    <div className="font-bold text-slate-700 dark:text-slate-200">{user.full_name || 'Usuário Sem Nome'}</div>
-                    <div className="text-[10px] text-slate-400">{user.email}</div>
-                  </td>
-                  <td className="px-6 py-3">
-                    <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
-                      user.plan_type === 'premium' ? 'bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400' : 
-                      'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
-                    }`}>
-                      {user.plan_type || 'Free'}
-                    </span>
-                  </td>
-                  <td className="px-6 py-3">
-                      <div className="flex items-center gap-1.5">
-                        <div className={`w-1.5 h-1.5 rounded-full ${user.subscription_status === 'active' ? 'bg-emerald-500' : 'bg-red-500'}`}></div>
-                        <span className="uppercase text-[10px] font-bold">{user.subscription_status || 'Inativo'}</span>
+              {users.map((user) => {
+                // LÓGICA INATIVO: Se não houver data de expiração ou se ela já passou.
+                const isExpired = user.expires_at ? new Date(user.expires_at) < new Date() : false;
+                const statusLabel = isExpired ? 'INATIVO' : (user.subscription_status || 'INATIVO');
+
+                return (
+                  <tr key={user.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
+                    <td className="px-6 py-3">
+                      <div className="font-bold text-slate-700 dark:text-slate-200">
+                        {/* CORREÇÃO: Fallback para garantir que o nome apareça */}
+                        {user.full_name || user.name || user.display_name || 'Usuário Sem Nome'}
                       </div>
-                  </td>
-                  <td className="px-6 py-3 text-slate-500">
-                    {new Date(user.created_at).toLocaleDateString('pt-BR')}
-                  </td>
-                  <td className="px-6 py-3 text-right">
-                    <button className="text-slate-400 hover:text-blue-500 transition-colors mr-2"><Eye size={16}/></button>
-                    <button className="text-slate-400 hover:text-red-500 transition-colors"><UserX size={16}/></button>
-                  </td>
-                </tr>
-              ))}
+                      <div className="text-[10px] text-slate-400">{user.email}</div>
+                    </td>
+                    <td className="px-6 py-3">
+                      <span className={`px-2 py-0.5 rounded text-[10px] font-bold uppercase ${
+                        user.plan_type === 'premium' ? 'bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400' : 
+                        'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
+                      }`}>
+                        {/* CORREÇÃO: Plano Free vira TESTE */}
+                        {user.plan_type === 'free' || !user.plan_type ? 'TESTE' : user.plan_type}
+                      </span>
+                    </td>
+                    <td className="px-6 py-3">
+                        <div className="flex items-center gap-1.5">
+                          <div className={`w-1.5 h-1.5 rounded-full ${statusLabel === 'active' || statusLabel === 'trialing' ? 'bg-emerald-500' : 'bg-red-500'}`}></div>
+                          <span className={`uppercase text-[10px] font-bold ${isExpired ? 'text-red-500' : ''}`}>
+                            {statusLabel}
+                          </span>
+                        </div>
+                    </td>
+                    <td className="px-6 py-3 text-slate-500">
+                      {new Date(user.created_at).toLocaleDateString('pt-BR')}
+                    </td>
+                    <td className="px-6 py-3 text-right">
+                      {/* CORREÇÃO: Ações agora chamam funções reais */}
+                      <button 
+                        onClick={() => onViewUser(user)}
+                        className="text-slate-400 hover:text-blue-500 transition-colors mr-3"
+                      >
+                        <Eye size={16}/>
+                      </button>
+                      <button 
+                        onClick={() => { if(confirm('Excluir este usuário permanentemente?')) onDeleteUser(user.id) }}
+                        className="text-slate-400 hover:text-red-500 transition-colors"
+                      >
+                        <UserX size={16}/>
+                      </button>
+                    </td>
+                  </tr>
+                );
+              })}
             </tbody>
           </table>
         </div>
