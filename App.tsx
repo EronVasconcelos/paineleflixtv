@@ -1535,18 +1535,18 @@ const handleUpdateSaaSExpiry = async (userId: string, newDate: string) => {
 
         if (error) throw error;
 
-        // 1. Atualiza a lista geral do admin (allUsers)
+        // 1. Atualiza a lista geral que você vê no Painel SaaS
         setAllUsers(prev => prev.map(u => 
             u.id === userId ? { ...u, subscription_ends_at: newDate } : u
         ));
         
-        // 2. Atualiza os dados no modal que está aberto na sua frente
+        // 2. Atualiza o modal de detalhes que está aberto
         setSelectedClientDetails(prev => 
             prev && prev.id === userId ? { ...prev, subscription_ends_at: newDate } : prev
         );
 
-        // 3. SINCRONIZAÇÃO: Se você estiver editando seu próprio perfil ou de um usuário logado
-        // isso fará com que o selo de "Acesso: X dias" mude na hora sem F5
+        // 3. SINCRONIZAÇÃO CRÍTICA: Atualiza o perfil logado no navegador
+        // Isso faz o contador "ACESSO: X DIAS" mudar na hora
         if (userProfile && userProfile.id === userId) {
             setUserProfile(prev => prev ? { ...prev, subscription_ends_at: newDate } : prev);
         }
