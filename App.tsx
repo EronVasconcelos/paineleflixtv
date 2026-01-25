@@ -918,6 +918,82 @@ const PublicSignupScreen = ({ onSignup }: { onSignup: (data: any) => void }) => 
   );
 };
 
+const SaaSDetailsModal = ({ 
+  user, 
+  theme, 
+  onClose 
+}: { 
+  user: any, 
+  theme: 'light' | 'dark', 
+  onClose: () => void 
+}) => {
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-300">
+      <div className={`relative w-full max-w-lg rounded-[24px] shadow-2xl overflow-hidden border ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
+        
+        {/* Cabeçalho */}
+        <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/50">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-blue-500/10 rounded-lg"><User size={20} className="text-blue-500"/></div>
+            <div>
+              <h3 className="text-sm font-black uppercase tracking-tight dark:text-white">Perfil do Assinante SaaS</h3>
+              <p className="text-[10px] text-slate-500 font-bold uppercase tracking-widest">Detalhes da Conta Cloud</p>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-full transition-colors">
+            <X size={20} className="text-slate-400" />
+          </button>
+        </div>
+
+        <div className="p-6 space-y-6">
+          {/* Informações Básicas */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Nome Completo</span>
+              <p className="text-sm font-bold dark:text-slate-200 capitalize">{user.full_name || 'Não informado'}</p>
+            </div>
+            <div className="space-y-1">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Plano Atual</span>
+              <div>
+                <span className={`px-2 py-0.5 rounded text-[10px] font-black uppercase ${user.plan_type === 'premium' ? 'bg-purple-500/10 text-purple-500' : 'bg-slate-500/10 text-slate-500'}`}>
+                  {user.plan_type === 'premium' ? 'PREMIUM' : 'FREE / TESTE'}
+                </span>
+              </div>
+            </div>
+          </div>
+
+          <div className="space-y-1">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">E-mail de Acesso</span>
+            <p className="text-sm font-medium text-blue-500 underline">{user.email}</p>
+          </div>
+
+          {/* Datas */}
+          <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 grid grid-cols-2 gap-4">
+            <div>
+              <span className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Entrou em</span>
+              <p className="text-xs font-bold">{new Date(user.created_at).toLocaleDateString('pt-BR')}</p>
+            </div>
+            <div>
+              <span className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Vencimento</span>
+              <p className={`text-xs font-bold ${checkIsExpired(user.subscription_ends_at || user.trial_ends_at) ? 'text-red-500' : 'text-emerald-500'}`}>
+                {user.subscription_ends_at || user.trial_ends_at 
+                  ? new Date(user.subscription_ends_at || user.trial_ends_at).toLocaleDateString('pt-BR') 
+                  : 'Não definido'}
+              </p>
+            </div>
+          </div>
+        </div>
+
+        <div className="px-6 py-4 bg-slate-50 dark:bg-slate-800/30 border-t border-slate-100 dark:border-slate-800 flex justify-end">
+          <button onClick={onClose} className="px-4 py-2 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold uppercase rounded-lg hover:opacity-80 transition-all">
+            Fechar
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // --- INÍCIO DO COMPONENTE PRINCIPAL APP ---
 export default function App() {
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
