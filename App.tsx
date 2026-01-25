@@ -1528,35 +1528,37 @@ const handleExportCSV = () => {
   // Função para atualizar manualmente o vencimento de um cliente SaaS
 const handleUpdateSaaSExpiry = async (userId: string, newDate: string) => {
     try {
-        // Garantimos que a data inclua o horário para o Supabase aceitar como timestamptz
+        // Converte a data selecionada para o formato ISO completo (YYYY-MM-DDTHH:mm:ssZ)
+        // Isso garante que o Supabase reconheça o valor corretamente
         const isoDate = new Date(newDate).toISOString();
 
         const { error } = await supabase
             .from('saas_customers')
-            .update({ trial_ends_at: isoDate }) // Gravando no campo que o console confirmou existir
+            .update({ trial_ends_at: isoDate }) 
             .eq('id', userId);
 
         if (error) throw error;
 
-        // 1. Atualiza a lista geral no Painel SaaS
+        // 1. Atualiza a lista geral que você vê no Painel SaaS
         setAllUsers(prev => prev.map(u => 
             u.id === userId ? { ...u, trial_ends_at: isoDate } : u
         ));
         
-        // 2. Atualiza o modal de detalhes aberto
+        // 2. Atualiza o modal de detalhes que está aberto na sua frente
         setSelectedClientDetails(prev => 
             prev && prev.id === userId ? { ...prev, trial_ends_at: isoDate } : prev
         );
 
-        // 3. Sincroniza o painel do cliente na hora
+        // 3. SINCRONIZAÇÃO EM TEMPO REAL:
+        // Atualiza o perfil logado no navegador para o contador mudar NA HORA
         if (userProfile && userProfile.id === userId) {
             setUserProfile(prev => prev ? { ...prev, trial_ends_at: isoDate } : prev);
         }
 
-        showToast("Vencimento atualizado com sucesso!");
+        showToast("Acesso prorrogado com sucesso!");
     } catch (err) {
         console.error("Erro ao atualizar data:", err);
-        showToast("Erro ao processar alteração.", "error");
+        showToast("Falha na comunicação com o banco.", "error");
     }
 };
 
