@@ -970,16 +970,6 @@ export default function App() {
   const [rules, setRules] = useState<MessageRule[]>([]);
   const [servers, setServers] = useState<Server[]>([]);
 
-  const getUnitCreditCost = (server: Server) => {
-    if (!server.transactions || server.transactions.length === 0) return 0;
-    
-    // Soma quanto você já gastou no total com esse servidor
-    const totalSpent = server.transactions.reduce((acc, t) => acc + (Number(t.cost) || 0), 0);
-    // Soma quantos créditos você já comprou no total dele
-    const totalCreditsBought = server.transactions.reduce((acc, t) => acc + (Number(t.amount) || 0), 0);
-    
-    return totalCreditsBought > 0 ? (totalSpent / totalCreditsBought) : 0;
-};
 
 // 2. Agora o useEffect que observa as mudanças no formulário de cadastro
 useEffect(() => {
