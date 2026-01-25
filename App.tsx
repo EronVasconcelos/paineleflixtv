@@ -1960,7 +1960,9 @@ const handleDeleteSaaSUser = async (id: string) => {
                                 ? 'Dono / Admin' 
                                 : userProfile.subscription_ends_at 
                                   ? 'Premium' 
-                                  : `Teste: ${Math.max(0, Math.ceil((new Date(userProfile.trial_ends_at).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)))} dias`}
+                                  : `${checkIsExpired(userProfile.subscription_ends_at || userProfile.trial_ends_at) 
+                                  ? 'Acesso Expirado' 
+                                  : `Acesso: ${Math.max(0, Math.ceil((new Date(userProfile.subscription_ends_at || userProfile.trial_ends_at).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)))} dias`}`
                          </span>
                      </div>
                 )}
