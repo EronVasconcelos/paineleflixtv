@@ -1227,28 +1227,38 @@ export default function App() {
   const handleTogglePayment = (client: Client) => updateClientInSupabase(client.id, { paymentStatus: client.paymentStatus === 'paid' ? 'pending' : 'paid' });
 
   // HANDLER ADICIONAR CLIENTE
+  // --- SUBSTITUIR A FUNÇÃO handleAddClient INTEIRA ---
   const handleAddClient = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!session) return;
     
-    // 1. Validação de Créditos do Servidor
+    // Identifica o pacote selecionado para saber o custo
+    const pkg = packages.find(p => p.id === addFormData.packageId);
+    
+    // Define quantos créditos descontar (Se tiver pacote, usa o custo dele. Se for personalizado, usa 1)
+    const creditsToDeduct = pkg ? pkg.cost : 1;
+
+    // 1. Validação de Créditos do Servidor (AGORA VERIFICA O CUSTO CORRETO)
     let selectedServer = null;
     if (addFormData.serverId) {
         selectedServer = servers.find(s => s.id === addFormData.serverId);
-        if (selectedServer && selectedServer.credits <= 0) {
-            showToast("Servidor sem créditos!", "error");
-            return;
+        
+        // Verifica se existe o servidor E se os créditos são suficientes
+        if (selectedServer) {
+            if (selectedServer.credits < creditsToDeduct) {
+                showToast(`Saldo insuficiente! Este pacote consome ${creditsToDeduct} créditos.`, "error");
+                return; // Para tudo se não tiver saldo
+            }
         }
     }
     
     // 2. Preparação dos Dados
-    const pkg = packages.find(p => p.id === addFormData.packageId);
     const expiryString = `${addFormData.expiryDate}T${addFormData.expiryTime || '23:59'}:00`;
     const expiryDateObj = new Date(expiryString);
     const dateOfPayment = addFormData.paymentDate || new Date().toISOString().split('T')[0];
   
     const newClient: Client = {
-      id: crypto.randomUUID(),
+      id: crypto.randomUUID(), // O banco pode gerar, mas enviamos por garantia local
       user_id: session.user.id,
       name: addFormData.name,
       username: addFormData.username, 
@@ -1280,6 +1290,7 @@ export default function App() {
     };
   
     try {
+      // Inserção no Banco
       const { error } = await supabase.from('clients').insert([{
         user_id: newClient.user_id,
         name: newClient.name,
@@ -1304,20 +1315,24 @@ export default function App() {
   
       if (error) throw error;
   
+      // Atualiza lista local
       setClients(prev => [...prev, newClient]);
       
-      // Lógica de Desconto de Crédito
+      // Lógica de Desconto de Crédito (CORRIGIDA)
       if (selectedServer && session.user.id) {
-          const newCredits = selectedServer.credits - 1;
+          const newCredits = selectedServer.credits - creditsToDeduct;
+          
           // Atualiza servidor localmente
           setServers(prev => prev.map(s => s.id === selectedServer.id ? { ...s, credits: newCredits } : s));
+          
           // Atualiza no banco
           await supabase.from('servers').update({ credits: newCredits }).eq('id', selectedServer.id);
       }
   
-      showToast("Cliente cadastrado com sucesso!", "success");
+      showToast(`Cliente cadastrado! ${creditsToDeduct} crédito(s) descontado(s).`, "success");
       setView('clients');
       
+      // Limpa o formulário
       setAddFormData({
           name: '', username: '', password: '', phone: '', 
           packageId: '', price: '', expenses: '',
@@ -1330,7 +1345,6 @@ export default function App() {
     } catch (error: any) {
       console.error("Erro detalhado:", error);
       alert("ERRO DO SUPABASE:\n" + (error.message || JSON.stringify(error)));
-      
       showToast("Erro ao sincronizar dados.", "error");
     }
   };
