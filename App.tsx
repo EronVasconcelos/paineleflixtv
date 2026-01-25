@@ -970,6 +970,38 @@ export default function App() {
   const [rules, setRules] = useState<MessageRule[]>([]);
   const [servers, setServers] = useState<Server[]>([]);
 
+  const getUnitCreditCost = (server: Server) => {
+    if (!server.transactions || server.transactions.length === 0) return 0;
+    
+    // Soma quanto você já gastou no total com esse servidor
+    const totalSpent = server.transactions.reduce((acc, t) => acc + (Number(t.cost) || 0), 0);
+    // Soma quantos créditos você já comprou no total dele
+    const totalCreditsBought = server.transactions.reduce((acc, t) => acc + (Number(t.amount) || 0), 0);
+    
+    return totalCreditsBought > 0 ? (totalSpent / totalCreditsBought) : 0;
+};
+
+// 2. Agora o useEffect que observa as mudanças no formulário de cadastro
+useEffect(() => {
+    // Busca o pacote e o servidor que estão selecionados no momento no formulário
+    const pkg = packages.find(p => p.id === addFormData.packageId);
+    const server = servers.find(s => s.id === addFormData.serverId);
+    
+    if (pkg && server) {
+        const unitCost = getUnitCreditCost(server);
+        // Multiplica a quantidade de créditos do pacote pelo custo médio do servidor
+        const autoCost = (pkg.credits_qty || 1) * unitCost;
+        
+        // Se o valor calculado for diferente do que já está lá, ele atualiza
+        if (addFormData.expenses !== autoCost.toFixed(2)) {
+            setAddFormData(prev => ({
+                ...prev,
+                expenses: autoCost.toFixed(2)
+            }));
+        }
+    }
+}, [addFormData.packageId, addFormData.serverId, packages, servers]);
+
   // Lógica para verificar retorno do Stripe e Simulações
   useEffect(() => {
     const handlePaymentReturn = async () => {
@@ -1354,6 +1386,15 @@ export default function App() {
       alert("ERRO DO SUPABASE:\n" + (error.message || JSON.stringify(error)));
       showToast("Erro ao sincronizar dados.", "error");
     }
+  };
+
+  const getUnitCreditCost = (server: Server) => {
+    if (!server.transactions || server.transactions.length === 0) return 0;
+    
+    const totalSpent = server.transactions.reduce((acc, t) => acc + (Number(t.cost) || 0), 0);
+    const totalCreditsBought = server.transactions.reduce((acc, t) => acc + (Number(t.amount) || 0), 0);
+    
+    return totalCreditsBought > 0 ? (totalSpent / totalCreditsBought) : 0;
   };
 
   const handleDeleteClient = async (id: string) => {
@@ -2058,34 +2099,30 @@ export default function App() {
                  <div className={`p-5 rounded-lg border shadow-sm ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
                    <h4 className="font-bold text-[13px] uppercase mb-4 text-indigo-500 tracking-wide">{editingPackage ? 'Editar Plano' : 'Novo Plano'}</h4>
                    <form className="space-y-3" onSubmit={(e) => {
-                     e.preventDefault();
-                     const fd = new FormData(e.currentTarget);
-                     handleSavePackage({ 
-                         id: editingPackage ? editingPackage.id : Math.random().toString(36).substr(2,9), 
-                         name: fd.get('name') as string, 
-                         price: Number(fd.get('price')), 
-                         cost: Number(fd.get('cost')), // Custo em Reais (Financeiro)
-                         months: Number(fd.get('months')),
-                         credits_qty: Number(fd.get('credits_qty')) // Custo em Créditos (Servidor)
-                     });
-                     e.currentTarget.reset();
-                   }}>
-                     <FormInput theme={theme} name="name" label="Nome do Plano" defaultValue={editingPackage?.name} required />
-                     
-                     <div className="grid grid-cols-3 gap-3">
-                         <FormInput theme={theme} name="price" label="Venda (R$)" type="number" step="0.01" defaultValue={editingPackage?.price} required />
-                         <FormInput theme={theme} name="cost" label="Custo (R$)" type="number" step="0.01" defaultValue={editingPackage?.cost} required placeholder="Para Financeiro" />
-                         {/* NOVO CAMPO ABAIXO */}
-                         <FormInput theme={theme} name="credits_qty" label="Gasta Créditos" type="number" defaultValue={editingPackage?.credits_qty || 1} required placeholder="Qtd. descontada" />
-                     </div>
-                     
-                     <FormInput theme={theme} name="months" label="Duração (Meses)" type="number" defaultValue={editingPackage?.months || 1} required />
-                     
-                     <div className="flex gap-2 pt-2">
-                        {editingPackage && <button type="button" onClick={() => setEditingPackage(null)} className="flex-1 bg-slate-100 text-slate-500 rounded-md font-bold uppercase text-[11px] py-3">Cancelar</button>}
-                        <button type="submit" className="flex-1 bg-indigo-600 text-white rounded-md font-bold uppercase text-[11px] py-3 hover:bg-indigo-700">{editingPackage ? 'Atualizar' : 'Salvar Plano'}</button>
-                     </div>
-                   </form>
+                    e.preventDefault();
+                    const fd = new FormData(e.currentTarget);
+                    handleSavePackage({ 
+                        id: editingPackage ? editingPackage.id : Math.random().toString(36).substr(2,9), 
+                        name: fd.get('name') as string, 
+                        price: Number(fd.get('price')), // Preço de Venda (R$)
+                        months: Number(fd.get('months')),
+                        credits_qty: Number(fd.get('credits_qty')), // Apenas a Qtd de Créditos
+                        cost: 0 // O custo real será calculado pelo servidor selecionado
+                    });
+                    e.currentTarget.reset();
+                  }}>
+                    <FormInput theme={theme} name="name" label="Nome do Plano" defaultValue={editingPackage?.name} placeholder="Ex: Premium 6 Meses" required />
+                    
+                    <div className="grid grid-cols-3 gap-3">
+                        <FormInput theme={theme} name="price" label="Venda (R$)" type="number" step="0.01" defaultValue={editingPackage?.price} required />
+                        <FormInput theme={theme} name="credits_qty" label="Qtd. Créditos" type="number" defaultValue={editingPackage?.credits_qty || 1} required />
+                        <FormInput theme={theme} name="months" label="Duração (Meses)" type="number" defaultValue={editingPackage?.months || 1} required />
+                    </div>
+                    
+                    <button type="submit" className="w-full bg-indigo-600 text-white rounded-md font-bold uppercase text-[11px] py-3 hover:bg-indigo-700 transition-colors">
+                      {editingPackage ? 'Atualizar Plano' : 'Criar Plano'}
+                    </button>
+                  </form>
                 </div>
                  {packages.map(p => (
                   <div key={p.id} className={`p-4 rounded-lg border relative shadow-sm flex justify-between items-center ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
@@ -2237,7 +2274,16 @@ export default function App() {
                     {/* 5. Preço e Custo */}
                     <div className="grid grid-cols-2 gap-4">
                       <FormInput theme={theme} name="price" label="Preço (R$)" type="number" step="0.01" value={addFormData.price} onChange={(e: any) => setAddFormData({...addFormData, price: e.target.value})} required />
-                      <FormInput theme={theme} name="expenses" label="Custo (R$)" type="number" step="0.01" value={addFormData.expenses} onChange={(e: any) => setAddFormData({...addFormData, expenses: e.target.value})} required />
+                      <FormInput 
+                          theme={theme} 
+                          name="expenses" 
+                          label="Custo Automático (R$)" 
+                          type="number" 
+                          value={addFormData.expenses} 
+                          readOnly // Não deixa editar manualmente
+                          className="opacity-70 bg-slate-100" // Estilo visual de campo automático
+                          required 
+                      />
                     </div>
 
                     {/* 6. Vencimento Data e Hora */}
