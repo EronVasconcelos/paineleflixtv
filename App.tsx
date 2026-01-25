@@ -1071,24 +1071,27 @@ const fetchAllData = async (silent = false) => {
       // --- BLOCO ADMIN ATUALIZADO (PAINEL SAAS) ---
       // Se for o Admin (Dono), busca a lista de TODOS os assinantes do sistema
       if (userEmail === 'eronvasconcelos.br@gmail.com') {
-          const { data: allProfiles, error: adminError } = await supabase
-              .from('profiles')
-              .select('*')
-              .order('created_at', { ascending: false }); // Mostra os novos primeiro
+    const { data: allProfiles, error: adminError } = await supabase
+        .from('profiles')
+        .select('*')
+        .order('created_at', { ascending: false });
 
-          if (adminError) {
-              console.error("Erro Admin ao buscar perfis:", adminError);
-          } else if (allProfiles) {
-              // Mapeia os dados para garantir que o status apareça corretamente na tabela
-              const formattedUsers = allProfiles.map(u => ({
-                  ...u,
-                  // Caso o banco não tenha o status salvo, calculamos na hora pela data de vencimento
-                  subscription_status: u.subscription_status || 
-                  (u.subscription_ends_at && new Date(u.subscription_ends_at) > new Date() ? 'active' : 'expired')
-              }));
-              setAllUsers(formattedUsers);
-          }
-      }
+    if (adminError) {
+        console.error("Erro Admin:", adminError);
+    } else if (allProfiles) {
+        const formattedUsers = allProfiles.map(u => ({
+            ...u,
+            // 1. Resolve "Usuário Sem Nome": usa full_name ou o prefixo do email
+            display_name: u.full_name || u.email.split('@')[0],
+            // 2. Muda "FREE" para "TESTE"
+            plan_label: u.plan_type === 'premium' ? 'PREMIUM' : 'TESTE',
+            // 3. Define se o status é Ativo ou Inativo
+            subscription_status: (u.subscription_ends_at && new Date(u.subscription_ends_at) > new Date()) 
+                                 ? 'active' : 'expired'
+        }));
+        setAllUsers(formattedUsers);
+    }
+}
       // --------------------------------------------
 
       // 2. Busca e mapeia os Clientes (IPTV) do usuário
@@ -1838,8 +1841,17 @@ const fetchAllData = async (silent = false) => {
             {/* RENDERIZAÇÃO CONDICIONAL DAS VIEWS */}
             
             {view === 'saas_admin' && isAdmin && (
-                <SaaSAdminView users={allUsers} theme={theme} onSimulate={handleSimulation} />
-            )}
+                <SaaSAdminView 
+                  users={allUsers} 
+                  theme={theme} 
+                  onSimulate={handleSimulation}
+                  // FUNÇÕES DE AÇÃO:
+                  onDeleteUser={handleAdminDeleteUser} 
+                  onViewUser={(user) => {
+                      setSelectedUserDetail(user); // Abre um modal com detalhes
+                      showToast("Carregando detalhes...");
+                  }}
+                />
 
             {view === 'subscription' && (
                <div className="flex items-center justify-center min-h-[500px]">
