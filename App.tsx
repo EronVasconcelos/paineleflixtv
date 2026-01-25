@@ -353,8 +353,8 @@ const SaaSAdminView = ({
   users, 
   theme, 
   onSimulate, 
-  onDeleteUser, // Nova prop para deletar
-  onViewUser    // Nova prop para visualizar
+  onDeleteUser, 
+  onViewUser 
 }: { 
   users: any[], 
   theme: 'light' | 'dark', 
@@ -385,17 +385,17 @@ const SaaSAdminView = ({
 
       {/* DEVELOPER TOOLS */}
       <div className={`p-5 rounded-xl border border-dashed relative overflow-hidden group ${theme === 'dark' ? 'bg-slate-900/50 border-slate-700' : 'bg-slate-50 border-slate-300'}`}>
-         <div className="absolute top-0 right-0 p-2 opacity-10 rotate-12 group-hover:opacity-20 transition-opacity"><TestTube size={60} /></div>
-         <div className="flex items-center gap-2 mb-4">
-             <div className="p-1.5 bg-slate-200 dark:bg-slate-800 rounded-md text-slate-600 dark:text-slate-400"><TestTube size={16}/></div>
-             <h3 className="text-xs font-bold uppercase tracking-widest text-slate-500">Developer Tools</h3>
-         </div>
-         <div className="grid grid-cols-2 md:grid-cols-4 gap-3 relative z-10">
-             <button onClick={() => onSimulate('trial_expired')} className="py-3 px-3 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-lg text-[10px] font-bold uppercase shadow-sm hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors text-red-500 flex items-center justify-center gap-2"><Clock size={14}/> Simular Fim Teste</button>
-             <button onClick={() => onSimulate('sub_expired')} className="py-3 px-3 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-lg text-[10px] font-bold uppercase shadow-sm hover:bg-orange-50 dark:hover:bg-orange-900/10 transition-colors text-orange-500 flex items-center justify-center gap-2"><AlertCircle size={14}/> Simular Vencimento</button>
-             <button onClick={() => onSimulate('payment_success')} className="py-3 px-3 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-lg text-[10px] font-bold uppercase shadow-sm hover:bg-emerald-50 dark:hover:bg-emerald-900/10 transition-colors text-emerald-500 flex items-center justify-center gap-2"><CheckCircle size={14}/> Simular Pagamento</button>
-             <button onClick={() => onSimulate('none')} className="py-3 px-3 bg-slate-200 dark:bg-slate-700 rounded-lg text-[10px] font-bold uppercase hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors text-slate-600 dark:text-slate-300 flex items-center justify-center gap-2"><RotateCcw size={14}/> Resetar Estado</button>
-         </div>
+        <div className="absolute top-0 right-0 p-2 opacity-10 rotate-12 group-hover:opacity-20 transition-opacity"><TestTube size={60} /></div>
+        <div className="flex items-center gap-2 mb-4">
+          <div className="p-1.5 bg-slate-200 dark:bg-slate-800 rounded-md text-slate-600 dark:text-slate-400"><TestTube size={16}/></div>
+          <h3 className="text-xs font-bold uppercase tracking-widest text-slate-500">Developer Tools</h3>
+        </div>
+        <div className="grid grid-cols-2 md:grid-cols-4 gap-3 relative z-10">
+          <button onClick={() => onSimulate('trial_expired')} className="py-3 px-3 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-lg text-[10px] font-bold uppercase shadow-sm hover:bg-red-50 dark:hover:bg-red-900/10 transition-colors text-red-500 flex items-center justify-center gap-2"><Clock size={14}/> Simular Fim Teste</button>
+          <button onClick={() => onSimulate('sub_expired')} className="py-3 px-3 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-lg text-[10px] font-bold uppercase shadow-sm hover:bg-orange-50 dark:hover:bg-orange-900/10 transition-colors text-orange-500 flex items-center justify-center gap-2"><AlertCircle size={14}/> Simular Vencimento</button>
+          <button onClick={() => onSimulate('payment_success')} className="py-3 px-3 bg-white dark:bg-slate-800 border dark:border-slate-700 rounded-lg text-[10px] font-bold uppercase shadow-sm hover:bg-emerald-50 dark:hover:bg-emerald-900/10 transition-colors text-emerald-500 flex items-center justify-center gap-2"><CheckCircle size={14}/> Simular Pagamento</button>
+          <button onClick={() => onSimulate('none')} className="py-3 px-3 bg-slate-200 dark:bg-slate-700 rounded-lg text-[10px] font-bold uppercase hover:bg-slate-300 dark:hover:bg-slate-600 transition-colors text-slate-600 dark:text-slate-300 flex items-center justify-center gap-2"><RotateCcw size={14}/> Resetar Estado</button>
+        </div>
       </div>
 
       {/* CARDS DE ESTATÍSTICAS */}
@@ -406,10 +406,10 @@ const SaaSAdminView = ({
         <StatCard title="Ativos" value={stats.activeUsers} icon={<Activity/>} color="amber" theme={theme}/>
       </div>
 
-      {/* TABELA DE USUÁRIOS REFORMULADA */}
+      {/* TABELA DE USUÁRIOS */}
       <div className={`rounded-xl border shadow-sm overflow-hidden ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
         <div className="px-6 py-4 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
-           <h3 className="text-xs font-bold uppercase flex items-center gap-2 tracking-wide"><Database size={16} className="text-blue-500"/> Base de Usuários Cloud</h3>
+          <h3 className="text-xs font-bold uppercase flex items-center gap-2 tracking-wide"><Database size={16} className="text-blue-500"/> Base de Usuários Cloud</h3>
         </div>
         <div className="overflow-x-auto">
           <table className="w-full text-left border-collapse">
@@ -419,22 +419,20 @@ const SaaSAdminView = ({
                 <th className="px-6 py-3 text-center">Plano</th>
                 <th className="px-6 py-3 text-center">Status</th>
                 <th className="px-6 py-3 text-center">Entrou em</th>
-                <th className="px-6 py-3 text-center">Vencimento</th> {/* Título corrigido */}
-                <th className="px-6 py-3 text-right">Ações</th> {/* Alinhamento corrigido */}
+                <th className="px-6 py-3 text-center">Vencimento</th>
+                <th className="px-6 py-3 text-right">Ações</th>
               </tr>
             </thead>
             <tbody className={`text-xs font-medium divide-y ${theme === 'dark' ? 'divide-slate-800' : 'divide-slate-100'}`}>
               {users.map((user) => {
-                const isExpired = user.expires_at ? new Date(user.expires_at) < new Date() : false;
+                const isExpired = user.subscription_ends_at ? new Date(user.subscription_ends_at) < new Date() : (user.trial_ends_at ? new Date(user.trial_ends_at) < new Date() : true);
                 const statusLabel = isExpired ? 'INATIVO' : (user.subscription_status || 'ATIVO');
+                const displayName = user.full_name || user.name || user.display_name || user.email.split('@')[0];
 
                 return (
                   <tr key={user.id} className="hover:bg-slate-50 dark:hover:bg-slate-800/50 transition-colors">
                     <td className="px-6 py-3">
-                      <div className="font-bold text-slate-700 dark:text-slate-200">
-                        {/* FALLBACK: Se full_name estiver vazio, usa a primeira parte do email */}
-                        {user.full_name || user.name || user.display_name || user.email.split('@')[0]}
-                      </div>
+                      <div className="font-bold text-slate-700 dark:text-slate-200 capitalize">{displayName}</div>
                       <div className="text-[10px] text-slate-400">{user.email}</div>
                     </td>
                     <td className="px-6 py-3 text-center">
@@ -442,36 +440,30 @@ const SaaSAdminView = ({
                         user.plan_type === 'premium' ? 'bg-purple-100 text-purple-600 dark:bg-purple-900/30 dark:text-purple-400' : 
                         'bg-slate-100 text-slate-500 dark:bg-slate-800 dark:text-slate-400'
                       }`}>
-                        {user.plan_type === 'free' || !user.plan_type ? 'TESTE' : user.plan_type}
+                        {user.plan_type === 'premium' ? 'PREMIUM' : 'TESTE'}
                       </span>
                     </td>
                     <td className="px-6 py-3 text-center">
-                        <div className="flex items-center justify-center gap-1.5">
-                          <div className={`w-1.5 h-1.5 rounded-full ${statusLabel === 'active' || statusLabel === 'trialing' || statusLabel === 'ATIVO' ? 'bg-emerald-500' : 'bg-red-500'}`}></div>
-                          <span className={`uppercase text-[10px] font-bold ${isExpired ? 'text-red-500' : ''}`}>
-                            {statusLabel}
-                          </span>
-                        </div>
+                      <div className="flex items-center justify-center gap-1.5">
+                        <div className={`w-1.5 h-1.5 rounded-full ${!isExpired ? 'bg-emerald-500' : 'bg-red-500'}`}></div>
+                        <span className={`uppercase text-[10px] font-bold ${isExpired ? 'text-red-500' : 'text-emerald-500'}`}>
+                          {statusLabel}
+                        </span>
+                      </div>
                     </td>
-                    <td className="px-6 py-3 text-center text-slate-500">
+                    <td className="px-6 py-3 text-center text-slate-500 font-bold">
                       {new Date(user.created_at).toLocaleDateString('pt-BR')}
                     </td>
-                    <td className={`px-6 py-3 text-center font-bold ${isExpired ? 'text-red-500' : 'text-slate-500'}`}>
-                      {/* Mostra a data de expiração ou trial */}
-                      {user.expires_at ? new Date(user.expires_at).toLocaleDateString('pt-BR') : 
-                       (user.subscription_ends_at ? new Date(user.subscription_ends_at).toLocaleDateString('pt-BR') : '--/--/--')}
+                    <td className={`px-6 py-3 text-center font-bold ${isExpired ? 'text-red-400' : 'text-slate-500'}`}>
+                      {user.subscription_ends_at 
+                        ? new Date(user.subscription_ends_at).toLocaleDateString('pt-BR') 
+                        : (user.trial_ends_at ? new Date(user.trial_ends_at).toLocaleDateString('pt-BR') : '--/--/--')}
                     </td>
                     <td className="px-6 py-3 text-right">
-                      <button 
-                        onClick={() => onViewUser(user)}
-                        className="text-slate-400 hover:text-blue-500 transition-colors mr-3"
-                      >
+                      <button onClick={() => onViewUser(user)} className="text-slate-400 hover:text-blue-500 transition-colors mr-3">
                         <Eye size={16}/>
                       </button>
-                      <button 
-                        onClick={() => { if(confirm('Excluir este usuário permanentemente?')) onDeleteUser(user.id) }}
-                        className="text-slate-400 hover:text-red-500 transition-colors"
-                      >
+                      <button onClick={() => { if(confirm('Excluir este assinante?')) onDeleteUser(user.id) }} className="text-slate-400 hover:text-red-500 transition-colors">
                         <UserX size={16}/>
                       </button>
                     </td>
@@ -482,7 +474,9 @@ const SaaSAdminView = ({
           </table>
         </div>
       </div>
+    </div>
   );
+};
 
 /* --- MODAIS INICIAIS E TELA DE LOGIN --- */
 
