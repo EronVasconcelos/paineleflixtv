@@ -250,110 +250,116 @@ const ClientMovementChart = ({ clients, theme }: { clients: any[], theme: 'light
 
 /* --- NOVA PÁGINA: FINANCEIRO (Substitui Relatórios e expande Visão Geral Financeira) --- */
 
-const FinanceView = ({ clients, packages, servers, theme }: any) => {
-  // Lógica de Cálculo Financeiro
-  const financialSummary = useMemo(() => {
-    const now = new Date();
-    const currentMonth = now.getMonth();
-    const currentYear = now.getFullYear();
+const FinancialFilter = ({ month, year, setMonth, setYear, theme }) => (
+  <div className={`flex gap-3 p-4 rounded-xl border mb-6 ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200 shadow-sm'}`}>
+    <div className="flex-1">
+      <label className="text-[10px] font-bold text-slate-400 uppercase ml-1 tracking-widest">Mês de Referência</label>
+      <select 
+        value={month} 
+        onChange={(e) => setMonth(parseInt(e.target.value))}
+        className={`w-full p-2.5 rounded-md border text-xs font-bold outline-none ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+      >
+        {['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'].map((m, i) => (
+          <option key={m} value={i}>{m}</option>
+        ))}
+      </select>
+    </div>
+    <div className="w-32">
+      <label className="text-[10px] font-bold text-slate-400 uppercase ml-1 tracking-widest">Ano</label>
+      <select 
+        value={year} 
+        onChange={(e) => setYear(parseInt(e.target.value))}
+        className={`w-full p-2.5 rounded-md border text-xs font-bold outline-none ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50 border-slate-200'}`}
+      >
+        {[2024, 2025, 2026, 2027].map(y => <option key={y} value={y}>{y}</option>)}
+      </select>
+    </div>
+  </div>
+);
 
-    // 1. Receita (Pagamentos de Clientes neste mês)
-    const monthlyRevenue = clients.reduce((sum: number, c: any) => {
-        const paidInMonth = c.paymentHistory?.filter((h: any) => {
+const FinanceView = ({ clients, packages, servers, theme, selectedMonth, selectedYear }) => {
+  const financialSummary = React.useMemo(() => {
+    const currentMonth = selectedMonth;
+    const currentYear = selectedYear;
+
+    const monthlyRevenue = clients.reduce((sum, c) => {
+        const paidInMonth = c.paymentHistory?.filter((h) => {
             const hDate = new Date(h.date);
             return hDate.getMonth() === currentMonth && hDate.getFullYear() === currentYear;
-        }).reduce((pSum: number, h: any) => pSum + h.amount, 0) || 0;
+        }).reduce((pSum, h) => pSum + h.amount, 0) || 0;
         return sum + paidInMonth;
     }, 0);
 
-    // 2. Despesas Fixas (Custo por cliente ativo neste mês)
-    const clientExpenses = clients.reduce((sum: number, c: any) => {
-        // Consideramos custo se o cliente estiver ativo ou tiver pago este mês
-        const isActiveOrPaid = c.status === 'active' || c.paymentHistory?.some((h:any) => {
+    const clientExpenses = clients.reduce((sum, c) => {
+        const isActiveOrPaid = c.status === 'active' || c.paymentHistory?.some((h) => {
             const hDate = new Date(h.date);
             return hDate.getMonth() === currentMonth && hDate.getFullYear() === currentYear;
         });
         return sum + (isActiveOrPaid ? (c.expenses || 0) : 0);
     }, 0);
 
-    // 3. Despesas Variáveis (Compra de Créditos de Servidor neste mês)
-    // AQUI ESTÁ A LÓGICA SOLICITADA: O valor entra no mês da compra.
-    const serverExpenses = servers.reduce((sum: number, s: any) => {
-        const serverCostMonth = s.transactions?.filter((t: any) => {
+    const serverExpenses = servers.reduce((sum, s) => {
+        const serverCostMonth = s.transactions?.filter((t) => {
             const tDate = new Date(t.date);
             return tDate.getMonth() === currentMonth && tDate.getFullYear() === currentYear;
-        }).reduce((tSum: number, t: any) => tSum + (t.cost || 0), 0) || 0;
+        }).reduce((tSum, t) => tSum + (t.cost || 0), 0) || 0;
         return sum + serverCostMonth;
     }, 0);
 
     const totalExpenses = clientExpenses + serverExpenses;
 
-    // Dados para Gráficos
     const chartData = Array.from({length: 6}, (_, i) => {
-        const d = new Date(); d.setMonth(d.getMonth() - (5 - i));
-        const monthIdx = d.getMonth(); const year = d.getFullYear();
-        
-        const rev = clients.reduce((sum: number, c: any) => sum + (c.paymentHistory?.filter((h: any) => new Date(h.date).getMonth() === monthIdx && new Date(h.date).getFullYear() === year).reduce((p: number, h: any) => p + h.amount, 0) || 0), 0);
-        return { label: MONTHS[monthIdx], value: rev };
+        const d = new Date(currentYear, currentMonth, 1); 
+        d.setMonth(d.getMonth() - (5 - i));
+        const monthIdx = d.getMonth(); 
+        const year = d.getFullYear();
+        const rev = clients.reduce((sum, c) => sum + (c.paymentHistory?.filter((h) => {
+            const hDate = new Date(h.date);
+            return hDate.getMonth() === monthIdx && hDate.getFullYear() === year;
+        }).reduce((p, h) => p + h.amount, 0) || 0), 0);
+        return { label: ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'][monthIdx], value: rev };
     });
 
-    const planStats = packages.map((pkg: any) => ({ name: pkg.name, count: clients.filter((c: any) => c.packageId === pkg.id).length })).sort((a: any, b: any) => b.count - a.count);
-    
-    // Top Servidores por Custo
-    const serverStats = servers.map((srv: any) => {
-        const totalCost = srv.transactions?.reduce((acc: number, t: any) => acc + (t.cost || 0), 0) || 0;
-        return { name: srv.name, totalCost, credits: srv.credits };
-    }).sort((a: any, b: any) => b.totalCost - a.totalCost);
-
-    return { monthlyRevenue, totalExpenses, profit: monthlyRevenue - totalExpenses, chartData, planStats, serverStats };
-  }, [clients, packages, servers]);
+    return { 
+      monthlyRevenue, 
+      totalExpenses, 
+      profit: monthlyRevenue - totalExpenses, 
+      chartData,
+      planStats: packages.map(pkg => ({ name: pkg.name, count: clients.filter(c => c.packageId === pkg.id && c.status === 'active').length })).sort((a, b) => b.count - a.count),
+      serverStats: servers.map(srv => ({
+        name: srv.name, 
+        totalCost: srv.transactions?.filter(t => new Date(t.date).getMonth() === currentMonth && new Date(t.date).getFullYear() === currentYear).reduce((acc, t) => acc + (t.cost || 0), 0) || 0,
+        credits: srv.credits 
+      })).sort((a, b) => b.totalCost - a.totalCost)
+    };
+  }, [clients, packages, servers, selectedMonth, selectedYear]);
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
       <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
         <StatCard title="Faturamento (Mês)" value={`R$ ${financialSummary.monthlyRevenue.toFixed(2)}`} icon={<DollarSign/>} color="emerald" theme={theme} trend="+ Receita"/>
-        <StatCard title="Despesas Totais (Mês)" value={`R$ ${financialSummary.totalExpenses.toFixed(2)}`} icon={<TrendingDown/>} color="red" theme={theme} trend="- Custos"/>
-        <StatCard title="Lucro Líquido (Mês)" value={`R$ ${financialSummary.profit.toFixed(2)}`} icon={<Wallet/>} color="blue" theme={theme} trend="Resultado"/>
+        <StatCard title="Despesas Totais" value={`R$ ${financialSummary.totalExpenses.toFixed(2)}`} icon={<TrendingDown/>} color="red" theme={theme} trend="- Custos"/>
+        <StatCard title="Lucro Líquido" value={`R$ ${financialSummary.profit.toFixed(2)}`} icon={<Wallet/>} color="blue" theme={theme} trend="Resultado"/>
       </div>
-      
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-         <div>
-            <h4 className="text-xs font-bold uppercase mb-3 text-slate-500 ml-1">Fluxo de Caixa (6 Meses)</h4>
-            <RevenueChart data={financialSummary.chartData} theme={theme} />
-         </div>
-         <div>
-            <h4 className="text-xs font-bold uppercase mb-3 text-slate-500 ml-1">Movimentação de Clientes</h4>
-            <ClientMovementChart clients={clients} theme={theme} />
-         </div>
+         <div><h4 className="text-xs font-bold uppercase mb-3 text-slate-500 ml-1">Fluxo de Caixa</h4><RevenueChart data={financialSummary.chartData} theme={theme} /></div>
+         <div><h4 className="text-xs font-bold uppercase mb-3 text-slate-500 ml-1">Movimentação</h4><ClientMovementChart clients={clients} theme={theme} /></div>
       </div>
-
       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
         <div className={`p-5 rounded-xl border ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
-           <h4 className="text-xs font-bold uppercase mb-4 flex items-center gap-2 text-indigo-500"><Layers size={16} /> Planos Mais Vendidos</h4>
+           <h4 className="text-xs font-bold uppercase mb-4 text-indigo-500">Planos Ativos</h4>
            <div className="space-y-3">
-              {financialSummary.planStats.length === 0 ? <p className="text-xs text-slate-400">Sem dados.</p> : 
-               financialSummary.planStats.map((p: any, i: number) => (
-                 <div key={i} className="flex justify-between items-center text-xs">
-                    <span className="font-medium text-slate-600 dark:text-slate-300">{p.name}</span>
-                    <span className="font-bold px-2 py-0.5 rounded-md bg-indigo-50 dark:bg-indigo-900/20 text-indigo-600 dark:text-indigo-400">{p.count} ativos</span>
-                 </div>
-               ))}
+              {financialSummary.planStats.map((p, i) => (
+                 <div key={i} className="flex justify-between text-xs"><span>{p.name}</span><span className="font-bold text-indigo-500">{p.count} ativos</span></div>
+              ))}
            </div>
         </div>
-
         <div className={`p-5 rounded-xl border ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
-           <h4 className="text-xs font-bold uppercase mb-4 flex items-center gap-2 text-purple-500"><ServerIcon size={16} /> Custos por Servidor (Total)</h4>
+           <h4 className="text-xs font-bold uppercase mb-4 text-purple-500">Custos Servidor</h4>
            <div className="space-y-3">
-              {financialSummary.serverStats.length === 0 ? <p className="text-xs text-slate-400">Sem servidores cadastrados.</p> : 
-               financialSummary.serverStats.map((s: any, i: number) => (
-                 <div key={i} className="flex justify-between items-center text-xs border-b border-dashed border-slate-100 dark:border-slate-800 pb-2 last:border-0 last:pb-0">
-                    <div>
-                        <span className="font-bold block text-slate-700 dark:text-slate-200">{s.name}</span>
-                        <span className="text-[10px] text-slate-400">Saldo: {s.credits} créditos</span>
-                    </div>
-                    <span className="font-bold text-red-500">- R$ {s.totalCost.toFixed(2)}</span>
-                 </div>
-               ))}
+              {financialSummary.serverStats.map((s, i) => (
+                 <div key={i} className="flex justify-between text-xs"><span>{s.name}</span><span className="font-bold text-red-500">- R$ {s.totalCost.toFixed(2)}</span></div>
+              ))}
            </div>
         </div>
       </div>
@@ -511,6 +517,8 @@ const AuthScreen = ({ theme }: { theme: 'light' | 'dark' }) => {
   const [name, setName] = useState('');
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const [finMonth, setFinMonth] = useState(new Date().getMonth());
+  const [finYear, setFinYear] = useState(new Date().getFullYear()); 
 
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -912,7 +920,8 @@ export default function App() {
     if (saved) return saved as 'light' | 'dark';
     return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   });
-
+  const [finMonth, setFinMonth] = React.useState(new Date().getMonth());
+  const [finYear, setFinYear] = React.useState(new Date().getFullYear());
   const [session, setSession] = useState<Session | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
   // Estados para o Painel SaaS
@@ -1869,7 +1878,23 @@ const handleExportCSV = () => {
             )}
 
             {view === 'finance' && (
-                <FinanceView clients={clients} packages={packages} servers={servers} theme={theme} />
+              <div className="space-y-6">
+              <FinancialFilter 
+                  month={finMonth} 
+                  year={finYear} 
+                  setMonth={setFinMonth} 
+                  setYear={setFinYear} 
+                  theme={theme} 
+                />
+                <FinanceView 
+                  clients={clients} 
+                  packages={packages} 
+                  servers={servers} 
+                  theme={theme} 
+                  selectedMonth={finMonth} 
+                  selectedYear={finYear}
+                />
+                </div>
             )}
 
             {view === 'dashboard' && (
