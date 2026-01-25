@@ -1838,27 +1838,25 @@ const fetchAllData = async (silent = false) => {
 
             {/* RENDERIZAÇÃO CONDICIONAL DAS VIEWS */}
             
-            {view === 'saas_admin' && isAdmin && (
-                <SaaSAdminView 
-                  users={allUsers} 
-                  theme={theme} 
-                  onSimulate={handleSimulation}
-                  // FUNÇÕES QUE FALTAVAM:
-                  onDeleteUser={async (id) => {
-                      if(!confirm("Excluir conta permanentemente?")) return;
-                      await supabase.from('profiles').delete().eq('id', id);
-                      setAllUsers(prev => prev.filter(u => u.id !== id));
-                      showToast("Usuário removido.");
-                  }}
-                  onViewUser={(user) => {
-                      setSelectedUserDetail(user); // Abre modal de detalhes
-                  }}
-                />
+            {view === 'saas-admin' && (
+              <SaaSAdminView 
+                users={allUsers} 
+                theme={theme} 
+                onSimulate={handleSimulation}
+                onDeleteUser={async (id) => {
+                    if(!confirm("Excluir conta permanentemente?")) return;
+                    await supabase.from('profiles').delete().eq('id', id);
+                    setAllUsers(prev => prev.filter(u => u.id !== id));
+                    showToast("Usuário removido.");
+                }}
+                onViewUser={(user) => setSelectedUserDetail(user)}
+              />
+            )}
             {view === 'subscription' && (
-                    <div className="flex items-center justify-center min-h-[500px] animate-in fade-in">
-                      <SubscriptionContent theme={theme} onLogout={handleLogout} />
-                    </div>
-                  )}
+              <div className="flex items-center justify-center min-h-[500px] animate-in fade-in">
+                <SubscriptionContent theme={theme} onLogout={handleLogout} />
+              </div>
+            )}
           
             {view === 'finance' && (
                 <FinanceView clients={clients} packages={packages} servers={servers} theme={theme} />
