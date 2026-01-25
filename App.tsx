@@ -2060,15 +2060,27 @@ export default function App() {
                    <form className="space-y-3" onSubmit={(e) => {
                      e.preventDefault();
                      const fd = new FormData(e.currentTarget);
-                     handleSavePackage({ id: editingPackage ? editingPackage.id : Math.random().toString(36).substr(2,9), name: fd.get('name') as string, price: Number(fd.get('price')), cost: Number(fd.get('cost')), months: Number(fd.get('months')) });
+                     handleSavePackage({ 
+                         id: editingPackage ? editingPackage.id : Math.random().toString(36).substr(2,9), 
+                         name: fd.get('name') as string, 
+                         price: Number(fd.get('price')), 
+                         cost: Number(fd.get('cost')), // Custo em Reais (Financeiro)
+                         months: Number(fd.get('months')),
+                         credits_qty: Number(fd.get('credits_qty')) // Custo em Créditos (Servidor)
+                     });
                      e.currentTarget.reset();
                    }}>
                      <FormInput theme={theme} name="name" label="Nome do Plano" defaultValue={editingPackage?.name} required />
-                     <div className="grid grid-cols-2 gap-3">
-                         <FormInput theme={theme} name="price" label="Preço Venda" type="number" step="0.01" defaultValue={editingPackage?.price} required />
-                         <FormInput theme={theme} name="cost" label="Custo Crédito" type="number" step="0.01" defaultValue={editingPackage?.cost} required />
+                     
+                     <div className="grid grid-cols-3 gap-3">
+                         <FormInput theme={theme} name="price" label="Venda (R$)" type="number" step="0.01" defaultValue={editingPackage?.price} required />
+                         <FormInput theme={theme} name="cost" label="Custo (R$)" type="number" step="0.01" defaultValue={editingPackage?.cost} required placeholder="Para Financeiro" />
+                         {/* NOVO CAMPO ABAIXO */}
+                         <FormInput theme={theme} name="credits_qty" label="Gasta Créditos" type="number" defaultValue={editingPackage?.credits_qty || 1} required placeholder="Qtd. descontada" />
                      </div>
+                     
                      <FormInput theme={theme} name="months" label="Duração (Meses)" type="number" defaultValue={editingPackage?.months || 1} required />
+                     
                      <div className="flex gap-2 pt-2">
                         {editingPackage && <button type="button" onClick={() => setEditingPackage(null)} className="flex-1 bg-slate-100 text-slate-500 rounded-md font-bold uppercase text-[11px] py-3">Cancelar</button>}
                         <button type="submit" className="flex-1 bg-indigo-600 text-white rounded-md font-bold uppercase text-[11px] py-3 hover:bg-indigo-700">{editingPackage ? 'Atualizar' : 'Salvar Plano'}</button>
