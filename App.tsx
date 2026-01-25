@@ -919,7 +919,10 @@ export default function App() {
   const [allUsers, setAllUsers] = useState<UserProfile[]>([]); 
   
   // 'finance' substitui 'reports' como solicitado
-  const [view, setView] = useState<'dashboard' | 'clients' | 'finance' | 'history' | 'add' | 'packages' | 'messages' | 'scheduling' | 'database' | 'servers' | 'subscription' | 'saas_admin'>('dashboard');
+  const [view, setView] = useState<any>(() => {
+  const savedView = localStorage.getItem('painel_ultima_view');
+  return savedView || 'dashboard';
+});
   
   const [selectedClientForMsg, setSelectedClientForMsg] = useState<Client | null>(null);
   const [selectedClientForRenewal, setSelectedClientForRenewal] = useState<Client | null>(null);
@@ -1138,6 +1141,11 @@ useEffect(() => {
     if (theme === 'dark') document.documentElement.classList.add('dark');
     else document.documentElement.classList.remove('dark');
   }, [theme]);
+
+  // Persistência da tela atual no navegador
+  useEffect(() => {
+  localStorage.setItem('painel_ultima_view', view);
+  }, [view]);
 
   // Lógica de Notificações
   useEffect(() => {
