@@ -1857,10 +1857,10 @@ const fetchAllData = async (silent = false) => {
                   }}
                 />
             {view === 'subscription' && (
-  <div className="flex items-center justify-center min-h-[500px] animate-in fade-in">
-    <SubscriptionContent theme={theme} onLogout={handleLogout} />
-  </div>
-)}
+                    <div className="flex items-center justify-center min-h-[500px] animate-in fade-in">
+                      <SubscriptionContent theme={theme} onLogout={handleLogout} />
+                    </div>
+                  )}
           
             {view === 'finance' && (
                 <FinanceView clients={clients} packages={packages} servers={servers} theme={theme} />
