@@ -1020,10 +1020,14 @@ useEffect(() => {
                 const newExpiry = new Date();
                 newExpiry.setMonth(newExpiry.getMonth() + pendingMonths);
                 
-                const { error } = await supabase.from('profiles').update({
-                    subscription_ends_at: newExpiry.toISOString(),
-                    plan_type: 'premium'
-                }).eq('id', session.user.id);
+                const { error } = await supabase
+                  .from('saas_customers') // <--- ALTERADO PARA SAAS
+                  .update({
+                      subscription_ends_at: newExpiry.toISOString(),
+                      plan_type: 'premium',
+                      subscription_status: 'active'
+                  })
+                  .eq('id', session.user.id);
                 
                 if (error) throw error;
                 setUserProfile(prev => prev ? ({ ...prev, subscription_ends_at: newExpiry.toISOString(), plan_type: 'premium' }) : null);
