@@ -1528,37 +1528,29 @@ const handleExportCSV = () => {
   // Função para atualizar manualmente o vencimento de um cliente SaaS
 const handleUpdateSaaSExpiry = async (userId: string, newDate: string) => {
     try {
-        // Converte a data selecionada para o formato ISO completo (YYYY-MM-DDTHH:mm:ssZ)
-        // Isso garante que o Supabase reconheça o valor corretamente
         const isoDate = new Date(newDate).toISOString();
+
+        // LOG DE TESTE: Vamos ver se a função está sendo chamada
+        console.log("Tentando atualizar usuário:", userId, "para data:", isoDate);
 
         const { error } = await supabase
             .from('saas_customers')
             .update({ trial_ends_at: isoDate }) 
             .eq('id', userId);
 
-        if (error) throw error;
-
-        // 1. Atualiza a lista geral que você vê no Painel SaaS
-        setAllUsers(prev => prev.map(u => 
-            u.id === userId ? { ...u, trial_ends_at: isoDate } : u
-        ));
-        
-        // 2. Atualiza o modal de detalhes que está aberto na sua frente
-        setSelectedClientDetails(prev => 
-            prev && prev.id === userId ? { ...prev, trial_ends_at: isoDate } : prev
-        );
-
-        // 3. SINCRONIZAÇÃO EM TEMPO REAL:
-        // Atualiza o perfil logado no navegador para o contador mudar NA HORA
-        if (userProfile && userProfile.id === userId) {
-            setUserProfile(prev => prev ? { ...prev, trial_ends_at: isoDate } : prev);
+        if (error) {
+            console.error("ERRO DO SUPABASE:", error.message);
+            throw error;
         }
 
-        showToast("Acesso prorrogado com sucesso!");
+        // FORÇAR ATUALIZAÇÃO NA TELA (Mesmo que o banco demore)
+        setUserProfile(prev => prev ? { ...prev, trial_ends_at: isoDate } : prev);
+        setAllUsers(prev => prev.map(u => u.id === userId ? { ...u, trial_ends_at: isoDate } : u));
+
+        showToast("Comando enviado ao banco!");
     } catch (err) {
-        console.error("Erro ao atualizar data:", err);
-        showToast("Falha na comunicação com o banco.", "error");
+        console.error("Erro completo:", err);
+        showToast("Erro: Verifique o console (F12)", "error");
     }
 };
 
