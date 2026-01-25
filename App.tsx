@@ -1049,7 +1049,24 @@ export default function App() {
       }
 
       const { data: clientsData } = await supabase.from('clients').select('*').eq('user_id', userId);
-      if (clientsData) setClients(clientsData);
+      if (clientsData) {
+          // Função que traduz do Banco de Dados para o Aplicativo
+          const mappedClients = clientsData.map((d: any) => ({
+              ...d,
+              // Tradução das colunas com nomes diferentes
+              paymentStatus: d.payment_status,
+              packageName: d.package_name,
+              packageId: d.package_id,
+              serverId: d.server_id,
+              appName: d.app_name,
+              macKey: d.mac_key,
+              expiresAt: d.expires_at,  // AQUI CORRIGE A DATA 1969
+              createdAt: d.created_at,
+              paymentHistory: d.payment_history || [],
+              totalPaid: d.total_paid
+          }));
+          setClients(mappedClients);
+      }
 
       const { data: packagesData } = await supabase.from('packages').select('*').eq('user_id', userId);
       if (packagesData) setPackages(packagesData);
