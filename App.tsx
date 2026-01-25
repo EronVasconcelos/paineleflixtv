@@ -1076,19 +1076,16 @@ const fetchAllData = async (silent = false) => {
         // -----------------------------------------------------------
         // 2. BLOCO ADMIN: BUSCA CLIENTES DO SEU SAAS (PAINEL STREAM)
         // -----------------------------------------------------------
-        if (userEmail === 'eronvasconcelos.br@gmail.com') {
-            const { data: allSaasUsers, error: adminError } = await supabase
-                .from('saas_customers') // <--- NOVA TABELA DE GESTÃO
-                .select('*')
-                .order('created_at', { ascending: false });
+          if (userEmail === 'eronvasconcelos.br@gmail.com') {
+              const { data: allSaasUsers } = await supabase
+                  .from('saas_customers') // <--- Certifique-se que o nome aqui é IGUAL ao do SQL
+                  .select('*')
+                  .order('created_at', { ascending: false });
 
-            if (adminError) {
-                console.error("Erro ao carregar Clientes SaaS:", adminError.message);
-            } else if (allSaasUsers) {
-                // Aqui populamos a tabela do seu Painel SaaS
-                setAllUsers(allSaasUsers);
-            }
-        }
+              if (allSaasUsers) {
+                  setAllUsers(allSaasUsers); // Isso vai fazer a lista aparecer novamente
+              }
+          }
 
         // -----------------------------------------------------------
         // 3. BLOCO IPTV: BUSCA CLIENTES DE TV DO USUÁRIO LOGADO
