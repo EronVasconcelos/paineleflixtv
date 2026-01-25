@@ -929,6 +929,66 @@ const SaaSDetailsModal = ({
   onClose: () => void,
   onUpdateExpiry: (id: string, date: string) => void
 }) => {
+  // Criamos um estado para controlar a data que você escolher no modal
+  const [selectedDate, setSelectedDate] = React.useState(
+    user.trial_ends_at ? new Date(user.trial_ends_at).toISOString().split('T')[0] : ''
+  );
+
+  return (
+    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
+      <div className={`w-full max-w-md rounded-2xl p-6 shadow-2xl border ${
+        theme === 'dark' ? 'bg-zinc-900 border-zinc-800 text-white' : 'bg-white border-zinc-200 text-zinc-900'
+      }`}>
+        <div className="flex justify-between items-center mb-6">
+          <h3 className="text-xl font-bold flex items-center gap-2">
+            <User size={20} className="text-emerald-500" />
+            Detalhes do Cliente
+          </h3>
+          <button onClick={onClose} className="p-2 hover:bg-zinc-500/10 rounded-full transition-colors">
+            <X size={20} />
+          </button>
+        </div>
+
+        <div className="space-y-4 mb-8">
+          <div>
+            <p className="text-xs uppercase font-bold text-zinc-500 mb-1">Nome</p>
+            <p className="font-medium">{user.full_name || 'Usuário sem nome'}</p>
+          </div>
+          <div>
+            <p className="text-xs uppercase font-bold text-zinc-500 mb-1">E-mail</p>
+            <p className="font-medium text-zinc-400">{user.email}</p>
+          </div>
+          
+          <div className={`p-4 rounded-xl border ${
+            theme === 'dark' ? 'bg-zinc-800/50 border-zinc-700' : 'bg-zinc-50 border-zinc-200'
+          }`}>
+            <p className="text-xs uppercase font-bold text-emerald-500 mb-3 flex items-center gap-1.5">
+              <Calendar size={14} /> Prorrogar Acesso
+            </p>
+            <input 
+              type="date" 
+              value={selectedDate}
+              onChange={(e) => setSelectedDate(e.target.value)}
+              className={`w-full p-2.5 rounded-lg border focus:ring-2 focus:ring-emerald-500 outline-none transition-all ${
+                theme === 'dark' ? 'bg-zinc-900 border-zinc-700' : 'bg-white border-zinc-300'
+              }`}
+            />
+          </div>
+        </div>
+
+        <button
+          onClick={() => {
+            if (!selectedDate) return alert("Selecione uma data!");
+            onUpdateExpiry(user.id, selectedDate);
+          }}
+          className="w-full py-3 bg-emerald-500 hover:bg-emerald-600 active:scale-[0.98] text-white rounded-xl text-sm font-black uppercase tracking-wider transition-all shadow-lg shadow-emerald-500/20"
+        >
+          Atualizar Vencimento
+        </button>
+      </div>
+    </div>
+  );
+};
   // Estado para a data no input
   const [newDate, setNewDate] = useState(user.subscription_ends_at || user.trial_ends_at || '');
 
