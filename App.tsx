@@ -1145,25 +1145,32 @@ export default function App() {
 
   // HANDLER ADICIONAR CLIENTE
   const handleAddClient = async (e: React.FormEvent) => {
-  e.preventDefault();
-  if (!session) return;
-  
-  let selectedServer = null;
-  if (addFormData.serverId) {
-      selectedServer = servers.find(s => s.id === addFormData.serverId);
-      if (selectedServer && selectedServer.credits <= 0) {
-          showToast("Servidor sem créditos!", "error");
-          return;
-      }
-  }
-  
-  const pkg = packages.find(p => p.id === addFormData.packageId);
-  const expiryDate = new Date(`${addFormData.expiryDate}T${addFormData.expiryTime || '00:00'}`);
-
-  const dateOfPayment = addFormData.paymentDate || new Date().toISOString().split('T')[0];
+    e.preventDefault();
+    if (!session) return;
     
+    // 1. Validação de Créditos do Servidor
+    let selectedServer = null;
+    if (addFormData.serverId) {
+        selectedServer = servers.find(s => s.id === addFormData.serverId);
+        if (selectedServer && selectedServer.credits <= 0) {
+            showToast("Servidor sem créditos!", "error");
+            return;
+        }
+    }
+    
+    // 2. Preparação dos Dados
+    const pkg = packages.find(p => p.id === addFormData.packageId);
+    
+    // Garante que a data/hora tenha formato válido
+    const expiryString = `${addFormData.expiryDate}T${addFormData.expiryTime || '23:59'}:00`;
+    const expiryDateObj = new Date(expiryString);
+    
+    // Lógica da Data de Pagamento
+    const dateOfPayment = addFormData.paymentDate || new Date().toISOString().split('T')[0];
+  
+    // 3. Objeto do Cliente (Interface Local)
     const newClient: Client = {
-      id: Math.random().toString(36).substr(2, 9),
+      id: crypto.randomUUID(), // Gera um ID único válido
       user_id: session.user.id,
       name: addFormData.name,
       username: addFormData.username, 
@@ -1172,42 +1179,82 @@ export default function App() {
       paymentStatus: addFormData.isPaid ? 'paid' : 'pending',
       phone: addFormData.phone,
       packageName: pkg?.name || 'Personalizado',
-      packageId: addFormData.packageId,
-      serverId: addFormData.serverId || null,
+      packageId: addFormData.packageId || null, // Trata vazio como null
+      
+      // *** CORREÇÃO CRÍTICA AQUI ***
+      // Se serverId for string vazia "", envia null. O banco não aceita "" em campos UUID.
+      serverId: addFormData.serverId ? addFormData.serverId : null, 
+      
       price: Number(addFormData.price) || 0,
       expenses: Number(addFormData.expenses) || 0,
       notes: addFormData.notes || '',
       appName: addFormData.appName || '',
       macKey: addFormData.macKey || '',
       createdAt: new Date().toISOString(),
-      expiresAt: expiryDate.toISOString(),
-      paymentHistory: addFormData.isPaid ? [{ id: Math.random().toString(36).substr(2,5), amount: Number(addFormData.price), date: new Date().toISOString(), monthsPaid: pkg?.months || 1, method: 'Cadastro' }] : [],
+      expiresAt: expiryDateObj.toISOString(),
+      
+      // Histórico de Pagamento
+      paymentHistory: addFormData.isPaid ? [{ 
+          id: crypto.randomUUID(), 
+          amount: Number(addFormData.price), 
+          date: new Date(dateOfPayment).toISOString(), 
+          monthsPaid: pkg?.months || 1, 
+          method: 'Cadastro' 
+      }] : [],
       totalPaid: addFormData.isPaid ? Number(addFormData.price) : 0
     };
-
-    setClients(prev => [...prev, newClient]);
-    setView('clients');
-    setAddFormData({
-        name: '', username: '', password: '', phone: '', packageId: '', price: '', expenses: '',
-        expiryDate: '', expiryTime: '23:59', isPaid: true, notes: '', appName: '', macKey: '', serverId: ''
-    });
-    
-    showToast("Cliente cadastrado com sucesso!");
-
+  
     try {
-        const { error } = await supabase.from('clients').insert([newClient]);
-        if (error) throw error;
-
-        // DESCONTA O CRÉDITO DO SERVIDOR (Se houve seleção)
-        if (selectedServer) {
-            const newCredits = selectedServer.credits - 1;
-            setServers(prev => prev.map(s => s.id === selectedServer.id ? {...s, credits: newCredits} : s));
-            await supabase.from('servers').update({ credits: newCredits }).eq('id', selectedServer.id);
-            showToast(`1 Crédito descontado de ${selectedServer.name}`);
-        }
-    } catch(err) {
-        console.error(err);
-        showToast("Erro ao sincronizar dados.", "error");
+      // 4. Inserção no Supabase
+      // Mapeando camelCase (React) para snake_case (Banco) se necessário
+      const { error } = await supabase.from('clients').insert([{
+        user_id: newClient.user_id,
+        name: newClient.name,
+        username: newClient.username,
+        password: newClient.password,
+        status: newClient.status,
+        payment_status: newClient.paymentStatus, // snake_case no banco?
+        phone: newClient.phone,
+        package_name: newClient.packageName,
+        package_id: newClient.packageId,
+        server_id: newClient.serverId, // Aqui vai null se estiver vazio
+        price: newClient.price,
+        expenses: newClient.expenses,
+        notes: newClient.notes,
+        app_name: newClient.appName,
+        mac_key: newClient.macKey,
+        created_at: newClient.createdAt,
+        expires_at: newClient.expiresAt,
+        payment_history: newClient.paymentHistory,
+        total_paid: newClient.totalPaid
+      }]);
+  
+      if (error) throw error;
+  
+      // 5. Sucesso: Atualiza Local e Reseta Form
+      setClients(prev => [...prev, newClient]);
+      
+      // Desconta crédito se necessário
+      if (selectedServer && session.user.id) {
+          await handleDeductCredit(selectedServer.id, 1);
+      }
+  
+      showToast("Cliente cadastrado com sucesso!", "success");
+      setView('clients');
+      
+      // Reset do Formulário
+      setAddFormData({
+          name: '', username: '', password: '', phone: '', 
+          packageId: '', price: '', expenses: '',
+          expiryDate: '', expiryTime: '23:59', 
+          isPaid: true, 
+          paymentDate: new Date().toISOString().split('T')[0],
+          notes: '', appName: '', macKey: '', serverId: ''
+      });
+  
+    } catch (error: any) {
+      console.error("Erro detalhado:", error);
+      showToast("Erro ao sincronizar dados. Verifique o console.", "error");
     }
   };
 
@@ -1226,10 +1273,17 @@ export default function App() {
   };
 
   const handleRestoreClient = async (client: Client) => {
-      if(!confirm(`Restaurar ${client.name} para a lista de ativos?`)) return;
-      updateClientInSupabase(client.id, { status: 'active' });
-      showToast("Cliente restaurado com sucesso!");
-  };
+  if (!confirm(`Deseja restaurar o cliente ${client.name}?`)) return;
+
+  // Atualiza localmente para 'active'
+  setClients(prev => prev.map(c => c.id === client.id ? { ...c, status: 'active' } : c));
+  showToast("Cliente restaurado com sucesso!", "success");
+
+  // Atualiza no banco (se estiver conectado)
+  if (session?.user?.id) {
+    await updateClientInSupabase(client.id, { status: 'active' });
+  }
+};
 
   const handleCopyCredentials = (client: Client) => {
       const text = `📺 *SEUS DADOS DE ACESSO*\n\n👤 Usuário: ${client.username}\n🔑 Senha: ${client.password}\n📅 Vencimento: ${new Date(client.expiresAt).toLocaleDateString('pt-BR')}\n\nBom divertimento!`;
@@ -1454,33 +1508,37 @@ export default function App() {
       };
     }, [clients, servers]);
 
- const filteredClients = useMemo(() => {
-    return clients.filter(c => {
-      const matchesSearch = c.name.toLowerCase().includes(searchTerm.toLowerCase()) || c.username.toLowerCase().includes(searchTerm.toLowerCase()) || (c.macKey || '').toLowerCase().includes(searchTerm.toLowerCase());
-      const expired = isExpired(c.expiresAt);
-      let matchesStatus = false;
+ // Localize a constante filteredClients e substitua por isso:
+const filteredClients = useMemo(() => {
+  return clients.filter(client => {
+    // 1. Lógica dos Arquivados (PRIORIDADE)
+    // Se o filtro selecionado for 'archived', mostra APENAS arquivados.
+    if (statusFilter === 'archived') {
+      return client.status === 'archived' && 
+             (client.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+              client.username.toLowerCase().includes(searchTerm.toLowerCase()));
+    }
 
-      if (statusFilter === 'archived') {
-          matchesStatus = c.status === 'archived';
-      } else {
-          if (c.status === 'archived') return false;
-          if (statusFilter === 'all') matchesStatus = true;
-          else if (statusFilter === 'active') matchesStatus = c.status === 'active' && !expired;
-          else if (statusFilter === 'expired') matchesStatus = c.status === 'active' && expired;
-          else if (statusFilter === 'blocked') matchesStatus = c.status === 'blocked';
-      }
+    // Se o filtro NÃO for 'archived', ESCONDE os arquivados da lista geral
+    if (client.status === 'archived') return false;
 
-      let matchesPayment = paymentFilter === 'all';
-      if (paymentFilter === 'paid') matchesPayment = c.paymentStatus === 'paid';
-      else if (paymentFilter === 'pending') matchesPayment = c.paymentStatus === 'pending';
+    // 2. Lógica da Busca (Nome ou Usuário)
+    const matchesSearch = client.name.toLowerCase().includes(searchTerm.toLowerCase()) || 
+                          client.username.toLowerCase().includes(searchTerm.toLowerCase());
 
-      return matchesSearch && matchesStatus && matchesPayment;
-    }).sort((a, b) => {
-      const dateA = new Date(a.expiresAt).getTime();
-      const dateB = new Date(b.expiresAt).getTime();
-      return sortOrder === 'asc' ? dateA - dateB : dateB - dateA;
-    });
-  }, [clients, searchTerm, statusFilter, paymentFilter, sortOrder]);
+    // 3. Lógica dos Status Normais
+    const matchesStatus = statusFilter === 'all' 
+      ? true 
+      : statusFilter === 'expired' 
+        ? isExpired(client.expiresAt) && client.status !== 'blocked' // Vencidos não bloqueados
+        : client.status === statusFilter; // Ativos ou Bloqueados
+
+    // 4. Lógica do Pagamento
+    const matchesPayment = paymentFilter === 'all' ? true : client.paymentStatus === paymentFilter;
+
+    return matchesSearch && matchesStatus && matchesPayment;
+  }).sort((a, b) => new Date(a.expiresAt).getTime() - new Date(b.expiresAt).getTime());
+}, [clients, searchTerm, statusFilter, paymentFilter]);
 
   const sendWhatsApp = (template: MessageTemplate | string, client: Client) => {
     let body = typeof template === 'string' ? template : template.body.replace(/{{nome}}/g, client.name).replace(/{{usuario}}/g, client.username).replace(/{{senha}}/g, client.password || '***').replace(/{{vencimento}}/g, new Date(client.expiresAt).toLocaleDateString('pt-BR')).replace(/{{valor}}/g, client.price.toFixed(2));
@@ -1755,6 +1813,8 @@ export default function App() {
                     <div className="w-px h-6 bg-slate-200 dark:bg-slate-700 mx-1 self-center"></div>
                     <FilterChip active={paymentFilter === 'paid'} label="Pagos" theme={theme} onClick={() => setPaymentFilter(paymentFilter === 'paid' ? 'all' : 'paid')} />
                     <FilterChip active={paymentFilter === 'pending'} label="Pendentes" theme={theme} onClick={() => setPaymentFilter(paymentFilter === 'pending' ? 'all' : 'pending')} />
+                    <div className="w-px h-6 bg-slate-200 dark:bg-slate-700 mx-1 self-center"></div>
+                    <FilterChip active={statusFilter === 'archived'} label="Arquivados" theme={theme} onClick={() => setStatusFilter('archived')} />
                   </div>
                 </div>
 
@@ -1784,6 +1844,15 @@ export default function App() {
                           </div>
                         </div>
                         <div className="flex gap-2 justify-between items-center border-t border-slate-100 dark:border-slate-800 pt-3">
+                          {c.status === 'archived' ? (
+                            /* --- BOTÕES PARA ARQUIVADOS (Resgate) --- */
+                            <div className="flex gap-2 justify-end w-full">
+                              <ActionButton onClick={() => setSelectedClientForMsg(c)} theme={theme} color="emerald" icon={<MessageSquare size={16}/>} />
+                              <ActionButton onClick={() => handleRestoreClient(c)} theme={theme} color="blue" icon={<RotateCcw size={16}/>} />
+                              <ActionButton onClick={() => handleDeleteClient(c.id)} theme={theme} color="red" icon={<Trash2 size={16}/>} />
+                            </div>
+                          ) : (
+    /* --- BOTÕES PADRÃO (Clientes Ativos/Vencidos) --- */
                           <div className="flex gap-2">
                              <ActionButton onClick={() => setSelectedClientDetails(c)} theme={theme} color="blue" icon={<Eye size={16}/>} />
                              <ActionButton onClick={() => setSelectedClientForEdit(c)} theme={theme} color="blue" icon={<Pencil size={16}/>} />
@@ -1836,13 +1905,25 @@ export default function App() {
                               </td>
                               <td className="px-4 py-2.5 text-right">
                                 <div className="flex gap-1.5 justify-end">
-                                  <ActionButton onClick={() => setSelectedClientDetails(c)} theme={theme} color="blue" icon={<Eye size={14}/>} />
-                                  <ActionButton onClick={() => setSelectedClientForEdit(c)} theme={theme} color="blue" icon={<Pencil size={14}/>} />
-                                  <ActionButton onClick={() => setSelectedClientForMsg(c)} theme={theme} color="emerald" icon={<MessageSquare size={14}/>} />
-                                  <ActionButton onClick={() => setSelectedClientForRenewal(c)} theme={theme} color="amber" icon={<RefreshCw size={14}/>} />
-                                  <ActionButton onClick={() => handleArchiveClient(c)} theme={theme} color="amber" icon={<Archive size={14}/>} />
-                                  <ActionButton onClick={() => handleCopyCredentials(c)} theme={theme} color="slate" icon={<ClipboardCopy size={16}/>} />
-                                  <ActionButton onClick={() => handleDeleteClient(c.id)} theme={theme} color="red" icon={<Trash2 size={14}/>} />
+                                  {c.status === 'archived' ? (
+                                    /* --- BOTÕES PARA ARQUIVADOS (Resgate) --- */
+                                    <>
+                                      <ActionButton onClick={() => setSelectedClientForMsg(c)} theme={theme} color="emerald" icon={<MessageSquare size={14}/>} />
+                                      <ActionButton onClick={() => handleRestoreClient(c)} theme={theme} color="blue" icon={<RotateCcw size={14}/>} />
+                                      <ActionButton onClick={() => handleDeleteClient(c.id)} theme={theme} color="red" icon={<Trash2 size={14}/>} />
+                                    </>
+                                  ) : (
+                                    /* --- BOTÕES PADRÃO --- */
+                                    <>
+                                      <ActionButton onClick={() => setSelectedClientDetails(c)} theme={theme} color="blue" icon={<Eye size={14}/>} />
+                                      <ActionButton onClick={() => setSelectedClientForEdit(c)} theme={theme} color="blue" icon={<Pencil size={14}/>} />
+                                      <ActionButton onClick={() => setSelectedClientForMsg(c)} theme={theme} color="emerald" icon={<MessageSquare size={14}/>} />
+                                      <ActionButton onClick={() => setSelectedClientForRenewal(c)} theme={theme} color="amber" icon={<RefreshCw size={14}/>} />
+                                      <ActionButton onClick={() => handleArchiveClient(c)} theme={theme} color="amber" icon={<Archive size={14}/>} />
+                                      <ActionButton onClick={() => handleCopyCredentials(c)} theme={theme} color="slate" icon={<ClipboardCopy size={16}/>} />
+                                      <ActionButton onClick={() => handleDeleteClient(c.id)} theme={theme} color="red" icon={<Trash2 size={14}/>} />
+                                    </>
+                                  )}
                                 </div>
                               </td>
                             </tr>
