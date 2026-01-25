@@ -1528,30 +1528,32 @@ const handleExportCSV = () => {
   // Função para atualizar manualmente o vencimento de um cliente SaaS
 const handleUpdateSaaSExpiry = async (userId: string, newDate: string) => {
     try {
+        // Garantimos que a data inclua o horário para o Supabase aceitar como timestamptz
+        const isoDate = new Date(newDate).toISOString();
+
         const { error } = await supabase
             .from('saas_customers')
-            .update({ subscription_ends_at: newDate })
+            .update({ trial_ends_at: isoDate }) // Gravando no campo que o console confirmou existir
             .eq('id', userId);
 
         if (error) throw error;
 
-        // 1. Atualiza a lista geral que você vê no Painel SaaS
+        // 1. Atualiza a lista geral no Painel SaaS
         setAllUsers(prev => prev.map(u => 
-            u.id === userId ? { ...u, subscription_ends_at: newDate } : u
+            u.id === userId ? { ...u, trial_ends_at: isoDate } : u
         ));
         
-        // 2. Atualiza o modal de detalhes que está aberto
+        // 2. Atualiza o modal de detalhes aberto
         setSelectedClientDetails(prev => 
-            prev && prev.id === userId ? { ...prev, subscription_ends_at: newDate } : prev
+            prev && prev.id === userId ? { ...prev, trial_ends_at: isoDate } : prev
         );
 
-        // 3. SINCRONIZAÇÃO CRÍTICA: Atualiza o perfil logado no navegador
-        // Isso faz o contador "ACESSO: X DIAS" mudar na hora
+        // 3. Sincroniza o painel do cliente na hora
         if (userProfile && userProfile.id === userId) {
-            setUserProfile(prev => prev ? { ...prev, subscription_ends_at: newDate } : prev);
+            setUserProfile(prev => prev ? { ...prev, trial_ends_at: isoDate } : prev);
         }
 
-        showToast("Vencimento atualizado e sincronizado!");
+        showToast("Vencimento atualizado com sucesso!");
     } catch (err) {
         console.error("Erro ao atualizar data:", err);
         showToast("Erro ao processar alteração.", "error");
