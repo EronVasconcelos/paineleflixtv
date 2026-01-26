@@ -1965,16 +1965,18 @@ const handleDeleteSaaSUser = async (id: string) => {
                         {isAdmin 
                           ? 'Dono / Admin' 
                           : (() => {
-                              // REGRA DE OURO: Se você definiu uma assinatura, ela manda no painel
-                              const isPremium = !!userProfile.subscription_ends_at;
-                              const finalDate = isPremium ? userProfile.subscription_ends_at : userProfile.trial_ends_at;
+                              // AQUI ESTÁ O SEGREDO: Priorizamos a data que você alterou manualmente
+                              const finalDate = userProfile.subscription_ends_at || userProfile.trial_ends_at;
                               
                               if (checkIsExpired(finalDate)) return 'Acesso Expirado';
                               
                               const diffInMs = new Date(finalDate).getTime() - Date.now();
                               const daysLeft = Math.max(0, Math.ceil(diffInMs / 86400000));
                               
-                              return `${isPremium ? 'Acesso' : 'Teste'}: ${daysLeft} dias`;
+                              // Se houver subscription_ends_at, usamos o termo "ACESSO", senão usamos "TESTE"
+                              const label = userProfile.subscription_ends_at ? 'Acesso' : 'Teste';
+                              
+                              return `${label}: ${daysLeft} dias`;
                             })()
                         }
                       </span>
