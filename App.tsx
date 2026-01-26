@@ -17,6 +17,12 @@ import { Client, Package, MessageTemplate, MessageRule, ClientStatus, PaymentSta
 import { geminiService } from './services/geminiService';
 import { supabase } from './services/supabaseClient';
 
+// Função utilitária global para verificar expiração de datas
+const checkIsExpired = (date: string | null | undefined) => {
+  if (!date) return true;
+  return new Date(date) < new Date();
+};
+
 const PANEL_NAME = "STREAM MANAGER";
 const MONTHS = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'];
 
@@ -362,11 +368,12 @@ const SaaSAdminView = ({
   onDeleteUser: (id: string) => void,
   onViewUser: (user: any) => void 
 }) => {
+  // Cálculo de estatísticas usando a função global
   const stats = useMemo(() => {
     const totalUsers = users.length;
     const activeUsers = users.filter(u => {
-      const expiry = u.subscription_ends_at || u.trial_ends_at || u.expires_at;
-      return expiry ? new Date(expiry) > new Date() : false;
+      const expiry = u.subscription_ends_at || u.trial_ends_at;
+      return !checkIsExpired(expiry); // Se não está expirado, está ativo
     }).length;
     const premiumUsers = users.filter(u => u.plan_type === 'premium').length;
     const mrr = premiumUsers * 29.90;
@@ -413,12 +420,9 @@ const SaaSAdminView = ({
             </thead>
             <tbody className={`text-xs font-medium divide-y ${theme === 'dark' ? 'divide-slate-800' : 'divide-slate-100'}`}>
               {users.map((user) => {
-                // Lógica de Expiração Corrigida
                 const expiryDate = user.subscription_ends_at || user.trial_ends_at;
-                const isActive = expiryDate ? new Date(expiryDate) > new Date() : false;
-                const statusText = isActive ? 'ATIVO' : 'INATIVO';
-
-                // Nome do Usuário: Fallback para o email se o nome não existir
+                const expired = checkIsExpired(expiryDate);
+                const statusText = expired ? 'INATIVO' : 'ATIVO';
                 const userName = user.full_name || user.email?.split('@')[0] || "Usuário";
 
                 return (
@@ -434,8 +438,8 @@ const SaaSAdminView = ({
                     </td>
                     <td className="px-6 py-3 text-center">
                       <div className="flex items-center justify-center gap-1.5">
-                        <div className={`w-1.5 h-1.5 rounded-full ${!isExpired ? 'bg-emerald-500' : 'bg-red-500'}`}></div>
-                        <span className={`uppercase text-[10px] font-bold ${!isExpired ? 'text-emerald-500' : 'text-red-500'}`}>
+                        <div className={`w-1.5 h-1.5 rounded-full ${!expired ? 'bg-emerald-500' : 'bg-red-500'}`}></div>
+                        <span className={`uppercase text-[10px] font-bold ${!expired ? 'text-emerald-500' : 'text-red-500'}`}>
                           {statusText}
                         </span>
                       </div>
@@ -443,7 +447,7 @@ const SaaSAdminView = ({
                     <td className="px-6 py-3 text-center text-slate-500 font-bold">
                       {new Date(user.created_at).toLocaleDateString('pt-BR')}
                     </td>
-                    <td className={`px-6 py-3 text-center font-bold ${isExpired ? 'text-red-400' : 'text-slate-500'}`}>
+                    <td className={`px-6 py-3 text-center font-bold ${expired ? 'text-red-400' : 'text-slate-500'}`}>
                       {expiryDate ? new Date(expiryDate).toLocaleDateString('pt-BR') : '--/--/--'}
                     </td>
                     <td className="px-6 py-3 text-right">
@@ -914,6 +918,106 @@ const PublicSignupScreen = ({ onSignup }: { onSignup: (data: any) => void }) => 
   );
 };
 
+const SaaSDetailsModal = ({ 
+  user, 
+  theme, 
+  onClose,
+  onUpdateExpiry 
+}: { 
+  user: any, 
+  theme: 'light' | 'dark', 
+  onClose: () => void,
+  onUpdateExpiry: (id: string, date: string) => void
+}) => {
+  // Estado para a data no input
+  const [newDate, setNewDate] = useState(user.subscription_ends_at || user.trial_ends_at || '');
+
+  return (
+    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-300">
+      <div className={`relative w-full max-w-lg rounded-[24px] shadow-2xl overflow-hidden border ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
+        
+        {/* Cabeçalho */}
+        <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/50">
+          <div className="flex items-center gap-3">
+            <div className="p-2 bg-blue-500/10 rounded-lg"><User size={20} className="text-blue-500"/></div>
+            <div>
+              <h3 className="text-sm font-black uppercase tracking-tight dark:text-white">Perfil do Assinante SaaS</h3>
+            </div>
+          </div>
+          <button onClick={onClose} className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-full transition-colors">
+            <X size={20} className="text-slate-400" />
+          </button>
+        </div>
+
+        <div className="p-6 space-y-5">
+          {/* 1. Informações de Identidade (O que tinha sumido) */}
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-1">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Nome Completo</span>
+              <p className="text-sm font-bold dark:text-slate-200 capitalize">{user.full_name || 'Não informado'}</p>
+            </div>
+            <div className="space-y-1">
+              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Plano</span>
+              <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-black uppercase ${user.plan_type === 'premium' ? 'bg-purple-500/10 text-purple-500' : 'bg-slate-500/10 text-slate-500'}`}>
+                {user.plan_type === 'premium' ? 'PREMIUM' : 'FREE / TESTE'}
+              </span>
+            </div>
+          </div>
+
+          <div className="space-y-1">
+            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">E-mail de Acesso</span>
+            <p className="text-sm font-medium text-blue-500 underline">{user.email}</p>
+          </div>
+
+          {/* 2. Datas Atuais */}
+          <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 grid grid-cols-2 gap-4">
+            <div>
+              <span className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Entrou em</span>
+              <p className="text-xs font-bold dark:text-slate-300">{new Date(user.created_at).toLocaleDateString('pt-BR')}</p>
+            </div>
+            <div>
+              <span className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Vencimento Atual</span>
+              <p className={`text-xs font-bold ${checkIsExpired(user.subscription_ends_at || user.trial_ends_at) ? 'text-red-500' : 'text-emerald-500'}`}>
+                {user.subscription_ends_at || user.trial_ends_at 
+                  ? new Date(user.subscription_ends_at || user.trial_ends_at).toLocaleDateString('pt-BR') 
+                  : '--/--/--'}
+              </p>
+            </div>
+          </div>
+
+          {/* 3. Área de Ajuste Manual */}
+          <div className="p-4 rounded-xl bg-blue-500/5 border border-blue-500/10 space-y-3">
+            <div className="flex items-center gap-2 text-blue-500">
+              <Calendar size={14} />
+              <span className="text-[10px] font-black uppercase tracking-widest">Prorrogar Acesso</span>
+            </div>
+            <div className="flex items-center gap-2">
+              <input 
+                type="date" 
+                value={newDate ? newDate.split('T')[0] : ''} 
+                onChange={(e) => setNewDate(e.target.value)}
+                className={`flex-1 px-3 py-2 rounded-lg text-xs font-bold border ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200 text-slate-700'}`}
+              />
+              <button 
+                onClick={() => onUpdateExpiry(user.id, newDate)}
+                className="px-4 py-2 bg-blue-600 text-white text-[10px] font-black uppercase rounded-lg hover:bg-blue-700 transition-all shadow-lg active:scale-95"
+              >
+                Atualizar
+              </button>
+            </div>
+          </div>
+        </div>
+
+        <div className="px-6 py-4 bg-slate-50 dark:bg-slate-800/30 border-t border-slate-100 dark:border-slate-800 flex justify-end">
+          <button onClick={onClose} className="px-4 py-2 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold uppercase rounded-lg hover:opacity-80 transition-all">
+            Fechar
+          </button>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 // --- INÍCIO DO COMPONENTE PRINCIPAL APP ---
 export default function App() {
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
@@ -1077,13 +1181,19 @@ const fetchAllData = async (silent = false) => {
         // 2. BLOCO ADMIN: BUSCA CLIENTES DO SEU SAAS (PAINEL STREAM)
         // -----------------------------------------------------------
           if (userEmail === 'eronvasconcelos.br@gmail.com') {
-              const { data: allSaasUsers } = await supabase
-                  .from('saas_customers') // <--- Certifique-se que o nome aqui é IGUAL ao do SQL
+              const { data: allSaasUsers, error: adminError } = await supabase
+                  .from('saas_customers') // Tabela que criamos via SQL
                   .select('*')
                   .order('created_at', { ascending: false });
 
-              if (allSaasUsers) {
-                  setAllUsers(allSaasUsers); // Isso vai fazer a lista aparecer novamente
+              if (adminError) {
+                  console.error("Erro ao carregar Clientes SaaS:", adminError.message);
+                  // Se a tabela saas_customers falhar, tentamos o fallback para profiles
+                  const { data: fallbackUsers } = await supabase.from('profiles').select('*');
+                  if (fallbackUsers) setAllUsers(fallbackUsers);
+              } else if (allSaasUsers) {
+                  // Atualiza o estado que alimenta a tabela do Painel SaaS
+                  setAllUsers(allSaasUsers);
               }
           }
 
@@ -1415,12 +1525,44 @@ const handleExportCSV = () => {
     return totalCreditsBought > 0 ? (totalSpent / totalCreditsBought) : 0;
   };
 
-  const handleDeleteClient = async (id: string) => {
-    // 1. Mensagem de confirmação mais clara
-    if(!window.confirm('Tem certeza que deseja excluir este cliente do SaaS permanentemente?')) return;
+  // Função para atualizar manualmente o vencimento de um cliente SaaS
+const handleUpdateSaaSExpiry = async (userId: string, newDate: string) => {
+    try {
+        const { error } = await supabase
+            .from('saas_customers')
+            .update({ subscription_ends_at: newDate })
+            .eq('id', userId);
+
+        if (error) throw error;
+
+        // 1. Atualiza a lista geral que você vê no Painel SaaS
+        setAllUsers(prev => prev.map(u => 
+            u.id === userId ? { ...u, subscription_ends_at: newDate } : u
+        ));
+        
+        // 2. Atualiza o modal de detalhes que está aberto
+        setSelectedClientDetails(prev => 
+            prev && prev.id === userId ? { ...prev, subscription_ends_at: newDate } : prev
+        );
+
+        // 3. SINCRONIZAÇÃO CRÍTICA: Atualiza o perfil logado no navegador
+        // Isso faz o contador "ACESSO: X DIAS" mudar na hora
+        if (userProfile && userProfile.id === userId) {
+            setUserProfile(prev => prev ? { ...prev, subscription_ends_at: newDate } : prev);
+        }
+
+        showToast("Vencimento atualizado e sincronizado!");
+    } catch (err) {
+        console.error("Erro ao atualizar data:", err);
+        showToast("Erro ao processar alteração.", "error");
+    }
+};
+
+  // Função exclusiva para deletar usuários do seu SaaS (Painel Admin)
+const handleDeleteSaaSUser = async (id: string) => {
+    if(!window.confirm('Tem certeza que deseja excluir este usuário do SaaS permanentemente?')) return;
 
     try {
-        // 2. Deleta na tabela específica do SaaS
         const { error } = await supabase
             .from('saas_customers') 
             .delete()
@@ -1428,18 +1570,42 @@ const handleExportCSV = () => {
 
         if (error) {
             console.error("Erro Supabase:", error.message);
-            alert("Erro ao excluir no banco: " + error.message);
+            showToast("Erro ao excluir no banco de dados.", "error");
             return;
         }
 
-        // 3. Atualiza a lista na tela (usando o set que alimenta sua tabela)
-        // Se sua tabela usa 'allUsers', mude para setAllUsers
+        // Remove da lista do Admin (allUsers) para sumir da tela na hora
         setAllUsers(prev => prev.filter(user => user.id !== id));
+        showToast("Usuário do SaaS removido!");
         
-        alert("Cliente removido com sucesso!");
-
     } catch(err) { 
         console.error("Erro inesperado:", err); 
+        showToast("Erro ao processar exclusão.", "error");
+    }
+};
+
+  const handleDeleteClient = async (id: string) => {
+    if(!window.confirm('Deseja excluir este cliente de IPTV permanentemente?')) return;
+
+    try {
+        const { error } = await supabase
+            .from('clients') // Alvo: Tabela de clientes de TV
+            .delete()
+            .eq('id', id);
+
+        if (error) {
+            console.error("Erro ao deletar cliente:", error.message);
+            showToast("Erro ao excluir do banco.", "error");
+            return;
+        }
+
+        // Atualiza a lista de clientes de IPTV na tela
+        setClients(prev => prev.filter(c => c.id !== id));
+        showToast("Cliente de IPTV removido!");
+        
+    } catch(err) {
+        console.error("Erro inesperado:", err);
+        showToast("Erro ao processar exclusão.", "error");
     }
 };
 
@@ -1793,17 +1959,31 @@ const handleExportCSV = () => {
             </h2>
             <div className="flex items-center gap-2">
                 {userProfile && (
-                     <div className="hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                         <Crown size={12} />
-                         <span className="text-[9px] font-bold uppercase">
-                             {isAdmin 
-                                ? 'Dono / Admin' 
-                                : userProfile.subscription_ends_at 
-                                  ? 'Premium' 
-                                  : `Teste: ${Math.max(0, Math.ceil((new Date(userProfile.trial_ends_at).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)))} dias`}
-                         </span>
-                     </div>
-                )}
+                    <div className="hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                      <Crown size={12} />
+                      <span className="text-[9px] font-bold uppercase">
+                        console.log("DADOS DO BANCO:", {
+                          assinatura: userProfile.subscription_ends_at,
+                          teste: userProfile.trial_ends_at
+                        });
+                        {isAdmin 
+                          ? 'Dono / Admin' 
+                          : (() => {
+                              // REGRA DE OURO: Se você definiu uma assinatura, ela manda no painel
+                              const isPremium = !!userProfile.subscription_ends_at;
+                              const finalDate = isPremium ? userProfile.subscription_ends_at : userProfile.trial_ends_at;
+                              
+                              if (checkIsExpired(finalDate)) return 'Acesso Expirado';
+                              
+                              const diffInMs = new Date(finalDate).getTime() - Date.now();
+                              const daysLeft = Math.max(0, Math.ceil(diffInMs / 86400000));
+                              
+                              return `${isPremium ? 'Acesso' : 'Teste'}: ${daysLeft} dias`;
+                            })()
+                        }
+                      </span>
+                    </div>
+                  )}
                 <button onClick={notificationsEnabled ? () => {} : requestPermission} className={`p-1.5 rounded-md transition-colors ${notificationsEnabled ? 'text-emerald-500 bg-emerald-500/10' : 'text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
                   {notificationsEnabled ? <Bell size={16}/> : <BellOff size={16}/>}
                 </button>
@@ -1860,14 +2040,14 @@ const handleExportCSV = () => {
             {/* RENDERIZAÇÃO CONDICIONAL DAS VIEWS */}
             
             {view === 'saas_admin' && isAdmin && (
-                <SaaSAdminView 
-                  users={allUsers} 
-                  theme={theme} 
-                  onSimulate={handleSimulation}
-                  onDeleteUser={handleDeleteClient} // <--- ADICIONADO
-                  onViewUser={(user) => setSelectedClientDetails(user)} // <--- ADICIONADO (Botão Ver)
-                /> 
-            )}
+              <SaaSAdminView 
+                users={allUsers} 
+                theme={theme} 
+                onSimulate={handleSimulation}
+                onDeleteUser={handleDeleteSaaSUser} // <--- ATENÇÃO: Mudamos para a função do Passo 4
+                onViewUser={(user) => setSelectedClientDetails(user)} 
+              />
+          )}
 
             {view === 'subscription' && (
                <div className="flex items-center justify-center min-h-[500px]">
@@ -2537,7 +2717,23 @@ const handleExportCSV = () => {
 
       {selectedClientForRenewal && <RenewalModal theme={theme} client={selectedClientForRenewal} packages={packages} onRenew={registerRenewal} onClose={() => setSelectedClientForRenewal(null)} />}
       {selectedClientForMsg && <MessageModal theme={theme} client={selectedClientForMsg} templates={templates} onSend={sendWhatsApp} onClose={() => setSelectedClientForMsg(null)} />}
-      {selectedClientDetails && <ClientDetailsModal theme={theme} client={selectedClientDetails} onClose={() => setSelectedClientDetails(null)} />}
+      {/* Lógica para escolher o modal correto (SaaS ou IPTV) */}
+      {selectedClientDetails && (
+        view === 'saas_admin' ? (
+          <SaaSDetailsModal 
+            user={selectedClientDetails} 
+            theme={theme} 
+            onClose={() => setSelectedClientDetails(null)} 
+            onUpdateExpiry={handleUpdateSaaSExpiry} // <--- ADICIONE ESTA LINHA PARA O BOTÃO FUNCIONAR
+          />
+        ) : (
+          <ClientDetailsModal 
+            theme={theme} 
+            client={selectedClientDetails} 
+            onClose={() => setSelectedClientDetails(null)} 
+          />
+        )
+      )}
       {selectedClientForEdit && <EditClientModal theme={theme} client={selectedClientForEdit} packages={packages} onEdit={handleEditClient} onClose={() => setSelectedClientForEdit(null)} />}
     </div>
   );
