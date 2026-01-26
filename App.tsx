@@ -918,106 +918,6 @@ const PublicSignupScreen = ({ onSignup }: { onSignup: (data: any) => void }) => 
   );
 };
 
-const SaaSDetailsModal = ({ 
-  user, 
-  theme, 
-  onClose,
-  onUpdateExpiry 
-}: { 
-  user: any, 
-  theme: 'light' | 'dark', 
-  onClose: () => void,
-  onUpdateExpiry: (id: string, date: string) => void
-}) => {
-  // Estado para a data no input
-  const [newDate, setNewDate] = useState(user.subscription_ends_at || user.trial_ends_at || '');
-
-  return (
-    <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-300">
-      <div className={`relative w-full max-w-lg rounded-[24px] shadow-2xl overflow-hidden border ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
-        
-        {/* Cabeçalho */}
-        <div className="px-6 py-5 border-b border-slate-100 dark:border-slate-800 flex items-center justify-between bg-slate-50/50 dark:bg-slate-800/50">
-          <div className="flex items-center gap-3">
-            <div className="p-2 bg-blue-500/10 rounded-lg"><User size={20} className="text-blue-500"/></div>
-            <div>
-              <h3 className="text-sm font-black uppercase tracking-tight dark:text-white">Perfil do Assinante SaaS</h3>
-            </div>
-          </div>
-          <button onClick={onClose} className="p-2 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-full transition-colors">
-            <X size={20} className="text-slate-400" />
-          </button>
-        </div>
-
-        <div className="p-6 space-y-5">
-          {/* 1. Informações de Identidade (O que tinha sumido) */}
-          <div className="grid grid-cols-2 gap-4">
-            <div className="space-y-1">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Nome Completo</span>
-              <p className="text-sm font-bold dark:text-slate-200 capitalize">{user.full_name || 'Não informado'}</p>
-            </div>
-            <div className="space-y-1">
-              <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">Plano</span>
-              <span className={`inline-block px-2 py-0.5 rounded text-[10px] font-black uppercase ${user.plan_type === 'premium' ? 'bg-purple-500/10 text-purple-500' : 'bg-slate-500/10 text-slate-500'}`}>
-                {user.plan_type === 'premium' ? 'PREMIUM' : 'FREE / TESTE'}
-              </span>
-            </div>
-          </div>
-
-          <div className="space-y-1">
-            <span className="text-[10px] font-bold text-slate-400 uppercase tracking-widest">E-mail de Acesso</span>
-            <p className="text-sm font-medium text-blue-500 underline">{user.email}</p>
-          </div>
-
-          {/* 2. Datas Atuais */}
-          <div className="p-4 rounded-xl bg-slate-50 dark:bg-slate-800/50 border border-slate-100 dark:border-slate-800 grid grid-cols-2 gap-4">
-            <div>
-              <span className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Entrou em</span>
-              <p className="text-xs font-bold dark:text-slate-300">{new Date(user.created_at).toLocaleDateString('pt-BR')}</p>
-            </div>
-            <div>
-              <span className="text-[10px] font-bold text-slate-400 uppercase block mb-1">Vencimento Atual</span>
-              <p className={`text-xs font-bold ${checkIsExpired(user.subscription_ends_at || user.trial_ends_at) ? 'text-red-500' : 'text-emerald-500'}`}>
-                {user.subscription_ends_at || user.trial_ends_at 
-                  ? new Date(user.subscription_ends_at || user.trial_ends_at).toLocaleDateString('pt-BR') 
-                  : '--/--/--'}
-              </p>
-            </div>
-          </div>
-
-          {/* 3. Área de Ajuste Manual */}
-          <div className="p-4 rounded-xl bg-blue-500/5 border border-blue-500/10 space-y-3">
-            <div className="flex items-center gap-2 text-blue-500">
-              <Calendar size={14} />
-              <span className="text-[10px] font-black uppercase tracking-widest">Prorrogar Acesso</span>
-            </div>
-            <div className="flex items-center gap-2">
-              <input 
-                type="date" 
-                value={newDate ? newDate.split('T')[0] : ''} 
-                onChange={(e) => setNewDate(e.target.value)}
-                className={`flex-1 px-3 py-2 rounded-lg text-xs font-bold border ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-white border-slate-200 text-slate-700'}`}
-              />
-              <button 
-                onClick={() => onUpdateExpiry(user.id, newDate)}
-                className="px-4 py-2 bg-blue-600 text-white text-[10px] font-black uppercase rounded-lg hover:bg-blue-700 transition-all shadow-lg active:scale-95"
-              >
-                Atualizar
-              </button>
-            </div>
-          </div>
-        </div>
-
-        <div className="px-6 py-4 bg-slate-50 dark:bg-slate-800/30 border-t border-slate-100 dark:border-slate-800 flex justify-end">
-          <button onClick={onClose} className="px-4 py-2 bg-slate-200 dark:bg-slate-700 text-slate-700 dark:text-slate-200 text-xs font-bold uppercase rounded-lg hover:opacity-80 transition-all">
-            Fechar
-          </button>
-        </div>
-      </div>
-    </div>
-  );
-};
-
 // --- INÍCIO DO COMPONENTE PRINCIPAL APP ---
 export default function App() {
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
@@ -1525,39 +1425,6 @@ const handleExportCSV = () => {
     return totalCreditsBought > 0 ? (totalSpent / totalCreditsBought) : 0;
   };
 
-  // Função para atualizar manualmente o vencimento de um cliente SaaS
-const handleUpdateSaaSExpiry = async (userId: string, newDate: string) => {
-    try {
-        const { error } = await supabase
-            .from('saas_customers')
-            .update({ subscription_ends_at: newDate })
-            .eq('id', userId);
-
-        if (error) throw error;
-
-        // 1. Atualiza a lista geral que você vê no Painel SaaS
-        setAllUsers(prev => prev.map(u => 
-            u.id === userId ? { ...u, subscription_ends_at: newDate } : u
-        ));
-        
-        // 2. Atualiza o modal de detalhes que está aberto
-        setSelectedClientDetails(prev => 
-            prev && prev.id === userId ? { ...prev, subscription_ends_at: newDate } : prev
-        );
-
-        // 3. SINCRONIZAÇÃO CRÍTICA: Atualiza o perfil logado no navegador
-        // Isso faz o contador "ACESSO: X DIAS" mudar na hora
-        if (userProfile && userProfile.id === userId) {
-            setUserProfile(prev => prev ? { ...prev, subscription_ends_at: newDate } : prev);
-        }
-
-        showToast("Vencimento atualizado e sincronizado!");
-    } catch (err) {
-        console.error("Erro ao atualizar data:", err);
-        showToast("Erro ao processar alteração.", "error");
-    }
-};
-
   // Função exclusiva para deletar usuários do seu SaaS (Painel Admin)
 const handleDeleteSaaSUser = async (id: string) => {
     if(!window.confirm('Tem certeza que deseja excluir este usuário do SaaS permanentemente?')) return;
@@ -1959,24 +1826,17 @@ const handleDeleteSaaSUser = async (id: string) => {
             </h2>
             <div className="flex items-center gap-2">
                 {userProfile && (
-                    <div className="hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                      <Crown size={12} />
-                      <span className="text-[9px] font-bold uppercase">
-                        {isAdmin 
-                          ? 'Dono / Admin' 
-                          : (() => {
-                              const finalDate = userProfile.subscription_ends_at || userProfile.trial_ends_at;
-                              if (checkIsExpired(finalDate)) return 'Acesso Expirado';
-                              
-                              const diffInMs = new Date(finalDate).getTime() - Date.now();
-                              const daysLeft = Math.max(0, Math.ceil(diffInMs / 86400000));
-                              
-                              return `Acesso: ${daysLeft} dias`;
-                            })()
-                        }
-                      </span>
-                    </div>
-                  )}
+                     <div className="hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                         <Crown size={12} />
+                         <span className="text-[9px] font-bold uppercase">
+                             {isAdmin 
+                                ? 'Dono / Admin' 
+                                : userProfile.subscription_ends_at 
+                                  ? 'Premium' 
+                                  : `Teste: ${Math.max(0, Math.ceil((new Date(userProfile.trial_ends_at).getTime() - new Date().getTime()) / (1000 * 60 * 60 * 24)))} dias`}
+                         </span>
+                     </div>
+                )}
                 <button onClick={notificationsEnabled ? () => {} : requestPermission} className={`p-1.5 rounded-md transition-colors ${notificationsEnabled ? 'text-emerald-500 bg-emerald-500/10' : 'text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
                   {notificationsEnabled ? <Bell size={16}/> : <BellOff size={16}/>}
                 </button>
@@ -2710,23 +2570,7 @@ const handleDeleteSaaSUser = async (id: string) => {
 
       {selectedClientForRenewal && <RenewalModal theme={theme} client={selectedClientForRenewal} packages={packages} onRenew={registerRenewal} onClose={() => setSelectedClientForRenewal(null)} />}
       {selectedClientForMsg && <MessageModal theme={theme} client={selectedClientForMsg} templates={templates} onSend={sendWhatsApp} onClose={() => setSelectedClientForMsg(null)} />}
-      {/* Lógica para escolher o modal correto (SaaS ou IPTV) */}
-      {selectedClientDetails && (
-        view === 'saas_admin' ? (
-          <SaaSDetailsModal 
-            user={selectedClientDetails} 
-            theme={theme} 
-            onClose={() => setSelectedClientDetails(null)} 
-            onUpdateExpiry={handleUpdateSaaSExpiry} // <--- ADICIONE ESTA LINHA PARA O BOTÃO FUNCIONAR
-          />
-        ) : (
-          <ClientDetailsModal 
-            theme={theme} 
-            client={selectedClientDetails} 
-            onClose={() => setSelectedClientDetails(null)} 
-          />
-        )
-      )}
+      {selectedClientDetails && <ClientDetailsModal theme={theme} client={selectedClientDetails} onClose={() => setSelectedClientDetails(null)} />}
       {selectedClientForEdit && <EditClientModal theme={theme} client={selectedClientForEdit} packages={packages} onEdit={handleEditClient} onClose={() => setSelectedClientForEdit(null)} />}
     </div>
   );
