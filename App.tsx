@@ -929,61 +929,6 @@ const SaaSDetailsModal = ({
   onClose: () => void,
   onUpdateExpiry: (id: string, date: string) => void
 }) => {
-  const [selectedDate, setSelectedDate] = React.useState(
-    user.trial_ends_at ? new Date(user.trial_ends_at).toISOString().split('T')[0] : ''
-  );
-
-  return (
-    <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/60 backdrop-blur-sm">
-      <div className={`w-full max-w-md rounded-2xl p-6 shadow-2xl border ${
-        theme === 'dark' ? 'bg-zinc-900 border-zinc-800 text-white' : 'bg-white border-zinc-200 text-zinc-900'
-      }`}>
-        <div className="flex justify-between items-center mb-6">
-          <h3 className="text-xl font-bold flex items-center gap-2">
-            <User size={20} className="text-emerald-500" />
-            Detalhes do Cliente
-          </h3>
-          <button onClick={onClose} className="p-2 hover:bg-zinc-500/10 rounded-full transition-colors">
-            <X size={20} />
-          </button>
-        </div>
-
-        <div className="space-y-4 mb-8">
-          <div className="p-3 rounded-xl bg-zinc-500/5 border border-zinc-500/10">
-            <p className="text-[10px] uppercase font-black text-zinc-500 mb-1">E-mail de Acesso</p>
-            <p className="font-medium text-sm text-zinc-400">{user.email}</p>
-          </div>
-          
-          <div className={`p-4 rounded-2xl border-2 ${
-            theme === 'dark' ? 'bg-zinc-800/50 border-emerald-500/20' : 'bg-emerald-50/30 border-emerald-500/10'
-          }`}>
-            <p className="text-[10px] uppercase font-black text-emerald-500 mb-3 flex items-center gap-2">
-              <Calendar size={14} /> Nova Data de Vencimento
-            </p>
-            <input 
-              type="date" 
-              value={selectedDate}
-              onChange={(e) => setSelectedDate(e.target.value)}
-              className={`w-full p-3 rounded-xl border-2 focus:border-emerald-500 outline-none font-bold ${
-                theme === 'dark' ? 'bg-zinc-900 border-zinc-700 text-white' : 'bg-white border-zinc-200 text-zinc-900'
-              }`}
-            />
-          </div>
-        </div>
-
-        <button
-          onClick={() => {
-            if (!selectedDate) return;
-            onUpdateExpiry(user.id, selectedDate);
-          }}
-          className="w-full py-4 bg-emerald-500 hover:bg-emerald-600 text-white rounded-2xl text-xs font-black uppercase tracking-widest transition-all shadow-lg"
-        >
-          Confirmar Prorrogação
-        </button>
-      </div>
-    </div>
-  );
-};
   // Estado para a data no input
   const [newDate, setNewDate] = useState(user.subscription_ends_at || user.trial_ends_at || '');
 
@@ -1583,29 +1528,33 @@ const handleExportCSV = () => {
   // Função para atualizar manualmente o vencimento de um cliente SaaS
 const handleUpdateSaaSExpiry = async (userId: string, newDate: string) => {
     try {
-        const isoDate = new Date(newDate).toISOString();
-
-        // LOG DE TESTE: Vamos ver se a função está sendo chamada
-        console.log("Tentando atualizar usuário:", userId, "para data:", isoDate);
-
         const { error } = await supabase
             .from('saas_customers')
-            .update({ trial_ends_at: isoDate }) 
+            .update({ subscription_ends_at: newDate })
             .eq('id', userId);
 
-        if (error) {
-            console.error("ERRO DO SUPABASE:", error.message);
-            throw error;
+        if (error) throw error;
+
+        // 1. Atualiza a lista geral que você vê no Painel SaaS
+        setAllUsers(prev => prev.map(u => 
+            u.id === userId ? { ...u, subscription_ends_at: newDate } : u
+        ));
+        
+        // 2. Atualiza o modal de detalhes que está aberto
+        setSelectedClientDetails(prev => 
+            prev && prev.id === userId ? { ...prev, subscription_ends_at: newDate } : prev
+        );
+
+        // 3. SINCRONIZAÇÃO CRÍTICA: Atualiza o perfil logado no navegador
+        // Isso faz o contador "ACESSO: X DIAS" mudar na hora
+        if (userProfile && userProfile.id === userId) {
+            setUserProfile(prev => prev ? { ...prev, subscription_ends_at: newDate } : prev);
         }
 
-        // FORÇAR ATUALIZAÇÃO NA TELA (Mesmo que o banco demore)
-        setUserProfile(prev => prev ? { ...prev, trial_ends_at: isoDate } : prev);
-        setAllUsers(prev => prev.map(u => u.id === userId ? { ...u, trial_ends_at: isoDate } : u));
-
-        showToast("Comando enviado ao banco!");
+        showToast("Vencimento atualizado e sincronizado!");
     } catch (err) {
-        console.error("Erro completo:", err);
-        showToast("Erro: Verifique o console (F12)", "error");
+        console.error("Erro ao atualizar data:", err);
+        showToast("Erro ao processar alteração.", "error");
     }
 };
 
