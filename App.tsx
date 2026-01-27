@@ -92,6 +92,17 @@ const MobileSubItem = ({ icon, label, onClick }: { icon: React.ReactNode, label:
   </button>
 );
 
+const MenuIcon = ({ icon, label, onClick }: { icon: React.ReactNode, label: string, onClick: () => void }) => (
+  <button onClick={onClick} className="flex flex-col items-center gap-2 active:scale-95 transition-all group">
+    <div className="p-4 rounded-2xl bg-slate-100 dark:bg-slate-800 group-hover:bg-blue-50 dark:group-hover:bg-slate-700 border border-transparent group-hover:border-blue-100 dark:group-hover:border-slate-600 transition-colors flex items-center justify-center shadow-sm">
+      {React.cloneElement(icon as React.ReactElement, { size: 24, className: "group-hover:text-blue-500 transition-colors" })}
+    </div>
+    <span className="text-[10px] font-bold uppercase tracking-tight opacity-70 text-center leading-tight group-hover:opacity-100 group-hover:text-blue-600 dark:group-hover:text-blue-400">
+      {label}
+    </span>
+  </button>
+);
+
 const StatCard = ({ title, value, icon, color, theme, trend }: { title: string, value: string | number, icon: React.ReactNode, color: string, theme: 'light' | 'dark', trend?: string }) => {
   const getColors = () => {
     switch(color) {
@@ -1018,41 +1029,17 @@ const SaaSDetailsModal = ({
   );
 };
 
-{/* --- COMPONENTE BOTTOM SHEET --- */}
-{isBottomSheetOpen && (
-  <div className="fixed inset-0 z-[100] md:hidden">
-    {/* Backdrop (Fundo escuro) */}
-    <div 
-      className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300"
-      onClick={() => setIsBottomSheetOpen(false)}
-    />
-    
-    {/* Painel Deslizante */}
-    <div className={`absolute bottom-0 left-0 w-full rounded-t-[32px] p-6 shadow-2xl transition-colors duration-300 animate-in slide-in-from-bottom-full duration-300 ${theme === 'dark' ? 'bg-slate-900 text-white' : 'bg-white text-slate-900'}`}>
-      
-      {/* Barrinha de arraste visual */}
-      <div className="w-12 h-1.5 bg-slate-300 dark:bg-slate-700 rounded-full mx-auto mb-8" />
 
-      <div className="grid grid-cols-3 gap-6">
-        <MenuIcon icon={<CalendarDays className="text-emerald-500"/>} label="Automação" onClick={() => {setView('scheduling'); setIsBottomSheetOpen(false);}} />
-        <MenuIcon icon={<Layers className="text-indigo-500"/>} label="Planos" onClick={() => {setView('packages'); setIsBottomSheetOpen(false);}} />
-        <MenuIcon icon={<MessageSquare className="text-emerald-500"/>} label="Mensagens" onClick={() => {setView('messages'); setIsBottomSheetOpen(false);}} />
-        <MenuIcon icon={<ServerIcon className="text-purple-500"/>} label="Servidores" onClick={() => {setView('servers'); setIsBottomSheetOpen(false);}} />
-        <MenuIcon icon={<Database className="text-slate-500"/>} label="Backup" onClick={() => {setView('database'); setIsBottomSheetOpen(false);}} />
-        <MenuIcon icon={<CreditCard className="text-yellow-500"/>} label="Assinatura" onClick={() => {setView('subscription'); setIsBottomSheetOpen(false);}} />
-        <MenuIcon icon={<History className="text-red-500"/>} label="Histórico" onClick={() => {setView('history'); setIsBottomSheetOpen(false);}} />
-        <MenuIcon icon={<LogOut className="text-red-500"/>} label="Sair" onClick={handleLogout} />
-      </div>
-
-      <button 
-        onClick={() => setIsBottomSheetOpen(false)}
-        className={`w-full mt-8 py-4 rounded-2xl font-black uppercase text-[11px] tracking-widest ${theme === 'dark' ? 'bg-slate-800 text-slate-400' : 'bg-slate-100 text-slate-500'}`}
-      >
-        Fechar Menu
-      </button>
+const MenuIcon = ({ icon, label, onClick }) => (
+  <button onClick={onClick} className="flex flex-col items-center gap-2 active:scale-90 transition-all">
+    <div className="p-4 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+      {React.cloneElement(icon as React.ReactElement, { size: 24 })}
     </div>
-  </div>
-)}
+    <span className="text-[10px] font-bold uppercase tracking-tight opacity-70 text-center leading-tight">
+      {label}
+    </span>
+  </button>
+);
 
 // --- INÍCIO DO COMPONENTE PRINCIPAL APP ---
 export default function App() {
@@ -1061,19 +1048,19 @@ export default function App() {
     if (saved) return saved as 'light' | 'dark';
     return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   });
-  const [finMonth, setFinMonth] = React.useState(new Date().getMonth());
-  const [finYear, setFinYear] = React.useState(new Date().getFullYear());
+
+  const [finMonth, setFinMonth] = useState(new Date().getMonth());
+  const [finYear, setFinYear] = useState(new Date().getFullYear());
   const [session, setSession] = useState<Session | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
-  // Estados para o Painel SaaS
   const [allUsers, setAllUsers] = useState<UserProfile[]>([]); 
   
-  // 'finance' substitui 'reports' como solicitado
   const [view, setView] = useState<any>(() => {
-  const savedView = localStorage.getItem('painel_ultima_view');
-  return savedView || 'dashboard';
-});
+    const savedView = localStorage.getItem('painel_ultima_view');
+    return savedView || 'dashboard';
+  });
 
+  // AQUI: Apenas uma declaração correta para o menu
   const [isBottomSheetOpen, setIsBottomSheetOpen] = useState(false);
   
   const [selectedClientForMsg, setSelectedClientForMsg] = useState<Client | null>(null);
@@ -1084,8 +1071,7 @@ export default function App() {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [simulationMode, setSimulationMode] = useState<'none' | 'trial_expired' | 'sub_expired' | 'payment_success'>('none'); 
   
-  const [isBottomSheetOpen, setisBottomSheetOpen] = useState(false);
-  const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
+    const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
   
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'expired' | 'blocked' | 'archived'>('all');
@@ -2809,65 +2795,74 @@ return (
             <p className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-black tracking-widest leading-relaxed">
               © 2026 STREAM MANAGER. TODOS OS DIREITOS RESERVADOS.
             </p>
-            <p className="text-[10px] text-slate-400 dark:text-slate-600 font-bold mt-0.5">
-              Desenvolvido por Eron Vasconcelos
-            </p>
           </div>
         </footer>
 
-        {/* --- BARRA DE NAVEGAÇÃO MOBILE --- */}
-        <nav className={`md:hidden fixed bottom-0 left-0 right-0 border-t grid grid-cols-5 items-center justify-items-center py-2 z-[100] pb-safe shadow-xl transition-colors ${theme === 'dark' ? 'bg-slate-900/98 border-slate-800 backdrop-blur-xl' : 'bg-white/98 border-slate-100 backdrop-blur-xl'}`}>
+        {/* --- NAVEGAÇÃO MOBILE (Barra Fixa Inferior) --- */}
+        <nav className={`md:hidden fixed bottom-0 left-0 right-0 border-t grid grid-cols-5 items-center justify-items-center py-2 z-[100] pb-safe shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] transition-colors ${theme === 'dark' ? 'bg-slate-900/98 border-slate-800 backdrop-blur-xl' : 'bg-white/98 border-slate-100 backdrop-blur-xl'}`}>
           <BottomNavItem icon={<LayoutDashboard size={22}/>} label="Painel" active={view === 'dashboard'} onClick={() => setView('dashboard')} />
           <BottomNavItem icon={<DollarSign size={22}/>} label="Financ." active={view === 'finance'} onClick={() => setView('finance')} />
           
           <div className="relative flex items-center justify-center w-full h-full">
-            <button onClick={() => setView('add')} className="w-12 h-12 bg-blue-600 text-white rounded-full flex items-center justify-center shadow-lg -mt-8 border-4 border-slate-50 dark:border-slate-950 transition-all active:scale-95 z-[120]">
-              <Plus size={24} />
+            <button 
+              onClick={() => setView('add')} 
+              className="absolute -top-6 w-14 h-14 bg-gradient-to-tr from-blue-600 to-cyan-500 text-white rounded-full flex items-center justify-center shadow-lg shadow-blue-500/40 border-4 border-slate-50 dark:border-slate-950 transition-transform active:scale-90 z-[120]"
+            >
+              <Plus size={28} strokeWidth={2.5} />
             </button>
           </div>
-
-          <BottomNavItem icon={<Users size={22}/>} label="Clientes" active={view === 'clients'} onClick={() => setView('clients')} />
           
-          {/* BOTÃO MAIS: Abre o Menu */}
-          <button 
-            onClick={() => setIsBottomSheetOpen(true)}
-            className="flex flex-col items-center gap-1 active:scale-95 transition-all"
-          >
-            <MoreHorizontal size={22} className={isBottomSheetOpen ? 'text-blue-500' : 'text-slate-400'} />
-            <span className={`text-[10px] font-bold uppercase ${isBottomSheetOpen ? 'text-blue-500' : 'text-slate-400'}`}>Mais</span>
+          <BottomNavItem icon={<Users size={22}/>} label="Clientes" active={view === 'clients'} onClick={() => setView('clients')} />
+          <button onClick={() => setIsBottomSheetOpen(true)} className="flex flex-col items-center gap-1 active:scale-95 transition-all">
+            <div className={isBottomSheetOpen ? 'text-blue-500' : 'text-slate-400'}>
+                <MoreHorizontal size={22} />
+            </div>
+            <span className={`text-[9px] font-bold uppercase ${isBottomSheetOpen ? 'text-blue-500' : 'text-slate-400 opacity-70'}`}>Mais</span>
           </button>
         </nav>
 
-        {/* --- MENU QUE SOBE (BOTTOM SHEET) --- */}
+        {/* --- MENU BOTTOM SHEET (MODAL DE MENU) --- */}
         {isBottomSheetOpen && (
-          <div className="fixed inset-0 z-[200] md:hidden">
-            {/* Fundo escuro */}
-            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsBottomSheetOpen(false)} />
+          <div className="fixed inset-0 z-[200] md:hidden flex flex-col justify-end">
+            {/* Backdrop com Blur e Fade */}
+            <div 
+                className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-300" 
+                onClick={() => setIsBottomSheetOpen(false)} 
+            />
             
-            {/* Painel branco/escuro */}
-            <div className={`absolute bottom-0 left-0 w-full rounded-t-[32px] p-6 shadow-2xl transition-all duration-300 ${theme === 'dark' ? 'bg-slate-900 text-white' : 'bg-white text-slate-900'}`}>
-              <div className="w-12 h-1.5 bg-slate-300 dark:bg-slate-700 rounded-full mx-auto mb-8" />
-
-              <div className="grid grid-cols-3 gap-6 mb-4">
-                {isAdmin && <MenuIcon icon={<Crown className="text-yellow-500"/>} label="SaaS" onClick={() => {setView('saas_admin'); setIsBottomSheetOpen(false);}} />}
-                <MenuIcon icon={<History className="text-red-500"/>} label="Histórico" onClick={() => {setView('history'); setIsBottomSheetOpen(false);}} />
-                <MenuIcon icon={<CalendarDays className="text-emerald-500"/>} label="Zap" onClick={() => {setView('scheduling'); setIsBottomSheetOpen(false);}} />
-                <MenuIcon icon={<Layers className="text-indigo-500"/>} label="Planos" onClick={() => {setView('packages'); setIsBottomSheetOpen(false);}} />
-                <MenuIcon icon={<MessageSquare className="text-emerald-500"/>} label="Mensagens" onClick={() => {setView('messages'); setIsBottomSheetOpen(false);}} />
-                <MenuIcon icon={<ServerIcon className="text-purple-500"/>} label="Servers" onClick={() => {setView('servers'); setIsBottomSheetOpen(false);}} />
-                <MenuIcon icon={<Database className="text-slate-500"/>} label="Dados" onClick={() => {setView('database'); setIsBottomSheetOpen(false);}} />
-                <MenuIcon icon={<CreditCard className="text-yellow-500"/>} label="Conta" onClick={() => {setView('subscription'); setIsBottomSheetOpen(false);}} />
-                <MenuIcon icon={<LogOut className="text-red-500"/>} label="Sair" onClick={handleLogout} />
+            {/* Conteúdo do Menu */}
+            <div className={`relative w-full rounded-t-[32px] p-6 pb-safe shadow-2xl animate-in slide-in-from-bottom-full duration-300 border-t ${theme === 'dark' ? 'bg-slate-900 text-white border-slate-800' : 'bg-white text-slate-900 border-white'}`}>
+              
+              {/* Puxador Visual */}
+              <div className="w-12 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full mx-auto mb-8 opacity-50" />
+              
+              <div className="grid grid-cols-4 gap-4 mb-6">
+                {isAdmin && (
+                    <MenuIcon icon={<Crown className="text-yellow-500"/>} label="SaaS Admin" onClick={() => { setView('saas_admin'); setIsBottomSheetOpen(false); }} />
+                )}
+                <MenuIcon icon={<History className="text-red-500"/>} label="Histórico" onClick={() => { setView('history'); setIsBottomSheetOpen(false); }} />
+                <MenuIcon icon={<CalendarDays className="text-emerald-500"/>} label="Auto Zap" onClick={() => { setView('scheduling'); setIsBottomSheetOpen(false); }} />
+                <MenuIcon icon={<Layers className="text-indigo-500"/>} label="Planos" onClick={() => { setView('packages'); setIsBottomSheetOpen(false); }} />
+                
+                <MenuIcon icon={<MessageSquare className="text-emerald-500"/>} label="Modelos" onClick={() => { setView('messages'); setIsBottomSheetOpen(false); }} />
+                <MenuIcon icon={<ServerIcon className="text-purple-500"/>} label="Servers" onClick={() => { setView('servers'); setIsBottomSheetOpen(false); }} />
+                <MenuIcon icon={<Database className="text-slate-500"/>} label="Backup" onClick={() => { setView('database'); setIsBottomSheetOpen(false); }} />
+                <MenuIcon icon={<CreditCard className="text-yellow-500"/>} label="Assinatura" onClick={() => { setView('subscription'); setIsBottomSheetOpen(false); }} />
               </div>
 
-              <button onClick={() => setIsBottomSheetOpen(false)} className={`w-full mt-4 py-4 rounded-2xl font-bold uppercase text-[11px] ${theme === 'dark' ? 'bg-slate-800' : 'bg-slate-100'}`}>
-                Fechar
-              </button>
+              <div className="flex gap-3 mt-4">
+                  <button onClick={handleLogout} className="flex-1 py-4 bg-red-50 dark:bg-red-900/10 text-red-600 dark:text-red-400 rounded-2xl font-bold uppercase text-[11px] flex items-center justify-center gap-2 hover:bg-red-100 transition-colors">
+                    <LogOut size={16}/> Sair da Conta
+                  </button>
+                  <button onClick={() => setIsBottomSheetOpen(false)} className={`flex-1 py-4 rounded-2xl font-bold uppercase text-[11px] transition-colors ${theme === 'dark' ? 'bg-slate-800 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>
+                    Fechar Menu
+                  </button>
+              </div>
             </div>
           </div>
         )}
 
-        {/* MODAIS (MANTENHA OS QUE VOCÊ JÁ TINHA) */}
+        {/* MODAIS */}
         {selectedClientForRenewal && <RenewalModal theme={theme} client={selectedClientForRenewal} packages={packages} onRenew={registerRenewal} onClose={() => setSelectedClientForRenewal(null)} />}
         {selectedClientForMsg && <MessageModal theme={theme} client={selectedClientForMsg} templates={templates} onSend={sendWhatsApp} onClose={() => setSelectedClientForMsg(null)} />}
         {selectedClientDetails && (
@@ -2879,19 +2874,7 @@ return (
         )}
         {selectedClientForEdit && <EditClientModal theme={theme} client={selectedClientForEdit} packages={packages} onEdit={handleEditClient} onClose={() => setSelectedClientForEdit(null)} />}
       
-      </div> 
-    </div>
+      </main> {/* FECHA MAIN */}
+    </div> {/* FECHA RAIZ */}
   );
 }
-
-// ESTE É O MOLDE QUE FICA FORA DE TUDO NO FINAL DO ARQUIVO
-const MenuIcon = ({ icon, label, onClick }) => (
-  <button onClick={onClick} className="flex flex-col items-center gap-2 active:scale-90 transition-all">
-    <div className="p-4 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
-      {React.cloneElement(icon as React.ReactElement, { size: 24 })}
-    </div>
-    <span className="text-[10px] font-bold uppercase tracking-tight opacity-70 text-center leading-tight">
-      {label}
-    </span>
-  </button>
-);
