@@ -2765,16 +2765,16 @@ return (
           </div>
         </main>
 
-        <footer className="w-full bg-white/80 dark:bg-slate-950/80 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 py-3 absolute bottom-0 left-0 z-50">
-            <div className="text-center">
-              <p className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-black tracking-widest leading-relaxed">
-                © 2026 STREAM MANAGER. TODOS OS DIREITOS RESERVADOS.
-              </p>
-              <p className="text-[10px] text-slate-400 dark:text-slate-600 font-bold mt-0.5">
-                Desenvolvido por Eron Vasconcelos
-              </p>
-            </div>
-          </footer>
+       <footer className="w-full bg-white/95 dark:bg-slate-950/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 py-3 shrink-0 z-50">
+        <div className="text-center">
+          <p className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-black tracking-widest leading-relaxed">
+            © 2026 STREAM MANAGER. TODOS OS DIREITOS RESERVADOS.
+          </p>
+          <p className="text-[10px] text-slate-400 dark:text-slate-600 font-bold mt-0.5">
+            Desenvolvido por Eron Vasconcelos
+          </p>
+        </div>
+      </footer>
 
         <nav className={`md:hidden fixed bottom-0 left-0 right-0 border-t grid grid-cols-5 items-center justify-items-center py-2 z-[100] pb-safe shadow-xl transition-colors ${theme === 'dark' ? 'bg-slate-900/98 border-slate-800 backdrop-blur-xl' : 'bg-white/98 border-slate-100 backdrop-blur-xl'}`}>
           <BottomNavItem icon={<LayoutDashboard size={22}/>} label="Painel" active={view === 'dashboard'} onClick={() => setView('dashboard')} />
