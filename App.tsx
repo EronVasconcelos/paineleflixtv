@@ -1919,64 +1919,63 @@ const handleDeleteSaaSUser = async (id: string) => {
 
   /* --- PARTE 5: RENDERIZAÇÃO VISUAL E ROTEAMENTO --- */
 
-  return (
-        <div className={`flex flex-col md:flex-row h-screen overflow-hidden font-normal transition-colors duration-300 ${theme === 'dark' ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-800'}`}>
-          
-          {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+return (
+  <div className={`flex flex-col md:flex-row h-screen overflow-hidden font-normal transition-colors duration-300 ${theme === 'dark' ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-800'}`}>
+    
+    {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
-          {/* --- SIDEBAR DESKTOP --- */}
-          <aside className="w-56 bg-slate-50 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 hidden md:flex flex-col shrink-0">
-            <div className="p-5 flex items-center gap-3">
-              <div className="bg-gradient-to-br from-blue-600 to-cyan-500 p-1.5 rounded-lg shadow-lg shadow-blue-500/30">
-                <Tv size={20} className="text-white" />
-              </div>
-              <h1 className="text-sm font-black uppercase tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-cyan-500 dark:from-blue-400 dark:to-cyan-300 leading-none">
-                  STREAM<br/>MANAGER
-              </h1>
-            </div>
-        
-        <nav className="flex-1 px-3 space-y-0.5 overflow-y-auto py-2 hide-scrollbar">
-          
-          {isAdmin && (
-             <SidebarItem icon={<Crown size={18} className="text-yellow-500"/>} label="Painel SaaS" active={view === 'saas_admin'} onClick={() => setView('saas_admin')} />
-          )}
-
-          <div className="pt-2 pb-2 px-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Gestão</div>
-          <SidebarItem icon={<LayoutDashboard size={18} className="text-blue-500"/>} label="Visão Geral" active={view === 'dashboard'} onClick={() => setView('dashboard')} />
-          
-          {/* NOVA ABA FINANCEIRO (Substitui Relatórios) */}
-          <SidebarItem icon={<DollarSign size={18} className="text-emerald-500"/>} label="Financeiro" active={view === 'finance'} onClick={() => setView('finance')} />
-          
-          <SidebarItem icon={<Users size={18} className="text-orange-500"/>} label="Meus Clientes" active={view === 'clients'} onClick={() => setView('clients')} />
-          <SidebarItem icon={<UserPlus size={18} className="text-cyan-500"/>} label="Novo Cadastro" active={view === 'add'} onClick={() => setView('add')} />
-          <SidebarItem icon={<History size={18} className="text-red-500"/>} label="Histórico" active={view === 'history'} onClick={() => setView('history')} />
-          <SidebarItem icon={<ServerIcon size={18} className="text-purple-500"/>} label="Servidores" active={view === 'servers'} onClick={() => setView('servers')} />
-          
-          <div className="pt-4 pb-2 px-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Ferramentas</div>
-          <SidebarItem icon={<CalendarDays size={18} className="text-emerald-500"/>} label="Automação Zap" active={view === 'scheduling'} onClick={() => setView('scheduling')} />
-          <SidebarItem icon={<Layers size={18} className="text-indigo-500"/>} label="Planos e Preços" active={view === 'packages'} onClick={() => setView('packages')} />
-          <SidebarItem icon={<MessageSquare size={18} className="text-emerald-500"/>} label="Mensagens" active={view === 'messages'} onClick={() => setView('messages')} />
-          <SidebarItem icon={<Database size={18} className="text-slate-500"/>} label="Backup Dados" active={view === 'database'} onClick={() => setView('database')} />
-          
-          <div className="pt-4 pb-2 px-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Conta</div>
-          <SidebarItem icon={<CreditCard size={18} className="text-yellow-500"/>} label="Minha Assinatura" active={view === 'subscription'} onClick={() => setView('subscription')} />
-        </nav>
-
-        <div className="p-3 border-t border-slate-200 dark:border-slate-800 space-y-2">
-          <button onClick={toggleTheme} className="w-full flex items-center justify-between px-3 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-md transition-all">
-            <span className="text-[10px] font-bold uppercase">{theme === 'dark' ? 'Escuro' : 'Claro'}</span>
-            {theme === 'dark' ? <Moon size={14} className="text-blue-400" /> : <Sun size={14} className="text-amber-400" />}
-          </button>
-          
-          <button onClick={handleLogout} className="w-full flex items-center gap-3 px-3 py-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-all">
-            <LogOut size={16} />
-            <span className="text-[11px] font-bold uppercase">Sair</span>
-          </button>
+    {/* --- SIDEBAR DESKTOP --- */}
+    <aside className="w-56 bg-slate-50 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 hidden md:flex flex-col shrink-0">
+      <div className="p-5 flex items-center gap-3">
+        <div className="bg-gradient-to-br from-blue-600 to-cyan-500 p-1.5 rounded-lg shadow-lg shadow-blue-500/30">
+          <Tv size={20} className="text-white" />
         </div>
-      </aside>
+        <h1 className="text-sm font-black uppercase tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-cyan-500 dark:from-blue-400 dark:to-cyan-300 leading-none">
+            STREAM<br/>MANAGER
+        </h1>
+      </div>
+      
+      <nav className="flex-1 px-3 space-y-0.5 overflow-y-auto py-2 hide-scrollbar">
+        {isAdmin && (
+           <SidebarItem icon={<Crown size={18} className="text-yellow-500"/>} label="Painel SaaS" active={view === 'saas_admin'} onClick={() => setView('saas_admin')} />
+        )}
+
+        <div className="pt-2 pb-2 px-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Gestão</div>
+        <SidebarItem icon={<LayoutDashboard size={18} className="text-blue-500"/>} label="Visão Geral" active={view === 'dashboard'} onClick={() => setView('dashboard')} />
+        <SidebarItem icon={<DollarSign size={18} className="text-emerald-500"/>} label="Financeiro" active={view === 'finance'} onClick={() => setView('finance')} />
+        <SidebarItem icon={<Users size={18} className="text-orange-500"/>} label="Meus Clientes" active={view === 'clients'} onClick={() => setView('clients')} />
+        <SidebarItem icon={<UserPlus size={18} className="text-cyan-500"/>} label="Novo Cadastro" active={view === 'add'} onClick={() => setView('add')} />
+        <SidebarItem icon={<History size={18} className="text-red-500"/>} label="Histórico" active={view === 'history'} onClick={() => setView('history')} />
+        <SidebarItem icon={<ServerIcon size={18} className="text-purple-500"/>} label="Servidores" active={view === 'servers'} onClick={() => setView('servers')} />
+        
+        <div className="pt-4 pb-2 px-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Ferramentas</div>
+        <SidebarItem icon={<CalendarDays size={18} className="text-emerald-500"/>} label="Automação Zap" active={view === 'scheduling'} onClick={() => setView('scheduling')} />
+        <SidebarItem icon={<Layers size={18} className="text-indigo-500"/>} label="Planos e Preços" active={view === 'packages'} onClick={() => setView('packages')} />
+        <SidebarItem icon={<MessageSquare size={18} className="text-emerald-500"/>} label="Mensagens" active={view === 'messages'} onClick={() => setView('messages')} />
+        <SidebarItem icon={<Database size={18} className="text-slate-500"/>} label="Backup Dados" active={view === 'database'} onClick={() => setView('database')} />
+        
+        <div className="pt-4 pb-2 px-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Conta</div>
+        <SidebarItem icon={<CreditCard size={18} className="text-yellow-500"/>} label="Minha Assinatura" active={view === 'subscription'} onClick={() => setView('subscription')} />
+      </nav>
+
+      <div className="p-3 border-t border-slate-200 dark:border-slate-800 space-y-2">
+        <button onClick={toggleTheme} className="w-full flex items-center justify-between px-3 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-md transition-all">
+          <span className="text-[10px] font-bold uppercase">{theme === 'dark' ? 'Escuro' : 'Claro'}</span>
+          {theme === 'dark' ? <Moon size={14} className="text-blue-400" /> : <Sun size={14} className="text-amber-400" />}
+        </button>
+        
+        <button onClick={handleLogout} className="w-full flex items-center gap-3 px-3 py-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-all">
+          <LogOut size={16} />
+          <span className="text-[11px] font-bold uppercase">Sair</span>
+        </button>
+      </div>
+    </aside>
+
+    
 
       {/* --- MAIN CONTENT AREA --- */}
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
+      <div className="flex-1 flex flex-col h-full relative overflow-hidden">
+      <main className="flex-1 overflow-y-auto p-4 md:p-6 pb-32 hide-scrollbar">
         <header className={`px-5 py-3 flex items-center justify-between pt-safe shrink-0 border-b z-20 transition-colors ${theme === 'dark' ? 'bg-slate-900/50 border-slate-800 backdrop-blur-md' : 'bg-white/80 border-slate-200 backdrop-blur-md'}`}>
           <div className="flex items-center gap-3">
              <h2 className={`text-sm font-bold uppercase tracking-tight ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
@@ -2779,15 +2778,15 @@ const handleDeleteSaaSUser = async (id: string) => {
             )}
 
             <footer className="w-full bg-white/80 dark:bg-slate-950/80 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 py-3 absolute bottom-0 left-0 z-50">
-              <div className="text-center">
-                <p className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-black tracking-widest leading-relaxed">
-                  © 2026 STREAM MANAGER. TODOS OS DIREITOS RESERVADOS.
-                </p>
-                <p className="text-[10px] text-slate-400 dark:text-slate-600 font-bold mt-0.5">
-                  Desenvolvido por Eron Vasconcelos
-                </p>
-              </div>
-            </footer>
+            <div className="text-center">
+              <p className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-black tracking-widest leading-relaxed">
+                © 2026 STREAM MANAGER. TODOS OS DIREITOS RESERVADOS.
+              </p>
+              <p className="text-[10px] text-slate-400 dark:text-slate-600 font-bold mt-0.5">
+                Desenvolvido por Eron Vasconcelos
+              </p>
+            </div>
+          </footer>
 
           </div>
         </main>
