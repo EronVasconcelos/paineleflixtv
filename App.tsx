@@ -17,6 +17,7 @@ import Subscription from './pages/Subscription';
 import AdminSaaS from './pages/AdminSaaS';
 import { HistoryTool, BackupTool, PlansTool, MessagesTool, AutomationTool } from './pages/Tools';
 
+/* --- TIPAGEM BÁSICA (Para evitar erros de TypeScript) --- */
 const MONTHS_LIST = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'];
 
 export default function App() {
