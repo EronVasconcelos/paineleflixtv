@@ -1237,17 +1237,6 @@ const fetchAllData = async (silent = false) => {
     }
 };
 
-const referralRanking = useMemo(() => {
-  // Se clients for undefined ou nulo, retorna array vazio
-  if (!clients || !Array.isArray(clients)) return [];
-
-  const counts: Record<string, number> = {};
-  clients.forEach(c => {
-    if (c && c.referred_by) {
-      counts[c.referred_by] = (counts[c.referred_by] || 0) + 1;
-    }
-  });
-
   return Object.entries(counts)
     .map(([name, count]) => ({ name, count }))
     .sort((a, b) => b.count - a.count)
