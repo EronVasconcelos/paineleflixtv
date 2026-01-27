@@ -1237,12 +1237,6 @@ const fetchAllData = async (silent = false) => {
     }
 };
 
-  return Object.entries(counts)
-    .map(([name, count]) => ({ name, count }))
-    .sort((a, b) => b.count - a.count)
-    .slice(0, 5);
-}, [clients]);
-
 const handleRefreshData = async () => {
     setIsRefreshing(true);
     await fetchAllData(true);
@@ -1831,19 +1825,6 @@ const handleDeleteSaaSUser = async (id: string) => {
     window.open(`https://wa.me/${client.phone.replace(/\D/g, '')}?text=${encodeURIComponent(body)}`, '_blank');
   };
 
-  const referralRanking = useMemo(() => {
-  const counts: Record<string, number> = {};
-  clients.forEach(c => {
-    if (c.referred_by) {
-      counts[c.referred_by] = (counts[c.referred_by] || 0) + 1;
-    }
-  });
-  return Object.entries(counts)
-    .map(([name, count]) => ({ name, count }))
-    .sort((a, b) => b.count - a.count)
-    .slice(0, 5); // Top 5
-  }, [clients]);
-
   const getMonthStatus = (client: Client, monthIndex: number, year: number) => {
     const isPaid = client.paymentHistory.some(payment => {
         const payDate = new Date(payment.date);
@@ -2087,75 +2068,36 @@ const handleDeleteSaaSUser = async (id: string) => {
                 </div>
             )}
 
-           {view === 'dashboard' && (
+            {view === 'dashboard' && (
               <div className="space-y-5 animate-in fade-in">
-                {/* CARDS DE ESTATÍSTICAS NO TOPO */}
                 <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                   <StatCard title="Total Ativos" value={clients.filter(c => c.status === 'active').length} icon={<CheckCircle/>} color="emerald" theme={theme} />
                   <StatCard title="Pagamento Pendente" value={clients.filter(c => c.paymentStatus === 'pending').length} icon={<AlertCircle/>} color="amber" theme={theme} />
-                  <StatCard title="Vencidos (Hoje)" value={clients.filter(c => checkIsExpired(c.expiresAt) && c.status === 'active').length} icon={<Clock/>} color="red" theme={theme} />
+                  <StatCard title="Vencidos (Hoje)" value={clients.filter(c => isExpired(c.expiresAt) && c.status === 'active').length} icon={<Clock/>} color="red" theme={theme} />
                   <StatCard title="Bloqueados" value={clients.filter(c => c.status === 'blocked').length} icon={<UserX/>} color="blue" theme={theme} />
                 </div>
                 
-                {/* GRID INFERIOR - 3 COLUNAS (COBRANÇA | RANKING | ENTRADAS) */}
-                <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-                  
-                  {/* COLUNA 1: PRIORIDADE DE COBRANÇA */}
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
                   <div className={`rounded-lg border shadow-sm overflow-hidden ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
                     <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
-                      <h3 className="text-xs font-bold uppercase flex items-center gap-2 tracking-wide"><CreditCard size={16} className="text-amber-500"/> Cobranças</h3>
+                      <h3 className="text-xs font-bold uppercase flex items-center gap-2 tracking-wide"><CreditCard size={16} className="text-amber-500"/> Prioridade de Cobrança</h3>
                     </div>
                     <div className="divide-y divide-slate-100 dark:divide-slate-800">
-                      {clients.filter(c => c.paymentStatus === 'pending' || checkIsExpired(c.expiresAt)).slice(0, 5).map(c => (
+                      {clients.filter(c => c.paymentStatus === 'pending' || isExpired(c.expiresAt)).slice(0, 5).map(c => (
                         <div key={c.id} className="p-3 flex justify-between items-center hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                          <div className="flex flex-col min-w-0 pr-2">
+                          <div className="flex flex-col min-w-0 pr-3">
                             <span className="font-semibold text-xs truncate">{c.name}</span>
                             <span className="text-[10px] opacity-60 font-medium uppercase mt-0.5">{new Date(c.expiresAt).toLocaleDateString('pt-BR')}</span>
                           </div>
-                          <button onClick={() => sendWhatsApp(`Olá ${c.name}, renovação pendente.`, c)} className="p-2 bg-emerald-500 text-white rounded-md shrink-0 active:scale-95 shadow-sm hover:bg-emerald-600">
-                            <MessageSquare size={14}/>
-                          </button>
+                          <button onClick={() => sendWhatsApp(`Olá ${c.name}, renovação pendente.`, c)} className="p-2 bg-emerald-500 text-white rounded-md shrink-0 active:scale-95 shadow-sm hover:bg-emerald-600"><MessageSquare size={14}/></button>
                         </div>
                       ))}
-                      {clients.filter(c => c.paymentStatus === 'pending' || checkIsExpired(c.expiresAt)).length === 0 && (
-                          <div className="p-6 text-center text-xs text-slate-400">Tudo em dia!</div>
+                      {clients.filter(c => c.paymentStatus === 'pending' || isExpired(c.expiresAt)).length === 0 && (
+                          <div className="p-6 text-center text-xs text-slate-400">Nenhuma pendência hoje.</div>
                       )}
                     </div>
                   </div>
-
-                  {/* COLUNA 2: RANKING DE INDICAÇÕES */}
-                  <div className={`rounded-lg border shadow-sm overflow-hidden ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
-                    <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
-                      <h3 className="text-xs font-bold uppercase flex items-center gap-2 tracking-wide"><Star size={16} className="text-yellow-500"/> Top Indicações</h3>
-                    </div>
-                    <div className="p-3 space-y-2">
-                        {referralRanking.length > 0 ? referralRanking.map((rank, i) => (
-                          <div key={i} className="flex items-center justify-between p-2 rounded-md bg-slate-50 dark:bg-slate-800/40 border border-slate-100 dark:border-slate-800 transition-all hover:scale-[1.02]">
-                             <div className="flex items-center gap-3 min-w-0">
-                                <span className={`w-5 h-5 flex items-center justify-center rounded-full text-[10px] font-black shrink-0 ${i === 0 ? 'bg-yellow-500 text-black shadow-sm' : 'bg-slate-200 dark:bg-slate-700 text-slate-500'}`}>
-                                  {i + 1}
-                                </span>
-                                <span className="text-[11px] font-bold truncate">{rank.name}</span>
-                             </div>
-                             <span className="text-[9px] font-black px-2 py-0.5 rounded-full bg-blue-500/10 text-blue-500 border border-blue-500/20 whitespace-nowrap">
-                               {rank.count} {rank.count === 1 ? 'INDICAÇÃO' : 'INDICAÇÕES'}
-                             </span>
-                          </div>
-                        )) : (
-                          <div className="p-8 text-center text-[10px] text-slate-400 uppercase font-bold opacity-60 italic">Nenhuma indicação registrada</div>
-                        )}
-                    </div>
-                  </div>
-
-                  {/* COLUNA 3: ÚLTIMAS ENTRADAS (RESTAURADO) */}
-                  <RecentActivityCard 
-                    title="Entradas Recentes" 
-                    theme={theme} 
-                    items={clients.flatMap(c => c.paymentHistory?.map(h => ({...h, clientName: c.name})) || [])
-                      .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-                      .slice(0, 5)} 
-                  />
-                
+                  <RecentActivityCard title="Últimas Entradas" theme={theme} items={clients.flatMap(c => c.paymentHistory?.map(h => ({...h, clientName: c.name})) || []).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 5)} />
                 </div>
               </div>
             )}
@@ -2518,6 +2460,7 @@ const handleDeleteSaaSUser = async (id: string) => {
                   </div>
                   
                   <form className="space-y-4" onSubmit={handleAddClient}>
+                    {/* 1. Nome e Usuário/Senha */}
                     <FormInput theme={theme} name="name" label="Nome Completo" placeholder="Ex: João Silva" required value={addFormData.name} onChange={(e: any) => setAddFormData({...addFormData, name: e.target.value})} />
                     
                     <div className="grid grid-cols-2 gap-4">
@@ -2525,61 +2468,99 @@ const handleDeleteSaaSUser = async (id: string) => {
                       <FormInput theme={theme} name="password" label="Senha IPTV" value={addFormData.password} onChange={(e: any) => setAddFormData({...addFormData, password: e.target.value})} />
                     </div>
 
-                    <FormInput theme={theme} name="phone" label="WhatsApp" placeholder="Ex: 5511999999999" required value={addFormData.phone} onChange={(e: any) => setAddFormData({...addFormData, phone: e.target.value})} />
+                    {/* 2. WhatsApp */}
+                    <FormInput 
+                        theme={theme} 
+                        name="phone" 
+                        label="WhatsApp" 
+                        placeholder="Ex: 5511999999999" 
+                        required 
+                        value={addFormData.phone} 
+                        onChange={(e: any) => setAddFormData({...addFormData, phone: e.target.value})} 
+                    />
 
-                    <div className="grid grid-cols-2 gap-4">
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-slate-400 uppercase ml-1 tracking-wider">Servidor</label>
-                        <select name="serverId" value={addFormData.serverId} onChange={(e: any) => setAddFormData({...addFormData, serverId: e.target.value})} className={`w-full px-3 py-2.5 rounded-md border text-[13px] font-medium outline-none ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50 border-slate-200 shadow-sm'}`}>
-                          <option value="">-- Selecione --</option>
-                          {servers.map(s => <option key={s.id} value={s.id} disabled={s.credits <= 0}>{s.name} ({s.credits} CR)</option>)}
-                        </select>
-                      </div>
-                      <div className="space-y-1">
-                        <label className="text-[10px] font-bold text-slate-400 uppercase ml-1 tracking-wider">Plano</label>
-                        <select name="packageId" value={addFormData.packageId} className={`w-full px-3 py-2.5 rounded-md border text-[13px] font-medium outline-none ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50 border-slate-200 shadow-sm'}`} onChange={(e) => {
-                            const pkg = packages.find(p => p.id === e.target.value);
-                            setAddFormData({...addFormData, packageId: e.target.value, price: pkg ? pkg.price.toString() : addFormData.price, expenses: pkg ? pkg.cost.toString() : addFormData.expenses});
-                          }}>
-                          <option value="">Personalizado</option>
-                          {packages.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
-                        </select>
-                      </div>
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <FormInput theme={theme} name="price" label="Preço (R$)" type="number" step="0.01" value={addFormData.price} onChange={(e: any) => setAddFormData({...addFormData, price: e.target.value})} required />
-                      <FormInput theme={theme} name="expenses" label="Custo (R$)" type="number" value={addFormData.expenses} readOnly className="opacity-70 bg-slate-100" />
-                    </div>
-
-                    <div className="grid grid-cols-2 gap-4">
-                      <FormInput theme={theme} name="expiryDate" label="Vencimento" type="date" required value={addFormData.expiryDate} onChange={(e: any) => setAddFormData({...addFormData, expiryDate: e.target.value})} />
-                      <FormInput theme={theme} name="expiryTime" label="Hora" type="time" value={addFormData.expiryTime} onChange={(e: any) => setAddFormData({...addFormData, expiryTime: e.target.value})} />
-                    </div>
-
-                    {/* CAMPO DE INDICAÇÃO - LUGAR IDEAL */}
-                    <div className="space-y-1 p-3 bg-blue-50/50 dark:bg-blue-900/10 rounded-lg border border-blue-100 dark:border-blue-900/30">
-                      <label className="text-[10px] font-bold text-slate-400 uppercase ml-1 tracking-wider flex items-center gap-1">
-                        <Star size={12} className="text-yellow-500 fill-yellow-500"/> Indicado por (Bonificação)
-                      </label>
-                      <select 
-                        name="referred_by" 
-                        value={addFormData.referred_by || ''} 
-                        onChange={(e: any) => setAddFormData({...addFormData, referred_by: e.target.value})} 
-                        className={`w-full px-3 py-2 rounded-md border text-[13px] font-medium outline-none transition-all ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50 border-slate-200 shadow-sm focus:border-blue-500'}`}
-                      >
-                        <option value="">-- Cadastro Direto (Sem indicação) --</option>
-                        {clients.filter(c => c.status === 'active').map(c => (
-                          <option key={c.id} value={c.name}>{c.name}</option>
+                    {/* 3. Servidor */}
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase ml-1 tracking-wider">Servidor (Saldo)</label>
+                      <select name="serverId" value={addFormData.serverId} onChange={(e: any) => setAddFormData({...addFormData, serverId: e.target.value})} className={`w-full px-3 py-2.5 rounded-md border text-[13px] font-medium outline-none transition-all focus:ring-1 focus:ring-blue-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white focus:border-blue-500' : 'bg-slate-50 border-slate-200 text-slate-800 shadow-sm focus:border-blue-500'}`}>
+                        <option value="">-- Selecione o Servidor (Opcional) --</option>
+                        {servers.map(s => (
+                          <option key={s.id} value={s.id} disabled={s.credits <= 0}>
+                            {s.name} — {s.credits} Créditos {s.credits <= 0 ? '(Esgotado)' : ''}
+                          </option>
                         ))}
                       </select>
                     </div>
 
+                    {/* 4. Planos */}
+                    <div className="space-y-1">
+                      <label className="text-[10px] font-bold text-slate-400 uppercase ml-1 tracking-wider">Plano</label>
+                      <select name="packageId" value={addFormData.packageId} className={`w-full px-3 py-2.5 rounded-md border text-[13px] font-medium outline-none ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50 border-slate-200 shadow-sm'}`} onChange={(e) => {
+                          const pkg = packages.find(p => p.id === e.target.value);
+                          setAddFormData({...addFormData, packageId: e.target.value, price: pkg ? pkg.price.toString() : addFormData.price, expenses: pkg ? pkg.cost.toString() : addFormData.expenses});
+                        }}>
+                        <option value="">Personalizado</option>
+                        {packages.map(p => <option key={p.id} value={p.id}>{p.name}</option>)}
+                      </select>
+                    </div>
+
+                    {/* 5. Preço e Custo */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormInput theme={theme} name="price" label="Preço (R$)" type="number" step="0.01" value={addFormData.price} onChange={(e: any) => setAddFormData({...addFormData, price: e.target.value})} required />
+                      <FormInput 
+                          theme={theme} 
+                          name="expenses" 
+                          label="Custo Automático (R$)" 
+                          type="number" 
+                          value={addFormData.expenses} 
+                          readOnly // Não deixa editar manualmente
+                          className="opacity-70 bg-slate-100" // Estilo visual de campo automático
+                          required 
+                      />
+                    </div>
+
+                    {/* 6. Vencimento Data e Hora */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormInput theme={theme} name="expiryDate" label="Vencimento Data" type="date" required value={addFormData.expiryDate} onChange={(e: any) => setAddFormData({...addFormData, expiryDate: e.target.value})} />
+                      <FormInput theme={theme} name="expiryTime" label="Hora" type="time" value={addFormData.expiryTime} onChange={(e: any) => setAddFormData({...addFormData, expiryTime: e.target.value})} />
+                    </div>
+
+                    {/* 7. Aplicativo e Mac/Key */}
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormInput theme={theme} name="appName" label="Aplicativo" value={addFormData.appName} onChange={(e: any) => setAddFormData({...addFormData, appName: e.target.value})} />
+                      <FormInput theme={theme} name="macKey" label="Mac / Key" value={addFormData.macKey} onChange={(e: any) => setAddFormData({...addFormData, macKey: e.target.value})} />
+                    </div>
+
+                    {/* 8. Pagamento e Data de Recebimento */}
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 items-end">
+                      <div 
+                        className={`p-3 rounded-md border flex items-center gap-3 cursor-pointer select-none transition-all ${addFormData.isPaid ? 'bg-blue-600/10 border-blue-600/30' : 'bg-slate-50 dark:bg-slate-800/50 border-slate-100 dark:border-slate-800'}`} 
+                        onClick={() => setAddFormData({...addFormData, isPaid: !addFormData.isPaid})}
+                      >
+                        <div className={`w-5 h-5 rounded border flex items-center justify-center transition-colors ${addFormData.isPaid ? 'bg-blue-600 border-blue-600' : 'border-slate-300 dark:border-slate-600'}`}>
+                          {addFormData.isPaid && <Check size={14} className="text-white" strokeWidth={3} />}
+                        </div>
+                        <label className="text-[11px] font-bold uppercase cursor-pointer">Pagamento já realizado?</label>
+                      </div>
+
+                      <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase ml-1 tracking-wider flex items-center gap-1">
+                          <Calendar size={12}/> Data do Recebimento
+                        </label>
+                        <input 
+                          type="date" 
+                          disabled={!addFormData.isPaid}
+                          value={addFormData.paymentDate} 
+                          onChange={(e) => setAddFormData({...addFormData, paymentDate: e.target.value})}
+                          className={`w-full px-3 py-2 rounded-md border text-[13px] font-medium outline-none transition-all ${!addFormData.isPaid ? 'opacity-40 cursor-not-allowed bg-slate-100 dark:bg-slate-900 border-slate-200 dark:border-slate-800' : 'bg-slate-50 dark:bg-slate-800 border-blue-500/50 dark:border-blue-500/50 text-slate-800 dark:text-white shadow-sm'}`}
+                        />
+                      </div>
+                    </div>
+
+                    {/* 9. Observações */}
                     <FormInput theme={theme} name="notes" label="Observações (Opcional)" placeholder="Ex: TV Box Sala" value={addFormData.notes} onChange={(e: any) => setAddFormData({...addFormData, notes: e.target.value})} />
                     
-                    <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3.5 rounded-md font-bold uppercase text-[12px] shadow-lg shadow-blue-600/20 transition-all active:scale-[0.99]">
-                      Cadastrar Cliente
-                    </button>
+                    <button type="submit" className="w-full bg-blue-600 hover:bg-blue-700 text-white py-3.5 rounded-md font-bold uppercase text-[12px] shadow-lg shadow-blue-600/20 mt-2 transition-all active:scale-[0.99]">Cadastrar Cliente</button>
                   </form>
                 </div>
               </div>
