@@ -1,13 +1,11 @@
-
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { supabase } from './services/supabaseClient';
-// Corrected import to use the exported geminiService instance instead of non-existent generateMessage
 import { geminiService } from './services/geminiService';
 
 // --- IMPORTAÇÃO DOS COMPONENTES VISUAIS ---
 import Layout from './components/Layout';
-import { Toast, ModalOverlay } from './components/UiKit';
+import { Toast } from './components/UiKit';
 
 // --- IMPORTAÇÃO DAS PÁGINAS ---
 import Auth from './pages/Auth';
@@ -20,12 +18,15 @@ import Subscription from './pages/Subscription';
 import AdminSaaS from './pages/AdminSaaS';
 import { HistoryTool, BackupTool, PlansTool, MessagesTool, AutomationTool } from './pages/Tools';
 
-/* --- TIPAGEM BÁSICA (Para não dar erro no TS) --- */
+/* --- TIPAGEM BÁSICA --- */
 const MONTHS_LIST = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'];
 
-// Added onNotificationClick to App component props to match index.tsx usage
-export default function App({ onNotificationClick }: { onNotificationClick: () => void }) {
-  // --- ESTADOS GLOBAIS (LÓGICA DO NEGÓCIO) ---
+interface AppProps {
+  onNotificationClick: () => void;
+}
+
+export default function App({ onNotificationClick }: AppProps) {
+  // --- ESTADOS GLOBAIS ---
   const [session, setSession] = useState<any>(null);
   const [userProfile, setUserProfile] = useState<any>(null);
   const [theme, setTheme] = useState<'light' | 'dark'>('light');
@@ -38,9 +39,9 @@ export default function App({ onNotificationClick }: { onNotificationClick: () =
   const [servers, setServers] = useState<any[]>([]);
   const [templates, setTemplates] = useState<any[]>([]);
   const [rules, setRules] = useState<any[]>([]);
-  const [saasUsers, setSaasUsers] = useState<any[]>([]); // Para admin
+  const [saasUsers, setSaasUsers] = useState<any[]>([]);
   
-  // ESTADOS DE UI/FILTROS
+  // ESTADOS DE UI
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [paymentFilter, setPaymentFilter] = useState('all');
@@ -53,7 +54,7 @@ export default function App({ onNotificationClick }: { onNotificationClick: () =
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
   const [authData, setAuthData] = useState({ email: '', password: '', fullName: '', phone: '' });
 
-  // ESTADOS DE EDIÇÃO/MODAL
+  // ESTADOS DE FORMULÁRIOS
   const [addFormData, setAddFormData] = useState({ name: '', username: '', password: '', phone: '', price: '', expenses: '0', notes: '', packageId: '', serverId: '', expiryDate: '', expiryTime: '', isPaid: true, paymentDate: new Date().toISOString().split('T')[0], appName: '', macKey: '' });
   const [selectedClientForMsg, setSelectedClientForMsg] = useState<any>(null);
   const [selectedClientForEdit, setSelectedClientForEdit] = useState<any>(null);
@@ -63,12 +64,13 @@ export default function App({ onNotificationClick }: { onNotificationClick: () =
   
   const showToast = (msg: string, type: 'success' | 'error' = 'success') => setToast({ msg, type });
 
-  // --- CARREGAMENTO INICIAL ---
+  // --- CARREGAMENTO INICIAL E AUTH ---
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       if (session) fetchData();
     });
+
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       if (session) fetchData();
@@ -82,14 +84,12 @@ export default function App({ onNotificationClick }: { onNotificationClick: () =
     try {
       const userId = session.user.id;
       
-      // 1. Perfil
       const { data: profile } = await supabase.from('profiles').select('*').eq('id', userId).single();
       if (profile) {
         setUserProfile(profile);
         if (profile.theme) setTheme(profile.theme);
       }
 
-      // 2. Dados Principais
       const [cRes, pRes, sRes, tRes, rRes] = await Promise.all([
         supabase.from('clients').select('*').eq('user_id', userId),
         supabase.from('packages').select('*').eq('user_id', userId),
@@ -104,7 +104,6 @@ export default function App({ onNotificationClick }: { onNotificationClick: () =
       if (tRes.data) setTemplates(tRes.data);
       if (rRes.data) setRules(rRes.data);
 
-      // 3. Se for Admin
       if (session.user.email === 'admin@eflixtv.com') {
         const { data: allUsers } = await supabase.from('profiles').select('*');
         if (allUsers) setSaasUsers(allUsers);
@@ -117,7 +116,6 @@ export default function App({ onNotificationClick }: { onNotificationClick: () =
     }
   };
 
-  // --- FUNÇÕES DE AUTH ---
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -133,7 +131,6 @@ export default function App({ onNotificationClick }: { onNotificationClick: () =
         });
         if (error) throw error;
         if (data.user) {
-          // Criar perfil
           await supabase.from('profiles').insert([{
             id: data.user.id,
             email: authData.email,
@@ -158,7 +155,6 @@ export default function App({ onNotificationClick }: { onNotificationClick: () =
     setClients([]);
   };
 
-  // --- FUNÇÕES CRUD (CLIENTES) ---
   const handleAddClient = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!session?.user) return;
@@ -189,7 +185,6 @@ export default function App({ onNotificationClick }: { onNotificationClick: () =
       const { data, error } = await supabase.from('clients').insert([newClient]).select().single();
       if (error) throw error;
 
-      // Debitar crédito do servidor se necessário
       if (addFormData.serverId) {
          const srv = servers.find(s => s.id === addFormData.serverId);
          if (srv && srv.credits > 0) {
@@ -201,44 +196,31 @@ export default function App({ onNotificationClick }: { onNotificationClick: () =
 
       setClients([...clients, data]);
       showToast('Cliente cadastrado com sucesso!');
-      setAddFormData({ ...addFormData, name: '', username: '', password: '', phone: '' }); // Limpa parcial
+      setAddFormData({ ...addFormData, name: '', username: '', password: '', phone: '' }); 
     } catch (error) {
       showToast('Erro ao cadastrar cliente', 'error');
     }
   };
 
-  const handleDeleteClient = async (id: string) => {
-    if (!confirm('Tem certeza?')) return;
-    try {
+  const clientHandlers = {
+    handleDeleteClient: async (id: string) => {
+      if (!confirm('Excluir este cliente?')) return;
       await supabase.from('clients').delete().eq('id', id);
       setClients(clients.filter(c => c.id !== id));
       showToast('Cliente removido');
-    } catch (error) { showToast('Erro ao remover', 'error'); }
-  };
-
-  const handleToggleStatus = async (client: any) => {
-    const newStatus = client.status === 'active' ? 'blocked' : 'active';
-    try {
+    },
+    handleToggleStatus: async (client: any) => {
+      const newStatus = client.status === 'active' ? 'blocked' : 'active';
       await supabase.from('clients').update({ status: newStatus }).eq('id', client.id);
       setClients(clients.map(c => c.id === client.id ? { ...c, status: newStatus } : c));
-    } catch (error) { showToast('Erro ao atualizar status', 'error'); }
-  };
-
-  const handleTogglePayment = async (client: any) => {
-    const newStatus = client.paymentStatus === 'paid' ? 'pending' : 'paid';
-    try {
+    },
+    handleTogglePayment: async (client: any) => {
+      const newStatus = client.paymentStatus === 'paid' ? 'pending' : 'paid';
       await supabase.from('clients').update({ paymentStatus: newStatus }).eq('id', client.id);
       setClients(clients.map(c => c.id === client.id ? { ...c, paymentStatus: newStatus } : c));
-    } catch (error) { showToast('Erro ao atualizar pagamento', 'error'); }
-  };
-
-  // --- HANDLERS AUXILIARES (Passados para as páginas) ---
-  const clientHandlers = {
-    handleDeleteClient,
-    handleToggleStatus,
-    handleTogglePayment,
-    handleArchiveClient: async (c: any) => { /* Lógica de arquivar */ },
-    handleRestoreClient: async (c: any) => { /* Lógica de restaurar */ },
+    },
+    handleArchiveClient: async (c: any) => { /* ... */ },
+    handleRestoreClient: async (c: any) => { /* ... */ },
     handleCopyCredentials: (c: any) => { navigator.clipboard.writeText(`User: ${c.username}\nPass: ${c.password}`); showToast('Copiado!'); },
     setSelectedClientForMsg,
     setSelectedClientForEdit,
@@ -246,19 +228,6 @@ export default function App({ onNotificationClick }: { onNotificationClick: () =
     setSelectedClientDetails
   };
 
-  // --- OUTROS HANDLERS (Servidores, Planos, etc) - Simplificados para o exemplo ---
-  const handleSaveServer = async (serverData: any) => {
-      // Implemente a lógica de salvar no Supabase aqui (similar ao original)
-      showToast('Função de servidor simulada para estrutura');
-  };
-  
-  const handleSavePackage = async (pkgData: any) => {
-      // Implemente a lógica de salvar pacote
-      setPackages([...packages, pkgData]); 
-      showToast('Pacote salvo (Local)');
-  };
-
-  // --- ESTRUTURA DE ROTAS ---
   return (
     <BrowserRouter>
       {toast && <Toast message={toast.msg} type={toast.type} onClose={() => setToast(null)} />}
@@ -272,38 +241,35 @@ export default function App({ onNotificationClick }: { onNotificationClick: () =
       ) : (
         <Layout 
           theme={theme} 
-          toggleTheme={() => setTheme(theme === 'light' ? 'dark' : 'light')} // Obs: Idealmente salvar no banco
+          toggleTheme={() => setTheme(theme === 'light' ? 'dark' : 'light')}
           session={session}
           userProfile={userProfile}
           isAdmin={session.user.email === 'admin@eflixtv.com'}
-          notificationsEnabled={false} requestPermission={async () => onNotificationClick()}
+          notificationsEnabled={Notification.permission === 'granted'} 
+          requestPermission={async () => onNotificationClick()}
           handleLogout={handleLogout}
-          isRefreshing={isRefreshing} handleRefreshData={fetchData}
+          isRefreshing={isRefreshing} 
+          handleRefreshData={fetchData}
           onAiAnalyze={async () => {
-            if (clients.length === 0) {
-              showToast('Sem clientes para analisar.', 'error');
-              return;
-            }
+            if (clients.length === 0) return showToast('Sem clientes para analisar', 'error');
             showToast('IA Analisando dados...');
-            const result = await geminiService.analyzeBusiness(clients);
-            alert(result);
-          }} onPublicSignupLink={() => {}}
+            const analysis = await geminiService.analyzeBusiness(clients);
+            alert(analysis);
+          }} 
+          onPublicSignupLink={() => {}}
         >
           <Routes>
-            {/* 1. VISÃO GERAL */}
             <Route path="/" element={<Dashboard 
               clients={clients} theme={theme} 
               isExpired={(d:string) => new Date(d) < new Date()}
-              sendWhatsApp={() => {}} 
+              sendWhatsApp={(msg, c) => window.open(`https://wa.me/${c.phone}?text=${encodeURIComponent(msg)}`)} 
             />} />
 
-            {/* 2. FINANCEIRO */}
             <Route path="/financeiro" element={<Financeiro 
               clients={clients} packages={packages} servers={servers}
               theme={theme} month={month} year={year} setMonth={setMonth} setYear={setYear}
             />} />
 
-            {/* 3. CLIENTES (LISTA) */}
             <Route path="/clientes" element={<ClientsList 
                clients={clients} theme={theme}
                searchTerm={searchTerm} setSearchTerm={setSearchTerm}
@@ -312,35 +278,28 @@ export default function App({ onNotificationClick }: { onNotificationClick: () =
                handlers={clientHandlers}
             />} />
 
-            {/* 4. NOVO CLIENTE */}
             <Route path="/clientes/novo" element={<AddClient 
                theme={theme} addFormData={addFormData} setAddFormData={setAddFormData}
                handleAddClient={handleAddClient} packages={packages} servers={servers}
             />} />
 
-            {/* 5. SERVIDORES */}
             <Route path="/servidores" element={<Servers 
                theme={theme} servers={servers} 
-               handleSaveServer={handleSaveServer}
-               handleDeleteServer={() => {}} setSelectedServerForCredit={() => {}}
+               handleSaveServer={(s:any) => setServers([...servers, {...s, id: Math.random(), credits: 0}])}
+               handleDeleteServer={(id:any) => setServers(servers.filter(s=>s.id!==id))} setSelectedServerForCredit={() => {}}
             />} />
 
-            {/* 6. FERRAMENTAS DIVERSAS */}
             <Route path="/historico" element={<HistoryTool theme={theme} currentYear={currentHistoryYear} setCurrentYear={setCurrentHistoryYear} clients={clients} MONTHS={MONTHS_LIST}/>} />
             <Route path="/backup" element={<BackupTool theme={theme} handleRefreshData={fetchData} isRefreshing={isRefreshing} handleExportCSV={() => {}} />} />
-            <Route path="/mensagens" element={<MessagesTool theme={theme} templates={templates} handleSaveTemplate={() => {}} handleDeleteTemplate={() => {}} />} />
-            <Route path="/planos" element={<PlansTool theme={theme} packages={packages} editingPackage={editingPackage} setEditingPackage={setEditingPackage} handleSavePackage={handleSavePackage} handleDeletePackage={() => {}} />} />
-            <Route path="/automacao" element={<AutomationTool theme={theme} rules={rules} templates={templates} handleSaveRule={() => {}} handleDeleteRule={() => {}} />} />
-
-            {/* 7. ASSINATURA */}
+            <Route path="/mensagens" element={<MessagesTool theme={theme} templates={templates} handleSaveTemplate={(t:any) => setTemplates([...templates, t])} handleDeleteTemplate={(id:any) => setTemplates(templates.filter(t=>t.id!==id))} />} />
+            <Route path="/planos" element={<PlansTool theme={theme} packages={packages} editingPackage={editingPackage} setEditingPackage={setEditingPackage} handleSavePackage={(p:any)=>setPackages([...packages,p])} handleDeletePackage={(id:any)=>setPackages(packages.filter(pk=>pk.id!==id))} />} />
+            <Route path="/automacao" element={<AutomationTool theme={theme} rules={rules} templates={templates} handleSaveRule={(r:any)=>setRules([...rules,r])} handleDeleteRule={(id:any)=>setRules(rules.filter(ru=>ru.id!==id))} />} />
             <Route path="/assinatura" element={<Subscription userProfile={userProfile} theme={theme} handleSubscribe={() => {}} />} />
 
-            {/* 8. ADMIN (Só aparece se for admin) */}
             {session.user.email === 'admin@eflixtv.com' && (
                <Route path="/admin" element={<AdminSaaS users={saasUsers} theme={theme} onSimulate={() => {}} onDeleteUser={() => {}} onViewUser={() => {}} />} />
             )}
 
-            {/* Rota Padrão (Redireciona para Dashboard se não achar nada) */}
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Layout>
