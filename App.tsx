@@ -1072,7 +1072,7 @@ export default function App() {
     expiryDate: '', expiryTime: '23:59', 
     isPaid: true,
     paymentDate: new Date().toISOString().split('T')[0], // PADRÃO: DATA DE HOJE
-    notes: '', appName: '', macKey: '', serverId: '' 
+    notes: '', appName: '', macKey: '', serverId: '', referredBy: ''
   });
 
   const [editingPackage, setEditingPackage] = useState<Package | null>(null);
@@ -1086,6 +1086,29 @@ export default function App() {
   const [templates, setTemplates] = useState<MessageTemplate[]>([]);
   const [rules, setRules] = useState<MessageRule[]>([]);
   const [servers, setServers] = useState<Server[]>([]);
+
+  // 1. Lista de nomes para o Dropdown (não repete nomes)
+const uniqueReferrers = useMemo(() => {
+  return [...new Set(clients.map(c => c.referred_by).filter(Boolean))];
+}, [clients]);
+
+// 2. Cálculo do Ranking de Indicações (Quem trouxe mais gente)
+const referralRanking = useMemo(() => {
+  const counts = {};
+  clients.forEach(c => { if (c.referred_by) counts[c.referred_by] = (counts[c.referred_by] || 0) + 1; });
+  return Object.entries(counts)
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 5);
+}, [clients]);
+
+// 3. Cálculo do Ranking de Faturamento (Quem mais pagou - Mantido como você pediu)
+const faturamentoRanking = useMemo(() => {
+  return [...clients]
+    .filter(c => (c.total_paid || 0) > 0)
+    .sort((a, b) => (b.total_paid || 0) - (a.total_paid || 0))
+    .slice(0, 5);
+}, [clients]);
 
 
 // 2. Agora o useEffect que observa as mudanças no formulário de cadastro
@@ -1211,6 +1234,7 @@ const fetchAllData = async (silent = false) => {
                 paymentStatus: d.payment_status,
                 packageName: d.package_name,
                 packageId: d.package_id,
+                referred_by: d.referred_by,
                 serverId: d.server_id,
                 expiresAt: d.expires_at,
                 createdAt: d.created_at,
@@ -1392,6 +1416,11 @@ const handleExportCSV = () => {
 
   const handleTogglePayment = (client: Client) => updateClientInSupabase(client.id, { paymentStatus: client.paymentStatus === 'paid' ? 'pending' : 'paid' });
 
+  const uniqueReferrers = useMemo(() => {
+  // Isso varre todos os seus clientes e pega os nomes de quem indicou, sem repetir.
+  return [...new Set(clients.map(c => c.referred_by).filter(Boolean))];
+}, [clients]);
+
   // HANDLER ADICIONAR CLIENTE
   // --- SUBSTITUIR A FUNÇÃO handleAddClient INTEIRA ---
   const handleAddClient = async (e: React.FormEvent) => {
@@ -1431,6 +1460,7 @@ const handleExportCSV = () => {
       username: addFormData.username, 
       password: addFormData.password,
       status: 'active',
+      referred_by: addFormData.referredBy,
       paymentStatus: addFormData.isPaid ? 'paid' : 'pending',
       phone: addFormData.phone,
       packageName: pkg?.name || 'Personalizado',
@@ -1794,6 +1824,13 @@ const handleDeleteSaaSUser = async (id: string) => {
       setNotificationsEnabled(permission === 'granted');
   };
 
+  const clientRanking = useMemo(() => {
+    return [...clients]
+      .filter(c => (c.totalPaid || 0) > 0)
+      .sort((a, b) => (b.totalPaid || 0) - (a.totalPaid || 0))
+      .slice(0, 5);
+  }, [clients]);
+
   const filteredClients = useMemo(() => {
     return clients.filter(client => {
       if (statusFilter === 'archived') {
@@ -2069,38 +2106,116 @@ const handleDeleteSaaSUser = async (id: string) => {
             )}
 
             {view === 'dashboard' && (
-              <div className="space-y-5 animate-in fade-in">
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                  <StatCard title="Total Ativos" value={clients.filter(c => c.status === 'active').length} icon={<CheckCircle/>} color="emerald" theme={theme} />
-                  <StatCard title="Pagamento Pendente" value={clients.filter(c => c.paymentStatus === 'pending').length} icon={<AlertCircle/>} color="amber" theme={theme} />
-                  <StatCard title="Vencidos (Hoje)" value={clients.filter(c => isExpired(c.expiresAt) && c.status === 'active').length} icon={<Clock/>} color="red" theme={theme} />
-                  <StatCard title="Bloqueados" value={clients.filter(c => c.status === 'blocked').length} icon={<UserX/>} color="blue" theme={theme} />
-                </div>
-                
-                <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
-                  <div className={`rounded-lg border shadow-sm overflow-hidden ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
-                    <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
-                      <h3 className="text-xs font-bold uppercase flex items-center gap-2 tracking-wide"><CreditCard size={16} className="text-amber-500"/> Prioridade de Cobrança</h3>
+                  <div className="space-y-5 animate-in fade-in">
+                    {/* 1. CARTÕES DE ESTATÍSTICAS SUPERIORES */}
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                      <StatCard title="Total Ativos" value={clients.filter(c => c.status === 'active').length} icon={<CheckCircle/>} color="emerald" theme={theme} />
+                      <StatCard title="Pagamento Pendente" value={clients.filter(c => c.paymentStatus === 'pending').length} icon={<AlertCircle/>} color="amber" theme={theme} />
+                      <StatCard title="Vencidos (Hoje)" value={clients.filter(c => isExpired(c.expiresAt) && c.status === 'active').length} icon={<Clock/>} color="red" theme={theme} />
+                      <StatCard title="Bloqueados" value={clients.filter(c => c.status === 'blocked').length} icon={<UserX/>} color="blue" theme={theme} />
                     </div>
-                    <div className="divide-y divide-slate-100 dark:divide-slate-800">
-                      {clients.filter(c => c.paymentStatus === 'pending' || isExpired(c.expiresAt)).slice(0, 5).map(c => (
-                        <div key={c.id} className="p-3 flex justify-between items-center hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                          <div className="flex flex-col min-w-0 pr-3">
-                            <span className="font-semibold text-xs truncate">{c.name}</span>
-                            <span className="text-[10px] opacity-60 font-medium uppercase mt-0.5">{new Date(c.expiresAt).toLocaleDateString('pt-BR')}</span>
-                          </div>
-                          <button onClick={() => sendWhatsApp(`Olá ${c.name}, renovação pendente.`, c)} className="p-2 bg-emerald-500 text-white rounded-md shrink-0 active:scale-95 shadow-sm hover:bg-emerald-600"><MessageSquare size={14}/></button>
+                    
+                    {/* 2. GRID DE RANKINGS E COBRANÇAS */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                      
+                      {/* CARD: PRIORIDADE DE COBRANÇA */}
+                      <div className={`rounded-lg border shadow-sm overflow-hidden ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
+                        <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
+                          <h3 className="text-xs font-bold uppercase flex items-center gap-2 tracking-wide text-slate-600 dark:text-slate-300">
+                            <CreditCard size={16} className="text-amber-500"/> Prioridade de Cobrança
+                          </h3>
                         </div>
-                      ))}
-                      {clients.filter(c => c.paymentStatus === 'pending' || isExpired(c.expiresAt)).length === 0 && (
-                          <div className="p-6 text-center text-xs text-slate-400">Nenhuma pendência hoje.</div>
-                      )}
+                        <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                          {clients.filter(c => c.paymentStatus === 'pending' || isExpired(c.expiresAt)).slice(0, 5).map(c => (
+                            <div key={c.id} className="p-3 flex justify-between items-center hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                              <div className="flex flex-col min-w-0 pr-3">
+                                <span className="font-semibold text-xs truncate">{c.name}</span>
+                                <span className="text-[10px] opacity-60 font-medium uppercase mt-0.5">{new Date(c.expiresAt).toLocaleDateString('pt-BR')}</span>
+                              </div>
+                              <button onClick={() => sendWhatsApp(`Olá ${c.name}, renovação pendente.`, c)} className="p-2 bg-emerald-500 text-white rounded-md shrink-0 active:scale-95 shadow-sm hover:bg-emerald-600">
+                                <MessageSquare size={14}/>
+                              </button>
+                            </div>
+                          ))}
+                          {clients.filter(c => c.paymentStatus === 'pending' || isExpired(c.expiresAt)).length === 0 && (
+                              <div className="p-6 text-center text-xs text-slate-400">Nenhuma pendência hoje.</div>
+                          )}
+                        </div>
+                      </div>
+
+                      {/* CARD: RANKING DE FATURAMENTO (TOP CLIENTES) */}
+                      <div className={`rounded-lg border shadow-sm overflow-hidden ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
+                        <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
+                          <h3 className="text-xs font-bold uppercase flex items-center gap-2 tracking-wide text-slate-600 dark:text-slate-300">
+                            <Crown size={16} className="text-yellow-500"/> Top Clientes (Faturamento)
+                          </h3>
+                        </div>
+                        <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                          {clients.slice().sort((a,b) => (b.totalPaid || 0) - (a.totalPaid || 0)).slice(0, 5).map((c, i) => (
+                            <div key={c.id} className="p-3 flex justify-between items-center hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                              <div className="flex items-center gap-3 min-w-0 pr-3">
+                                <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-black ${
+                                  i === 0 ? 'bg-yellow-500 text-white' : 
+                                  i === 1 ? 'bg-slate-300 text-slate-700' : 
+                                  i === 2 ? 'bg-amber-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
+                                }`}>
+                                  {i + 1}º
+                                </div>
+                                <div className="flex flex-col truncate">
+                                  <span className="font-bold text-xs truncate text-slate-700 dark:text-slate-200">{c.name}</span>
+                                  <span className="text-[9px] opacity-60 font-medium uppercase">R$ {(c.totalPaid || 0).toFixed(2)}</span>
+                                </div>
+                              </div>
+                              <span className="px-2 py-0.5 rounded text-[9px] font-bold uppercase bg-blue-500/10 text-blue-500">{c.packageName || 'Plano'}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* CARD: RANKING DE INDICAÇÕES */}
+                      <div className={`rounded-lg border shadow-sm overflow-hidden ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
+                        <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
+                          <h3 className="text-xs font-bold uppercase flex items-center gap-2 tracking-wide text-slate-600 dark:text-slate-300">
+                            <UserPlus size={16} className="text-blue-500"/> Top Indicações
+                          </h3>
+                        </div>
+                        <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                          {(() => {
+                            const counts = {};
+                            clients.forEach(c => { if (c.referred_by) counts[c.referred_by] = (counts[c.referred_by] || 0) + 1; });
+                            const ranking = Object.entries(counts).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count).slice(0, 5);
+                            
+                            if (ranking.length === 0) return <div className="p-6 text-center text-xs text-slate-400">Sem indicações registradas.</div>;
+
+                            return ranking.map((item, i) => (
+                              <div key={item.name} className="p-3 flex justify-between items-center hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                                <div className="flex items-center gap-3">
+                                  <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-black ${i === 0 ? 'bg-blue-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'}`}>{i + 1}º</div>
+                                  <span className="font-bold text-xs text-slate-700 dark:text-slate-200">{item.name}</span>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                    <span className="text-[10px] font-bold text-blue-600">{item.count}</span>
+                                    <span className="text-[10px] text-slate-400 uppercase font-bold">Indicados</span>
+                                </div>
+                              </div>
+                            ));
+                          })()}
+                        </div>
+                      </div>
+
+                    </div>
+
+                    {/* 3. CARD DE ÚLTIMAS ENTRADAS (OCUPANDO LARGURA TOTAL) */}
+                    <div className="grid grid-cols-1 gap-4">
+                      <RecentActivityCard 
+                        title="Últimas Entradas" 
+                        theme={theme} 
+                        items={clients.flatMap(c => c.paymentHistory?.map(h => ({...h, clientName: c.name})) || []).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 5)} 
+                      />
                     </div>
                   </div>
-                  <RecentActivityCard title="Últimas Entradas" theme={theme} items={clients.flatMap(c => c.paymentHistory?.map(h => ({...h, clientName: c.name})) || []).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 5)} />
-                </div>
-              </div>
-            )}
+                )}
+            
 
             {view === 'clients' && (
               <div className="space-y-3">
@@ -2554,6 +2669,22 @@ const handleDeleteSaaSUser = async (id: string) => {
                           onChange={(e) => setAddFormData({...addFormData, paymentDate: e.target.value})}
                           className={`w-full px-3 py-2 rounded-md border text-[13px] font-medium outline-none transition-all ${!addFormData.isPaid ? 'opacity-40 cursor-not-allowed bg-slate-100 dark:bg-slate-900 border-slate-200 dark:border-slate-800' : 'bg-slate-50 dark:bg-slate-800 border-blue-500/50 dark:border-blue-500/50 text-slate-800 dark:text-white shadow-sm'}`}
                         />
+                      </div>
+
+                    <div className="space-y-1">
+                        <label className="text-[10px] font-bold text-slate-400 uppercase ml-1 tracking-wider flex items-center gap-1">
+                          <UserPlus size={12}/> Quem Indicou? (Gera Ranking)
+                        </label>
+                        <input 
+                          list="referrers-list"
+                          placeholder="Digite um nome ou escolha na lista..."
+                          value={addFormData.referredBy || ''}
+                          onChange={(e) => setAddFormData({...addFormData, referredBy: e.target.value})}
+                          className={`w-full px-3 py-2.5 rounded-md border text-[13px] font-medium outline-none transition-all ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50 border-slate-200 text-slate-800 shadow-sm'}`}
+                        />
+                        <datalist id="referrers-list">
+                          {uniqueReferrers.map(name => <option key={name} value={name} />)}
+                        </datalist>
                       </div>
                     </div>
 
