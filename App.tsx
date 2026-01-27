@@ -2778,12 +2778,12 @@ const handleDeleteSaaSUser = async (id: string) => {
               </div>
             )}
 
-            <footer className="fixed bottom-0 left-0 w-full bg-[#0a0f1d]/90 backdrop-blur-md border-t border-slate-800/50 py-4 z-50">
+            <footer className="w-full bg-white/80 dark:bg-slate-950/80 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 py-3 absolute bottom-0 left-0 z-50">
               <div className="text-center">
-                <p className="text-[10px] text-slate-500 uppercase font-black tracking-widest leading-relaxed">
+                <p className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-black tracking-widest leading-relaxed">
                   © 2026 STREAM MANAGER. TODOS OS DIREITOS RESERVADOS.
                 </p>
-                <p className="text-[10px] text-slate-600 font-bold mt-1">
+                <p className="text-[10px] text-slate-400 dark:text-slate-600 font-bold mt-0.5">
                   Desenvolvido por Eron Vasconcelos
                 </p>
               </div>
