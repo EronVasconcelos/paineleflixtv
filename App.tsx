@@ -548,18 +548,22 @@ const AuthScreen = ({ theme }: { theme: 'light' | 'dark' }) => {
     }
   };
 
-  const referralRanking = useMemo(() => {
-    const counts: Record<string, number> = {};
-    clients.forEach(c => {
-      if (c.referred_by) {
-        counts[c.referred_by] = (counts[c.referred_by] || 0) + 1;
-      }
-    });
-    return Object.entries(counts)
-      .map(([name, count]) => ({ name, count }))
-      .sort((a, b) => b.count - a.count)
-      .slice(0, 5); // Pega apenas os 5 primeiros
-  }, [clients]);
+const referralRanking = useMemo(() => {
+  // Se clients for undefined ou nulo, retorna array vazio
+  if (!clients || !Array.isArray(clients)) return [];
+
+  const counts: Record<string, number> = {};
+  clients.forEach(c => {
+    if (c && c.referred_by) {
+      counts[c.referred_by] = (counts[c.referred_by] || 0) + 1;
+    }
+  });
+
+  return Object.entries(counts)
+    .map(([name, count]) => ({ name, count }))
+    .sort((a, b) => b.count - a.count)
+    .slice(0, 5);
+}, [clients]);
 
   return (
     <div className={`min-h-screen flex items-center justify-center p-4 transition-colors ${theme === 'dark' ? 'bg-slate-950 text-white' : 'bg-slate-50 text-slate-900'}`}>
