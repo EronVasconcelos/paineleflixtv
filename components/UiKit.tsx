@@ -94,10 +94,13 @@ export const ActionButton = ({ onClick, theme, color, icon }: { onClick: () => v
   );
 };
 
-export const FormInput = ({ theme, label, ...props }: any) => (
+export const FormInput = ({ theme, label, icon, ...props }: any) => (
   <div className="space-y-1">
     <label className="text-[10px] font-bold text-slate-400 uppercase ml-1 tracking-wider">{label}</label>
-    <input {...props} className={`w-full px-3 py-2.5 rounded-md border text-[13px] font-medium outline-none transition-all focus:ring-1 focus:ring-blue-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white focus:border-blue-500 placeholder-slate-600' : 'bg-slate-50 border-slate-200 text-slate-800 shadow-sm focus:border-blue-500 placeholder-slate-400' }`} />
+    <div className="relative">
+      {icon && <div className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400">{icon}</div>}
+      <input {...props} className={`w-full ${icon ? 'pl-10' : 'px-3'} py-2.5 rounded-md border text-[13px] font-medium outline-none transition-all focus:ring-1 focus:ring-blue-500 ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white focus:border-blue-500 placeholder-slate-600' : 'bg-slate-50 border-slate-200 text-slate-800 shadow-sm focus:border-blue-500 placeholder-slate-400' }`} />
+    </div>
   </div>
 );
 
