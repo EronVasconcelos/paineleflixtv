@@ -1084,7 +1084,7 @@ export default function App() {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [simulationMode, setSimulationMode] = useState<'none' | 'trial_expired' | 'sub_expired' | 'payment_success'>('none'); 
   
-  const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [isBottomSheetOpen, setisBottomSheetOpen] = useState(false);
   const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
   
   const [searchTerm, setSearchTerm] = useState('');
