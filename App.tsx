@@ -1920,56 +1920,56 @@ const handleDeleteSaaSUser = async (id: string) => {
   /* --- PARTE 5: RENDERIZAÇÃO VISUAL E ROTEAMENTO --- */
 
 return (
-  <div className={`flex flex-col md:flex-row h-screen overflow-hidden font-normal transition-colors duration-300 ${theme === 'dark' ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-800'}`}>
-    
-    {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-
-    {/* --- SIDEBAR DESKTOP --- */}
-    <aside className="w-56 bg-slate-50 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 hidden md:flex flex-col shrink-0">
-      <div className="p-5 flex items-center gap-3">
-        <div className="bg-gradient-to-br from-blue-600 to-cyan-500 p-1.5 rounded-lg shadow-lg shadow-blue-500/30">
-          <Tv size={20} className="text-white" />
-        </div>
-        <h1 className="text-sm font-black uppercase tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-cyan-500 dark:from-blue-400 dark:to-cyan-300 leading-none">
-            STREAM<br/>MANAGER
-        </h1>
-      </div>
+    <div className={`flex flex-col md:flex-row h-screen overflow-hidden font-normal transition-colors duration-300 ${theme === 'dark' ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-800'}`}>
       
-      <nav className="flex-1 px-3 space-y-0.5 overflow-y-auto py-2 hide-scrollbar">
-        {isAdmin && (
-           <SidebarItem icon={<Crown size={18} className="text-yellow-500"/>} label="Painel SaaS" active={view === 'saas_admin'} onClick={() => setView('saas_admin')} />
-        )}
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
-        <div className="pt-2 pb-2 px-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Gestão</div>
-        <SidebarItem icon={<LayoutDashboard size={18} className="text-blue-500"/>} label="Visão Geral" active={view === 'dashboard'} onClick={() => setView('dashboard')} />
-        <SidebarItem icon={<DollarSign size={18} className="text-emerald-500"/>} label="Financeiro" active={view === 'finance'} onClick={() => setView('finance')} />
-        <SidebarItem icon={<Users size={18} className="text-orange-500"/>} label="Meus Clientes" active={view === 'clients'} onClick={() => setView('clients')} />
-        <SidebarItem icon={<UserPlus size={18} className="text-cyan-500"/>} label="Novo Cadastro" active={view === 'add'} onClick={() => setView('add')} />
-        <SidebarItem icon={<History size={18} className="text-red-500"/>} label="Histórico" active={view === 'history'} onClick={() => setView('history')} />
-        <SidebarItem icon={<ServerIcon size={18} className="text-purple-500"/>} label="Servidores" active={view === 'servers'} onClick={() => setView('servers')} />
+      {/* --- SIDEBAR DESKTOP --- */}
+      <aside className="w-56 bg-slate-50 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 hidden md:flex flex-col shrink-0">
+        <div className="p-5 flex items-center gap-3">
+          <div className="bg-gradient-to-br from-blue-600 to-cyan-500 p-1.5 rounded-lg shadow-lg shadow-blue-500/30">
+            <Tv size={20} className="text-white" />
+          </div>
+          <h1 className="text-sm font-black uppercase tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-cyan-500 dark:from-blue-400 dark:to-cyan-300 leading-none">
+              STREAM<br/>MANAGER
+          </h1>
+        </div>
         
-        <div className="pt-4 pb-2 px-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Ferramentas</div>
-        <SidebarItem icon={<CalendarDays size={18} className="text-emerald-500"/>} label="Automação Zap" active={view === 'scheduling'} onClick={() => setView('scheduling')} />
-        <SidebarItem icon={<Layers size={18} className="text-indigo-500"/>} label="Planos e Preços" active={view === 'packages'} onClick={() => setView('packages')} />
-        <SidebarItem icon={<MessageSquare size={18} className="text-emerald-500"/>} label="Mensagens" active={view === 'messages'} onClick={() => setView('messages')} />
-        <SidebarItem icon={<Database size={18} className="text-slate-500"/>} label="Backup Dados" active={view === 'database'} onClick={() => setView('database')} />
-        
-        <div className="pt-4 pb-2 px-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Conta</div>
-        <SidebarItem icon={<CreditCard size={18} className="text-yellow-500"/>} label="Minha Assinatura" active={view === 'subscription'} onClick={() => setView('subscription')} />
-      </nav>
+        <nav className="flex-1 px-3 space-y-0.5 overflow-y-auto py-2 hide-scrollbar">
+          {isAdmin && (
+             <SidebarItem icon={<Crown size={18} className="text-yellow-500"/>} label="Painel SaaS" active={view === 'saas_admin'} onClick={() => setView('saas_admin')} />
+          )}
 
-      <div className="p-3 border-t border-slate-200 dark:border-slate-800 space-y-2">
-        <button onClick={toggleTheme} className="w-full flex items-center justify-between px-3 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-md transition-all">
-          <span className="text-[10px] font-bold uppercase">{theme === 'dark' ? 'Escuro' : 'Claro'}</span>
-          {theme === 'dark' ? <Moon size={14} className="text-blue-400" /> : <Sun size={14} className="text-amber-400" />}
-        </button>
-        
-        <button onClick={handleLogout} className="w-full flex items-center gap-3 px-3 py-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-all">
-          <LogOut size={16} />
-          <span className="text-[11px] font-bold uppercase">Sair</span>
-        </button>
-      </div>
-    </aside>
+          <div className="pt-2 pb-2 px-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Gestão</div>
+          <SidebarItem icon={<LayoutDashboard size={18} className="text-blue-500"/>} label="Visão Geral" active={view === 'dashboard'} onClick={() => setView('dashboard')} />
+          <SidebarItem icon={<DollarSign size={18} className="text-emerald-500"/>} label="Financeiro" active={view === 'finance'} onClick={() => setView('finance')} />
+          <SidebarItem icon={<Users size={18} className="text-orange-500"/>} label="Meus Clientes" active={view === 'clients'} onClick={() => setView('clients')} />
+          <SidebarItem icon={<UserPlus size={18} className="text-cyan-500"/>} label="Novo Cadastro" active={view === 'add'} onClick={() => setView('add')} />
+          <SidebarItem icon={<History size={18} className="text-red-500"/>} label="Histórico" active={view === 'history'} onClick={() => setView('history')} />
+          <SidebarItem icon={<ServerIcon size={18} className="text-purple-500"/>} label="Servidores" active={view === 'servers'} onClick={() => setView('servers')} />
+          
+          <div className="pt-4 pb-2 px-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Ferramentas</div>
+          <SidebarItem icon={<CalendarDays size={18} className="text-emerald-500"/>} label="Automação Zap" active={view === 'scheduling'} onClick={() => setView('scheduling')} />
+          <SidebarItem icon={<Layers size={18} className="text-indigo-500"/>} label="Planos e Preços" active={view === 'packages'} onClick={() => setView('packages')} />
+          <SidebarItem icon={<MessageSquare size={18} className="text-emerald-500"/>} label="Mensagens" active={view === 'messages'} onClick={() => setView('messages')} />
+          <SidebarItem icon={<Database size={18} className="text-slate-500"/>} label="Backup Dados" active={view === 'database'} onClick={() => setView('database')} />
+          
+          <div className="pt-4 pb-2 px-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Conta</div>
+          <SidebarItem icon={<CreditCard size={18} className="text-yellow-500"/>} label="Minha Assinatura" active={view === 'subscription'} onClick={() => setView('subscription')} />
+        </nav>
+
+        <div className="p-3 border-t border-slate-200 dark:border-slate-800 space-y-2">
+          <button onClick={toggleTheme} className="w-full flex items-center justify-between px-3 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-md transition-all">
+            <span className="text-[10px] font-bold uppercase">{theme === 'dark' ? 'Escuro' : 'Claro'}</span>
+            {theme === 'dark' ? <Moon size={14} className="text-blue-400" /> : <Sun size={14} className="text-amber-400" />}
+          </button>
+          
+          <button onClick={handleLogout} className="w-full flex items-center gap-3 px-3 py-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-all">
+            <LogOut size={16} />
+            <span className="text-[11px] font-bold uppercase">Sair</span>
+          </button>
+        </div>
+      </aside>
 
     
 
