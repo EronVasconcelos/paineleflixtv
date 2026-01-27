@@ -2879,8 +2879,8 @@ return (
         )}
         {selectedClientForEdit && <EditClientModal theme={theme} client={selectedClientForEdit} packages={packages} onEdit={handleEditClient} onClose={() => setSelectedClientForEdit(null)} />}
       
-      </div> {/* FECHA AREA CONTEUDO */}
-    </div> {/* FECHA RAIZ */}
+      </div> 
+    </div>
   );
 }
 
