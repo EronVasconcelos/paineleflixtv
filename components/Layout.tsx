@@ -200,7 +200,7 @@ export default function Layout({
               )}
           </div>
         </nav>
-      </div> {/* FECHAMENTO DO FLEX-1 (Que faltava antes) */}
-    </div> {/* FECHAMENTO DO FLEX ROW (Que faltava antes) */}
+      </div>
+    </div>
   );
 }
