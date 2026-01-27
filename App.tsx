@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
 import { supabase } from './services/supabaseClient';
-import { geminiService } from './services/geminiService';
 
 // --- IMPORTAÇÃO DOS COMPONENTES VISUAIS ---
 import Layout from './components/Layout';
@@ -18,14 +17,9 @@ import Subscription from './pages/Subscription';
 import AdminSaaS from './pages/AdminSaaS';
 import { HistoryTool, BackupTool, PlansTool, MessagesTool, AutomationTool } from './pages/Tools';
 
-/* --- TIPAGEM BÁSICA --- */
 const MONTHS_LIST = ['JAN', 'FEV', 'MAR', 'ABR', 'MAI', 'JUN', 'JUL', 'AGO', 'SET', 'OUT', 'NOV', 'DEZ'];
 
-interface AppProps {
-  onNotificationClick: () => void;
-}
-
-export default function App({ onNotificationClick }: AppProps) {
+export default function App() {
   // --- ESTADOS GLOBAIS ---
   const [session, setSession] = useState<any>(null);
   const [userProfile, setUserProfile] = useState<any>(null);
@@ -39,9 +33,9 @@ export default function App({ onNotificationClick }: AppProps) {
   const [servers, setServers] = useState<any[]>([]);
   const [templates, setTemplates] = useState<any[]>([]);
   const [rules, setRules] = useState<any[]>([]);
-  const [saasUsers, setSaasUsers] = useState<any[]>([]);
+  const [saasUsers, setSaasUsers] = useState<any[]>([]); 
   
-  // ESTADOS DE UI
+  // UI STATE
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState('all');
   const [paymentFilter, setPaymentFilter] = useState('all');
@@ -54,7 +48,7 @@ export default function App({ onNotificationClick }: AppProps) {
   const [authMode, setAuthMode] = useState<'login' | 'signup'>('login');
   const [authData, setAuthData] = useState({ email: '', password: '', fullName: '', phone: '' });
 
-  // ESTADOS DE FORMULÁRIOS
+  // FORM STATES
   const [addFormData, setAddFormData] = useState({ name: '', username: '', password: '', phone: '', price: '', expenses: '0', notes: '', packageId: '', serverId: '', expiryDate: '', expiryTime: '', isPaid: true, paymentDate: new Date().toISOString().split('T')[0], appName: '', macKey: '' });
   const [selectedClientForMsg, setSelectedClientForMsg] = useState<any>(null);
   const [selectedClientForEdit, setSelectedClientForEdit] = useState<any>(null);
@@ -64,13 +58,12 @@ export default function App({ onNotificationClick }: AppProps) {
   
   const showToast = (msg: string, type: 'success' | 'error' = 'success') => setToast({ msg, type });
 
-  // --- CARREGAMENTO INICIAL E AUTH ---
+  // --- 1. INIT ---
   useEffect(() => {
     supabase.auth.getSession().then(({ data: { session } }) => {
       setSession(session);
       if (session) fetchData();
     });
-
     const { data: { subscription } } = supabase.auth.onAuthStateChange((_event, session) => {
       setSession(session);
       if (session) fetchData();
@@ -83,13 +76,11 @@ export default function App({ onNotificationClick }: AppProps) {
     setIsRefreshing(true);
     try {
       const userId = session.user.id;
-      
       const { data: profile } = await supabase.from('profiles').select('*').eq('id', userId).single();
       if (profile) {
         setUserProfile(profile);
         if (profile.theme) setTheme(profile.theme);
       }
-
       const [cRes, pRes, sRes, tRes, rRes] = await Promise.all([
         supabase.from('clients').select('*').eq('user_id', userId),
         supabase.from('packages').select('*').eq('user_id', userId),
@@ -97,25 +88,20 @@ export default function App({ onNotificationClick }: AppProps) {
         supabase.from('message_templates').select('*').eq('user_id', userId),
         supabase.from('automation_rules').select('*').eq('user_id', userId)
       ]);
-
       if (cRes.data) setClients(cRes.data);
       if (pRes.data) setPackages(pRes.data);
       if (sRes.data) setServers(sRes.data);
       if (tRes.data) setTemplates(tRes.data);
       if (rRes.data) setRules(rRes.data);
-
       if (session.user.email === 'admin@eflixtv.com') {
         const { data: allUsers } = await supabase.from('profiles').select('*');
         if (allUsers) setSaasUsers(allUsers);
       }
-
-    } catch (error) {
-      console.error('Erro ao buscar dados:', error);
-    } finally {
-      setIsRefreshing(false);
-    }
+    } catch (error) { console.error(error); } 
+    finally { setIsRefreshing(false); }
   };
 
+  // --- 2. AUTH ---
   const handleAuth = async (e: React.FormEvent) => {
     e.preventDefault();
     setLoading(true);
@@ -125,108 +111,78 @@ export default function App({ onNotificationClick }: AppProps) {
         if (error) throw error;
       } else {
         const { data, error } = await supabase.auth.signUp({
-          email: authData.email, 
-          password: authData.password,
+          email: authData.email, password: authData.password,
           options: { data: { full_name: authData.fullName, phone: authData.phone } }
         });
         if (error) throw error;
         if (data.user) {
           await supabase.from('profiles').insert([{
-            id: data.user.id,
-            email: authData.email,
-            full_name: authData.fullName,
-            phone: authData.phone,
-            role: 'user',
+            id: data.user.id, email: authData.email, full_name: authData.fullName, phone: authData.phone, role: 'user',
             trial_ends_at: new Date(Date.now() + 3 * 24 * 60 * 60 * 1000).toISOString()
           }]);
-          showToast('Conta criada com sucesso!');
+          showToast('Conta criada!');
         }
       }
-    } catch (error: any) {
-      showToast(error.message || 'Erro na autenticação', 'error');
-    } finally {
-      setLoading(false);
-    }
+    } catch (error: any) { showToast(error.message, 'error'); } 
+    finally { setLoading(false); }
   };
 
-  const handleLogout = async () => {
-    await supabase.auth.signOut();
-    setSession(null);
-    setClients([]);
-  };
+  const handleLogout = async () => { await supabase.auth.signOut(); setSession(null); setClients([]); };
 
+  // --- 3. CRUD ---
   const handleAddClient = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!session?.user) return;
     try {
       const newClient = {
-        user_id: session.user.id,
-        name: addFormData.name,
-        username: addFormData.username,
-        password: addFormData.password,
-        phone: addFormData.phone,
-        status: 'active',
-        paymentStatus: addFormData.isPaid ? 'paid' : 'pending',
+        user_id: session.user.id, name: addFormData.name, username: addFormData.username, password: addFormData.password, phone: addFormData.phone,
+        status: 'active', paymentStatus: addFormData.isPaid ? 'paid' : 'pending',
         expiresAt: new Date(`${addFormData.expiryDate}T${addFormData.expiryTime || '00:00'}`).toISOString(),
-        notes: addFormData.notes,
-        appName: addFormData.appName,
-        macKey: addFormData.macKey,
-        server_id: addFormData.serverId || null,
+        notes: addFormData.notes, appName: addFormData.appName, macKey: addFormData.macKey, server_id: addFormData.serverId || null,
         createdAt: new Date().toISOString(),
-        paymentHistory: addFormData.isPaid ? [{
-            date: addFormData.paymentDate,
-            amount: Number(addFormData.price),
-            method: 'manual'
-        }] : [],
+        paymentHistory: addFormData.isPaid ? [{ date: addFormData.paymentDate, amount: Number(addFormData.price), method: 'manual' }] : [],
         expenses: Number(addFormData.expenses) || 0,
         packageName: packages.find(p => p.id === addFormData.packageId)?.name || 'Personalizado'
       };
-
       const { data, error } = await supabase.from('clients').insert([newClient]).select().single();
       if (error) throw error;
-
       if (addFormData.serverId) {
          const srv = servers.find(s => s.id === addFormData.serverId);
          if (srv && srv.credits > 0) {
-             const newCredits = srv.credits - 1;
-             await supabase.from('servers').update({ credits: newCredits }).eq('id', srv.id);
-             setServers(servers.map(s => s.id === srv.id ? {...s, credits: newCredits} : s));
+             await supabase.from('servers').update({ credits: srv.credits - 1 }).eq('id', srv.id);
+             setServers(servers.map(s => s.id === srv.id ? {...s, credits: srv.credits - 1} : s));
          }
       }
-
       setClients([...clients, data]);
-      showToast('Cliente cadastrado com sucesso!');
+      showToast('Cliente cadastrado!');
       setAddFormData({ ...addFormData, name: '', username: '', password: '', phone: '' }); 
-    } catch (error) {
-      showToast('Erro ao cadastrar cliente', 'error');
-    }
+    } catch (error) { showToast('Erro ao cadastrar', 'error'); }
+  };
+
+  const handleDeleteClient = async (id: string) => {
+    if (!confirm('Excluir?')) return;
+    try { await supabase.from('clients').delete().eq('id', id); setClients(clients.filter(c => c.id !== id)); showToast('Removido'); } catch (error) { showToast('Erro', 'error'); }
+  };
+
+  const handleToggleStatus = async (client: any) => {
+    const newStatus = client.status === 'active' ? 'blocked' : 'active';
+    try { await supabase.from('clients').update({ status: newStatus }).eq('id', client.id); setClients(clients.map(c => c.id === client.id ? { ...c, status: newStatus } : c)); } catch (error) { showToast('Erro', 'error'); }
+  };
+
+  const handleTogglePayment = async (client: any) => {
+    const newStatus = client.paymentStatus === 'paid' ? 'pending' : 'paid';
+    try { await supabase.from('clients').update({ paymentStatus: newStatus }).eq('id', client.id); setClients(clients.map(c => c.id === client.id ? { ...c, paymentStatus: newStatus } : c)); } catch (error) { showToast('Erro', 'error'); }
   };
 
   const clientHandlers = {
-    handleDeleteClient: async (id: string) => {
-      if (!confirm('Excluir este cliente?')) return;
-      await supabase.from('clients').delete().eq('id', id);
-      setClients(clients.filter(c => c.id !== id));
-      showToast('Cliente removido');
-    },
-    handleToggleStatus: async (client: any) => {
-      const newStatus = client.status === 'active' ? 'blocked' : 'active';
-      await supabase.from('clients').update({ status: newStatus }).eq('id', client.id);
-      setClients(clients.map(c => c.id === client.id ? { ...c, status: newStatus } : c));
-    },
-    handleTogglePayment: async (client: any) => {
-      const newStatus = client.paymentStatus === 'paid' ? 'pending' : 'paid';
-      await supabase.from('clients').update({ paymentStatus: newStatus }).eq('id', client.id);
-      setClients(clients.map(c => c.id === client.id ? { ...c, paymentStatus: newStatus } : c));
-    },
-    handleArchiveClient: async (c: any) => { /* ... */ },
-    handleRestoreClient: async (c: any) => { /* ... */ },
+    handleDeleteClient, handleToggleStatus, handleTogglePayment,
+    handleArchiveClient: async () => {}, handleRestoreClient: async () => {},
     handleCopyCredentials: (c: any) => { navigator.clipboard.writeText(`User: ${c.username}\nPass: ${c.password}`); showToast('Copiado!'); },
-    setSelectedClientForMsg,
-    setSelectedClientForEdit,
-    setSelectedClientForRenewal,
-    setSelectedClientDetails
+    setSelectedClientForMsg, setSelectedClientForEdit, setSelectedClientForRenewal, setSelectedClientDetails
   };
+
+  const handleSaveServer = async (serverData: any) => { setServers([...servers, { ...serverData, id: Math.random().toString(), credits: 0, transactions: [] }]); showToast('Salvo (Local)'); };
+  const handleSavePackage = async (pkgData: any) => { setPackages([...packages, pkgData]); showToast('Salvo (Local)'); };
 
   return (
     <BrowserRouter>
@@ -245,61 +201,27 @@ export default function App({ onNotificationClick }: AppProps) {
           session={session}
           userProfile={userProfile}
           isAdmin={session.user.email === 'admin@eflixtv.com'}
-          notificationsEnabled={Notification.permission === 'granted'} 
-          requestPermission={async () => onNotificationClick()}
+          notificationsEnabled={false} 
+          requestPermission={async () => {}}
           handleLogout={handleLogout}
           isRefreshing={isRefreshing} 
           handleRefreshData={fetchData}
-          onAiAnalyze={async () => {
-            if (clients.length === 0) return showToast('Sem clientes para analisar', 'error');
-            showToast('IA Analisando dados...');
-            const analysis = await geminiService.analyzeBusiness(clients);
-            alert(analysis);
-          }} 
+          onAiAnalyze={() => showToast('IA em breve')} 
           onPublicSignupLink={() => {}}
         >
           <Routes>
-            <Route path="/" element={<Dashboard 
-              clients={clients} theme={theme} 
-              isExpired={(d:string) => new Date(d) < new Date()}
-              sendWhatsApp={(msg, c) => window.open(`https://wa.me/${c.phone}?text=${encodeURIComponent(msg)}`)} 
-            />} />
-
-            <Route path="/financeiro" element={<Financeiro 
-              clients={clients} packages={packages} servers={servers}
-              theme={theme} month={month} year={year} setMonth={setMonth} setYear={setYear}
-            />} />
-
-            <Route path="/clientes" element={<ClientsList 
-               clients={clients} theme={theme}
-               searchTerm={searchTerm} setSearchTerm={setSearchTerm}
-               statusFilter={statusFilter} setStatusFilter={setStatusFilter}
-               paymentFilter={paymentFilter} setPaymentFilter={setPaymentFilter}
-               handlers={clientHandlers}
-            />} />
-
-            <Route path="/clientes/novo" element={<AddClient 
-               theme={theme} addFormData={addFormData} setAddFormData={setAddFormData}
-               handleAddClient={handleAddClient} packages={packages} servers={servers}
-            />} />
-
-            <Route path="/servidores" element={<Servers 
-               theme={theme} servers={servers} 
-               handleSaveServer={(s:any) => setServers([...servers, {...s, id: Math.random(), credits: 0}])}
-               handleDeleteServer={(id:any) => setServers(servers.filter(s=>s.id!==id))} setSelectedServerForCredit={() => {}}
-            />} />
-
+            <Route path="/" element={<Dashboard clients={clients} theme={theme} isExpired={(d:string) => new Date(d) < new Date()} sendWhatsApp={() => {}} />} />
+            <Route path="/financeiro" element={<Financeiro clients={clients} packages={packages} servers={servers} theme={theme} month={month} year={year} setMonth={setMonth} setYear={setYear} />} />
+            <Route path="/clientes" element={<ClientsList clients={clients} theme={theme} searchTerm={searchTerm} setSearchTerm={setSearchTerm} statusFilter={statusFilter} setStatusFilter={setStatusFilter} paymentFilter={paymentFilter} setPaymentFilter={setPaymentFilter} handlers={clientHandlers} />} />
+            <Route path="/clientes/novo" element={<AddClient theme={theme} addFormData={addFormData} setAddFormData={setAddFormData} handleAddClient={handleAddClient} packages={packages} servers={servers} />} />
+            <Route path="/servidores" element={<Servers theme={theme} servers={servers} handleSaveServer={handleSaveServer} handleDeleteServer={() => {}} setSelectedServerForCredit={() => {}} />} />
             <Route path="/historico" element={<HistoryTool theme={theme} currentYear={currentHistoryYear} setCurrentYear={setCurrentHistoryYear} clients={clients} MONTHS={MONTHS_LIST}/>} />
             <Route path="/backup" element={<BackupTool theme={theme} handleRefreshData={fetchData} isRefreshing={isRefreshing} handleExportCSV={() => {}} />} />
-            <Route path="/mensagens" element={<MessagesTool theme={theme} templates={templates} handleSaveTemplate={(t:any) => setTemplates([...templates, t])} handleDeleteTemplate={(id:any) => setTemplates(templates.filter(t=>t.id!==id))} />} />
-            <Route path="/planos" element={<PlansTool theme={theme} packages={packages} editingPackage={editingPackage} setEditingPackage={setEditingPackage} handleSavePackage={(p:any)=>setPackages([...packages,p])} handleDeletePackage={(id:any)=>setPackages(packages.filter(pk=>pk.id!==id))} />} />
-            <Route path="/automacao" element={<AutomationTool theme={theme} rules={rules} templates={templates} handleSaveRule={(r:any)=>setRules([...rules,r])} handleDeleteRule={(id:any)=>setRules(rules.filter(ru=>ru.id!==id))} />} />
+            <Route path="/mensagens" element={<MessagesTool theme={theme} templates={templates} handleSaveTemplate={() => {}} handleDeleteTemplate={() => {}} />} />
+            <Route path="/planos" element={<PlansTool theme={theme} packages={packages} editingPackage={editingPackage} setEditingPackage={setEditingPackage} handleSavePackage={handleSavePackage} handleDeletePackage={() => {}} />} />
+            <Route path="/automacao" element={<AutomationTool theme={theme} rules={rules} templates={templates} handleSaveRule={() => {}} handleDeleteRule={() => {}} />} />
             <Route path="/assinatura" element={<Subscription userProfile={userProfile} theme={theme} handleSubscribe={() => {}} />} />
-
-            {session.user.email === 'admin@eflixtv.com' && (
-               <Route path="/admin" element={<AdminSaaS users={saasUsers} theme={theme} onSimulate={() => {}} onDeleteUser={() => {}} onViewUser={() => {}} />} />
-            )}
-
+            {session.user.email === 'admin@eflixtv.com' && <Route path="/admin" element={<AdminSaaS users={saasUsers} theme={theme} onSimulate={() => {}} onDeleteUser={() => {}} onViewUser={() => {}} />} /> }
             <Route path="*" element={<Navigate to="/" replace />} />
           </Routes>
         </Layout>

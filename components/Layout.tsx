@@ -5,18 +5,16 @@ import {
   CalendarDays, Layers, MessageSquare, Database, CreditCard, Moon, Sun, LogOut, 
   Crown, Bell, BellOff, RefreshCw, Share2, TrendingUp, MoreHorizontal, ArrowUp
 } from 'lucide-react';
-import { SidebarItem, BottomNavItem, MobileSubItem } from './UiKit'; // Pega do arquivo que criamos antes
+import { SidebarItem, BottomNavItem, MobileSubItem } from './UiKit';
 
-// Função auxiliar (copiada do seu App.tsx original)
+// Função auxiliar
 const checkIsExpired = (date: string | null | undefined) => {
   if (!date) return true;
   return new Date(date) < new Date();
 };
 
-const PANEL_NAME = "STREAM MANAGER";
-
 interface LayoutProps {
-  children?: React.ReactNode; // Conteúdo da página
+  children?: React.ReactNode;
   theme: 'light' | 'dark';
   toggleTheme: () => void;
   session: any;
@@ -40,16 +38,13 @@ export default function Layout({
   const location = useLocation();
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   
-  // Função para verificar se a rota está ativa
   const isActive = (path: string) => location.pathname === path;
-
-  // Lógica do Pull to Refresh (Visual)
   const [pullDistance] = useState(0); 
 
   return (
     <div className={`flex flex-col md:flex-row h-screen overflow-hidden font-normal transition-colors duration-300 ${theme === 'dark' ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-800'}`}>
       
-      {/* --- SIDEBAR DESKTOP (CÓDIGO ORIGINAL MANTIDO) --- */}
+      {/* --- SIDEBAR DESKTOP --- */}
       <aside className="w-56 bg-slate-50 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 hidden md:flex flex-col shrink-0">
         <div className="p-5 flex items-center gap-3">
           <div className="bg-gradient-to-br from-blue-600 to-cyan-500 p-1.5 rounded-lg shadow-lg shadow-blue-500/30">
@@ -61,17 +56,12 @@ export default function Layout({
         </div>
         
         <nav className="flex-1 px-3 space-y-0.5 overflow-y-auto py-2 hide-scrollbar">
-          
           {isAdmin && (
              <SidebarItem icon={<Crown size={18} className="text-yellow-500"/>} label="Painel SaaS" active={isActive('/admin')} onClick={() => navigate('/admin')} />
           )}
-
           <div className="pt-2 pb-2 px-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Gestão</div>
           <SidebarItem icon={<LayoutDashboard size={18} className="text-blue-500"/>} label="Visão Geral" active={isActive('/')} onClick={() => navigate('/')} />
-          
-          {/* NOVA ABA FINANCEIRO */}
           <SidebarItem icon={<DollarSign size={18} className="text-emerald-500"/>} label="Financeiro" active={isActive('/financeiro')} onClick={() => navigate('/financeiro')} />
-          
           <SidebarItem icon={<Users size={18} className="text-orange-500"/>} label="Meus Clientes" active={isActive('/clientes')} onClick={() => navigate('/clientes')} />
           <SidebarItem icon={<UserPlus size={18} className="text-cyan-500"/>} label="Novo Cadastro" active={isActive('/clientes/novo')} onClick={() => navigate('/clientes/novo')} />
           <SidebarItem icon={<History size={18} className="text-red-500"/>} label="Histórico" active={isActive('/historico')} onClick={() => navigate('/historico')} />
@@ -92,7 +82,6 @@ export default function Layout({
             <span className="text-[10px] font-bold uppercase">{theme === 'dark' ? 'Escuro' : 'Claro'}</span>
             {theme === 'dark' ? <Moon size={14} className="text-blue-400" /> : <Sun size={14} className="text-amber-400" />}
           </button>
-          
           <button onClick={handleLogout} className="w-full flex items-center gap-3 px-3 py-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-all">
             <LogOut size={16} />
             <span className="text-[11px] font-bold uppercase">Sair</span>
@@ -119,7 +108,6 @@ export default function Layout({
               {isActive('/assinatura') && 'Minha Assinatura'}
             </h2>
             <div className="flex items-center gap-2">
-                {/* --- AQUI ESTÁ A LÓGICA DE DATA QUE CONSERTAMOS, MANTIDA IGUAL --- */}
                 {userProfile && (
                     <div className="hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
                       <Crown size={12} />
@@ -130,7 +118,6 @@ export default function Layout({
                               const assinatura = userProfile.subscription_ends_at;
                               const teste = userProfile.trial_ends_at;
                               const isPremium = !!assinatura;
-                              // A lógica de prioridade que definimos:
                               const finalDate = assinatura || teste;
                               
                               if (checkIsExpired(finalDate)) return 'Acesso Expirado';
@@ -163,7 +150,6 @@ export default function Layout({
             <button 
               onClick={onPublicSignupLink} 
               className="p-2 text-blue-600 bg-blue-50 dark:bg-blue-900/30 dark:text-blue-400 rounded-md border border-blue-100 dark:border-blue-800/50 hover:bg-blue-100 transition-all shadow-sm" 
-              title="Link de Cadastro"
             >
               <Share2 size={16} />
             </button>
@@ -173,9 +159,7 @@ export default function Layout({
           </div>
         </header>
 
-        {/* --- CONTEÚDO DA PÁGINA (AQUI ENTRA O OUTLET DO ROUTER) --- */}
         <main className="flex-1 overflow-y-auto pb-32 p-4 md:p-6 hide-scrollbar bg-slate-50/50 dark:bg-slate-950 transition-all">
-          {/* Refresh Indicator Visual */}
           <div style={{ height: `${pullDistance}px`, opacity: pullDistance > 0 ? 1 : 0 }} className="flex items-center justify-center overflow-hidden transition-all ease-out duration-200">
              <div className={`p-2 rounded-full bg-white dark:bg-slate-800 shadow-md border border-slate-200 dark:border-slate-700 ${isRefreshing ? 'animate-spin' : ''}`}>
                 {isRefreshing ? <RefreshCw size={20}/> : <ArrowUp size={20} className="rotate-180"/>}
@@ -183,12 +167,11 @@ export default function Layout({
           </div>
 
           <div className="max-w-6xl mx-auto space-y-5">
-             {/* O Outlet renderiza a página que estiver na rota atual (Dashboard, Clientes, etc) */}
              {children || <Outlet />}
           </div>
         </main>
 
-        {/* --- MOBILE MENU (MANTIDO IDÊNTICO) --- */}
+        {/* --- MOBILE MENU --- */}
         <nav className={`md:hidden fixed bottom-0 left-0 right-0 border-t grid grid-cols-5 items-center justify-items-center py-2 z-[100] pb-safe shadow-xl transition-colors ${theme === 'dark' ? 'bg-slate-900/98 border-slate-800 backdrop-blur-xl' : 'bg-white/98 border-slate-100 backdrop-blur-xl'}`}>
           <BottomNavItem icon={<LayoutDashboard size={22}/>} label="Painel" active={isActive('/')} onClick={() => navigate('/')} />
           <BottomNavItem icon={<DollarSign size={22}/>} label="Financ." active={isActive('/financeiro')} onClick={() => navigate('/financeiro')} />
