@@ -1920,150 +1920,135 @@ const handleDeleteSaaSUser = async (id: string) => {
   /* --- PARTE 5: RENDERIZAÇÃO VISUAL E ROTEAMENTO --- */
 
 return (
-    <div className={`flex flex-col md:flex-row h-screen overflow-hidden font-normal transition-colors duration-300 ${theme === 'dark' ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-800'}`}>
-      
-      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+  <div className={`flex flex-col md:flex-row h-screen overflow-hidden font-normal transition-colors duration-300 ${theme === 'dark' ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-800'}`}>
+    
+    {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
-      {/* --- SIDEBAR DESKTOP --- */}
-      <aside className="w-56 bg-slate-50 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 hidden md:flex flex-col shrink-0">
-        <div className="p-5 flex items-center gap-3">
-          <div className="bg-gradient-to-br from-blue-600 to-cyan-500 p-1.5 rounded-lg shadow-lg shadow-blue-500/30">
-            <Tv size={20} className="text-white" />
+    {/* --- SIDEBAR DESKTOP --- */}
+    <aside className="w-56 bg-slate-50 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 hidden md:flex flex-col shrink-0">
+      <div className="p-5 flex items-center gap-3">
+        <div className="bg-gradient-to-br from-blue-600 to-cyan-500 p-1.5 rounded-lg shadow-lg shadow-blue-500/30">
+          <Tv size={20} className="text-white" />
+        </div>
+        <h1 className="text-sm font-black uppercase tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-cyan-500 dark:from-blue-400 dark:to-cyan-300 leading-none">
+            STREAM<br/>MANAGER
+        </h1>
+      </div>
+      
+      <nav className="flex-1 px-3 space-y-0.5 overflow-y-auto py-2 hide-scrollbar">
+        {isAdmin && (
+           <SidebarItem icon={<Crown size={18} className="text-yellow-500"/>} label="Painel SaaS" active={view === 'saas_admin'} onClick={() => setView('saas_admin')} />
+        )}
+
+        <div className="pt-2 pb-2 px-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Gestão</div>
+        <SidebarItem icon={<LayoutDashboard size={18} className="text-blue-500"/>} label="Visão Geral" active={view === 'dashboard'} onClick={() => setView('dashboard')} />
+        <SidebarItem icon={<DollarSign size={18} className="text-emerald-500"/>} label="Financeiro" active={view === 'finance'} onClick={() => setView('finance')} />
+        <SidebarItem icon={<Users size={18} className="text-orange-500"/>} label="Meus Clientes" active={view === 'clients'} onClick={() => setView('clients')} />
+        <SidebarItem icon={<UserPlus size={18} className="text-cyan-500"/>} label="Novo Cadastro" active={view === 'add'} onClick={() => setView('add')} />
+        <SidebarItem icon={<History size={18} className="text-red-500"/>} label="Histórico" active={view === 'history'} onClick={() => setView('history')} />
+        <SidebarItem icon={<ServerIcon size={18} className="text-purple-500"/>} label="Servidores" active={view === 'servers'} onClick={() => setView('servers')} />
+        
+        <div className="pt-4 pb-2 px-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Ferramentas</div>
+        <SidebarItem icon={<CalendarDays size={18} className="text-emerald-500"/>} label="Automação Zap" active={view === 'scheduling'} onClick={() => setView('scheduling')} />
+        <SidebarItem icon={<Layers size={18} className="text-indigo-500"/>} label="Planos e Preços" active={view === 'packages'} onClick={() => setView('packages')} />
+        <SidebarItem icon={<MessageSquare size={18} className="text-emerald-500"/>} label="Mensagens" active={view === 'messages'} onClick={() => setView('messages')} />
+        <SidebarItem icon={<Database size={18} className="text-slate-500"/>} label="Backup Dados" active={view === 'database'} onClick={() => setView('database')} />
+        
+        <div className="pt-4 pb-2 px-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Conta</div>
+        <SidebarItem icon={<CreditCard size={18} className="text-yellow-500"/>} label="Minha Assinatura" active={view === 'subscription'} onClick={() => setView('subscription')} />
+      </nav>
+
+      <div className="p-3 border-t border-slate-200 dark:border-slate-800 space-y-2">
+        <button onClick={toggleTheme} className="w-full flex items-center justify-between px-3 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-md transition-all">
+          <span className="text-[10px] font-bold uppercase">{theme === 'dark' ? 'Escuro' : 'Claro'}</span>
+          {theme === 'dark' ? <Moon size={14} className="text-blue-400" /> : <Sun size={14} className="text-amber-400" />}
+        </button>
+        
+        <button onClick={handleLogout} className="w-full flex items-center gap-3 px-3 py-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-all">
+          <LogOut size={16} />
+          <span className="text-[11px] font-bold uppercase">Sair</span>
+        </button>
+      </div>
+    </aside>
+
+    {/* --- ÁREA PRINCIPAL --- */}
+    <div className="flex-1 flex flex-col h-full relative overflow-hidden">
+      
+      {/* HEADER FIXO */}
+      <header className={`px-5 py-3 flex items-center justify-between pt-safe shrink-0 border-b z-20 transition-colors ${theme === 'dark' ? 'bg-slate-900/50 border-slate-800 backdrop-blur-md' : 'bg-white/80 border-slate-200 backdrop-blur-md'}`}>
+        <div className="flex items-center gap-3">
+           <h2 className={`text-sm font-bold uppercase tracking-tight ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
+            {view === 'dashboard' && 'Visão Geral'}
+            {view === 'saas_admin' && 'Painel SaaS'}
+            {view === 'finance' && 'Financeiro & Lucros'}
+            {view === 'history' && 'Histórico Anual'}
+            {view === 'clients' && 'Gestão de Clientes'}
+            {view === 'scheduling' && 'Automação'}
+            {view === 'add' && 'Cadastrar Cliente'}
+            {view === 'packages' && 'Gerenciar Planos'}
+            {view === 'messages' && 'Modelos de Mensagem'}
+            {view === 'database' && 'Segurança'}
+            {view === 'servers' && 'Meus Servidores'}
+            {view === 'subscription' && 'Minha Assinatura'}
+          </h2>
+          <div className="flex items-center gap-2">
+              {userProfile && (
+                  <div className="hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                    <Crown size={12} />
+                    <span className="text-[9px] font-bold uppercase">
+                      {isAdmin 
+                        ? 'Dono / Admin' 
+                        : (() => {
+                            const finalDate = userProfile.subscription_ends_at || userProfile.trial_ends_at;
+                            if (checkIsExpired(finalDate)) return 'Acesso Expirado';
+                            const diffInMs = new Date(finalDate).getTime() - Date.now();
+                            const daysLeft = Math.max(0, Math.ceil(diffInMs / 86400000));
+                            return `Acesso: ${daysLeft} dias`;
+                          })()
+                      }
+                    </span>
+                  </div>
+                )}
+              <button onClick={notificationsEnabled ? () => {} : requestPermission} className={`p-1.5 rounded-md transition-colors ${notificationsEnabled ? 'text-emerald-500 bg-emerald-500/10' : 'text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
+                {notificationsEnabled ? <Bell size={16}/> : <BellOff size={16}/>}
+              </button>
           </div>
-          <h1 className="text-sm font-black uppercase tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-cyan-500 dark:from-blue-400 dark:to-cyan-300 leading-none">
-              STREAM<br/>MANAGER
-          </h1>
         </div>
         
-        <nav className="flex-1 px-3 space-y-0.5 overflow-y-auto py-2 hide-scrollbar">
-          {isAdmin && (
-             <SidebarItem icon={<Crown size={18} className="text-yellow-500"/>} label="Painel SaaS" active={view === 'saas_admin'} onClick={() => setView('saas_admin')} />
-          )}
-
-          <div className="pt-2 pb-2 px-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Gestão</div>
-          <SidebarItem icon={<LayoutDashboard size={18} className="text-blue-500"/>} label="Visão Geral" active={view === 'dashboard'} onClick={() => setView('dashboard')} />
-          <SidebarItem icon={<DollarSign size={18} className="text-emerald-500"/>} label="Financeiro" active={view === 'finance'} onClick={() => setView('finance')} />
-          <SidebarItem icon={<Users size={18} className="text-orange-500"/>} label="Meus Clientes" active={view === 'clients'} onClick={() => setView('clients')} />
-          <SidebarItem icon={<UserPlus size={18} className="text-cyan-500"/>} label="Novo Cadastro" active={view === 'add'} onClick={() => setView('add')} />
-          <SidebarItem icon={<History size={18} className="text-red-500"/>} label="Histórico" active={view === 'history'} onClick={() => setView('history')} />
-          <SidebarItem icon={<ServerIcon size={18} className="text-purple-500"/>} label="Servidores" active={view === 'servers'} onClick={() => setView('servers')} />
-          
-          <div className="pt-4 pb-2 px-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Ferramentas</div>
-          <SidebarItem icon={<CalendarDays size={18} className="text-emerald-500"/>} label="Automação Zap" active={view === 'scheduling'} onClick={() => setView('scheduling')} />
-          <SidebarItem icon={<Layers size={18} className="text-indigo-500"/>} label="Planos e Preços" active={view === 'packages'} onClick={() => setView('packages')} />
-          <SidebarItem icon={<MessageSquare size={18} className="text-emerald-500"/>} label="Mensagens" active={view === 'messages'} onClick={() => setView('messages')} />
-          <SidebarItem icon={<Database size={18} className="text-slate-500"/>} label="Backup Dados" active={view === 'database'} onClick={() => setView('database')} />
-          
-          <div className="pt-4 pb-2 px-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Conta</div>
-          <SidebarItem icon={<CreditCard size={18} className="text-yellow-500"/>} label="Minha Assinatura" active={view === 'subscription'} onClick={() => setView('subscription')} />
-        </nav>
-
-        <div className="p-3 border-t border-slate-200 dark:border-slate-800 space-y-2">
-          <button onClick={toggleTheme} className="w-full flex items-center justify-between px-3 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-md transition-all">
-            <span className="text-[10px] font-bold uppercase">{theme === 'dark' ? 'Escuro' : 'Claro'}</span>
-            {theme === 'dark' ? <Moon size={14} className="text-blue-400" /> : <Sun size={14} className="text-amber-400" />}
+        <div className="flex items-center gap-2">
+          <span className="hidden md:block text-[10px] font-bold uppercase text-slate-400">
+             {session.user.user_metadata.full_name || session.user.email}
+          </span>
+          <button onClick={handleRefreshData} className={`md:hidden p-2 rounded-md border transition-all shadow-sm ${isRefreshing ? 'animate-spin bg-blue-100 text-blue-600 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400' : 'bg-slate-50 text-slate-500 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700'}`}>
+            <RefreshCw size={16} />
           </button>
-          
-          <button onClick={handleLogout} className="w-full flex items-center gap-3 px-3 py-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-all">
-            <LogOut size={16} />
-            <span className="text-[11px] font-bold uppercase">Sair</span>
+          <button onClick={() => handlePublicSignup({name: '', phone: '', username: ''})} className="p-2 text-blue-600 bg-blue-50 dark:bg-blue-900/30 dark:text-blue-400 rounded-md border border-blue-100 dark:border-blue-800/50 hover:bg-blue-100 transition-all shadow-sm" title="Link de Cadastro">
+            <Share2 size={16} />
+          </button>
+          <button onClick={() => geminiService.analyzeBusiness(clients).then(setAiAnalysis)} className="p-2 text-blue-600 bg-blue-50 dark:bg-blue-900/30 dark:text-blue-400 rounded-md border border-blue-100 dark:border-blue-800/50 hover:bg-blue-100 transition-all shadow-sm">
+            <TrendingUp size={16} />
           </button>
         </div>
-      </aside>
+      </header>
 
-    
+       {/* ÁREA DE CONTEÚDO SCROLLABLE */}
+      <main ref={mainRef} onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd} className="flex-1 overflow-y-auto pb-40 p-4 md:p-6 hide-scrollbar bg-slate-50/50 dark:bg-slate-950 transition-all">
+        
+        {/* Refresh Indicator */}
+        <div style={{ height: `${pullDistance}px`, opacity: pullDistance > 0 ? 1 : 0 }} className="flex items-center justify-center overflow-hidden transition-all ease-out duration-200">
+           <div className={`p-2 rounded-full bg-white dark:bg-slate-800 shadow-md border border-slate-200 dark:border-slate-700 ${isRefreshing ? 'animate-spin' : ''} ${pullDistance > 60 ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400'}`}>
+              {isRefreshing ? <Loader2 size={20}/> : <ArrowUp size={20} className="rotate-180"/>}
+           </div>
+        </div>
 
-      {/* --- MAIN CONTENT AREA --- */}
-      <div className="flex-1 flex flex-col h-full relative overflow-hidden">
-      <main className="flex-1 overflow-y-auto p-4 md:p-6 pb-32 hide-scrollbar">
-        <header className={`px-5 py-3 flex items-center justify-between pt-safe shrink-0 border-b z-20 transition-colors ${theme === 'dark' ? 'bg-slate-900/50 border-slate-800 backdrop-blur-md' : 'bg-white/80 border-slate-200 backdrop-blur-md'}`}>
-          <div className="flex items-center gap-3">
-             <h2 className={`text-sm font-bold uppercase tracking-tight ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
-              {view === 'dashboard' && 'Visão Geral'}
-              {view === 'saas_admin' && 'Painel SaaS'}
-              {view === 'finance' && 'Financeiro & Lucros'}
-              {view === 'history' && 'Histórico Anual'}
-              {view === 'clients' && 'Gestão de Clientes'}
-              {view === 'scheduling' && 'Automação'}
-              {view === 'add' && 'Cadastrar Cliente'}
-              {view === 'packages' && 'Gerenciar Planos'}
-              {view === 'messages' && 'Modelos de Mensagem'}
-              {view === 'database' && 'Segurança'}
-              {view === 'servers' && 'Meus Servidores'}
-              {view === 'subscription' && 'Minha Assinatura'}
-            </h2>
-            <div className="flex items-center gap-2">
-                {userProfile && (
-                    <div className="hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                      <Crown size={12} />
-                      <span className="text-[9px] font-bold uppercase">
-                        {isAdmin 
-                          ? 'Dono / Admin' 
-                          : (() => {
-                              const finalDate = userProfile.subscription_ends_at || userProfile.trial_ends_at;
-                              if (checkIsExpired(finalDate)) return 'Acesso Expirado';
-                              
-                              const diffInMs = new Date(finalDate).getTime() - Date.now();
-                              const daysLeft = Math.max(0, Math.ceil(diffInMs / 86400000));
-                              
-                              return `Acesso: ${daysLeft} dias`;
-                            })()
-                        }
-                      </span>
-                    </div>
-                  )}
-                <button onClick={notificationsEnabled ? () => {} : requestPermission} className={`p-1.5 rounded-md transition-colors ${notificationsEnabled ? 'text-emerald-500 bg-emerald-500/10' : 'text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
-                  {notificationsEnabled ? <Bell size={16}/> : <BellOff size={16}/>}
-                </button>
+        <div className="max-w-6xl mx-auto space-y-5">
+          {aiAnalysis && (
+            <div className="p-4 bg-blue-600 text-white rounded-lg relative shadow-lg overflow-hidden animate-in fade-in">
+              <button onClick={() => setAiAnalysis(null)} className="absolute top-2 right-2 text-white/50 hover:text-white"><X size={16}/></button>
+              <h4 className="font-bold text-[10px] mb-1 uppercase tracking-widest opacity-80">Insight IA:</h4>
+              <p className="text-xs leading-relaxed font-medium">{aiAnalysis}</p>
             </div>
-          </div>
-          
-          <div className="flex items-center gap-2">
-            <span className="hidden md:block text-[10px] font-bold uppercase text-slate-400">
-               {session.user.user_metadata.full_name || session.user.email}
-            </span>
-            <button 
-              onClick={handleRefreshData} 
-              className={`md:hidden p-2 rounded-md border transition-all shadow-sm ${isRefreshing ? 'animate-spin bg-blue-100 text-blue-600 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400' : 'bg-slate-50 text-slate-500 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700'}`}
-            >
-              <RefreshCw size={16} />
-            </button>
-            <button 
-              onClick={() => handlePublicSignup({name: '', phone: '', username: ''})} 
-              className="p-2 text-blue-600 bg-blue-50 dark:bg-blue-900/30 dark:text-blue-400 rounded-md border border-blue-100 dark:border-blue-800/50 hover:bg-blue-100 transition-all shadow-sm" 
-              title="Link de Cadastro"
-            >
-              <Share2 size={16} />
-            </button>
-            <button onClick={() => geminiService.analyzeBusiness(clients).then(setAiAnalysis)} className="p-2 text-blue-600 bg-blue-50 dark:bg-blue-900/30 dark:text-blue-400 rounded-md border border-blue-100 dark:border-blue-800/50 hover:bg-blue-100 transition-all shadow-sm">
-              <TrendingUp size={16} />
-            </button>
-          </div>
-        </header>
-
-        <main 
-          ref={mainRef}
-          onTouchStart={handleTouchStart}
-          onTouchMove={handleTouchMove}
-          onTouchEnd={handleTouchEnd}
-          className="flex-1 overflow-y-auto pb-32 p-4 md:p-6 hide-scrollbar bg-slate-50/50 dark:bg-slate-950 transition-all"
-        >
-          {/* Refresh Indicator */}
-          <div style={{ height: `${pullDistance}px`, opacity: pullDistance > 0 ? 1 : 0 }} className="flex items-center justify-center overflow-hidden transition-all ease-out duration-200">
-             <div className={`p-2 rounded-full bg-white dark:bg-slate-800 shadow-md border border-slate-200 dark:border-slate-700 ${isRefreshing ? 'animate-spin' : ''} ${pullDistance > 60 ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400'}`}>
-                {isRefreshing ? <Loader2 size={20}/> : <ArrowUp size={20} className="rotate-180"/>}
-             </div>
-          </div>
-
-          <div className="max-w-6xl mx-auto space-y-5">
-            
-            {aiAnalysis && (
-              <div className="p-4 bg-blue-600 text-white rounded-lg relative shadow-lg overflow-hidden animate-in fade-in">
-                <button onClick={() => setAiAnalysis(null)} className="absolute top-2 right-2 text-white/50 hover:text-white"><X size={16}/></button>
-                <h4 className="font-bold text-[10px] mb-1 uppercase tracking-widest opacity-80">Insight IA:</h4>
-                <p className="text-xs leading-relaxed font-medium">{aiAnalysis}</p>
-              </div>
-            )}
+          )}
 
             {/* RENDERIZAÇÃO CONDICIONAL DAS VIEWS */}
             
@@ -2776,8 +2761,7 @@ return (
                   </div>
               </div>
             )}
-
-            
+           
           </div>
         </main>
 
