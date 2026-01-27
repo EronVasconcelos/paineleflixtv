@@ -1920,20 +1920,20 @@ const handleDeleteSaaSUser = async (id: string) => {
   /* --- PARTE 5: RENDERIZAÇÃO VISUAL E ROTEAMENTO --- */
 
   return (
-    <div className={`flex flex-col md:flex-row h-screen overflow-hidden font-normal transition-colors duration-300 ${theme === 'dark' ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-800'}`}>
-      
-      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
+        <div className={`flex flex-col md:flex-row h-screen overflow-hidden font-normal transition-colors duration-300 ${theme === 'dark' ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-800'}`}>
+          
+          {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
-      {/* --- SIDEBAR DESKTOP --- */}
-      <aside className="w-56 bg-slate-50 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 hidden md:flex flex-col shrink-0">
-        <div className="p-5 flex items-center gap-3">
-          <div className="bg-gradient-to-br from-blue-600 to-cyan-500 p-1.5 rounded-lg shadow-lg shadow-blue-500/30">
-            <Tv size={20} className="text-white" />
-          </div>
-          <h1 className="text-sm font-black uppercase tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-cyan-500 dark:from-blue-400 dark:to-cyan-300 leading-none">
-              STREAM<br/>MANAGER
-          </h1>
-        </div>
+          {/* --- SIDEBAR DESKTOP --- */}
+          <aside className="w-56 bg-slate-50 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 hidden md:flex flex-col shrink-0">
+            <div className="p-5 flex items-center gap-3">
+              <div className="bg-gradient-to-br from-blue-600 to-cyan-500 p-1.5 rounded-lg shadow-lg shadow-blue-500/30">
+                <Tv size={20} className="text-white" />
+              </div>
+              <h1 className="text-sm font-black uppercase tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-cyan-500 dark:from-blue-400 dark:to-cyan-300 leading-none">
+                  STREAM<br/>MANAGER
+              </h1>
+            </div>
         
         <nav className="flex-1 px-3 space-y-0.5 overflow-y-auto py-2 hide-scrollbar">
           
@@ -2105,113 +2105,143 @@ const handleDeleteSaaSUser = async (id: string) => {
             )}
 
                 {view === 'dashboard' && (
-                  <div className="space-y-5 animate-in fade-in">
-                    {/* ESTATÍSTICAS SUPERIORES (MANTIDAS) */}
-                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                      <StatCard title="Total Ativos" value={clients.filter(c => c.status === 'active').length} icon={<CheckCircle/>} color="emerald" theme={theme} />
-                      <StatCard title="Pagamento Pendente" value={clients.filter(c => c.paymentStatus === 'pending').length} icon={<AlertCircle/>} color="amber" theme={theme} />
-                      <StatCard title="Vencidos (Hoje)" value={clients.filter(c => isExpired(c.expiresAt) && c.status === 'active').length} icon={<Clock/>} color="red" theme={theme} />
-                      <StatCard title="Bloqueados" value={clients.filter(c => c.status === 'blocked').length} icon={<UserX/>} color="blue" theme={theme} />
+              <div className="space-y-5 animate-in fade-in">
+                {/* 1. ESTATÍSTICAS SUPERIORES (PADRÃO) */}
+                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                  <StatCard title="Total Ativos" value={clients.filter(c => c.status === 'active').length} icon={<CheckCircle/>} color="emerald" theme={theme} />
+                  <StatCard title="Pagamento Pendente" value={clients.filter(c => c.paymentStatus === 'pending').length} icon={<AlertCircle/>} color="amber" theme={theme} />
+                  <StatCard title="Vencidos (Hoje)" value={clients.filter(c => isExpired(c.expiresAt) && c.status === 'active').length} icon={<Clock/>} color="red" theme={theme} />
+                  <StatCard title="Bloqueados" value={clients.filter(c => c.status === 'blocked').length} icon={<UserX/>} color="blue" theme={theme} />
+                </div>
+                
+                {/* 2. GRID 2x2 COM ALINHAMENTO E DIVISÓRIAS PADRONIZADAS */}
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  
+                  {/* CARD 1: ÚLTIMAS ENTRADAS (CORRIGIDO ALINHAMENTO) */}
+                  <div className={`rounded-xl border shadow-sm overflow-hidden flex flex-col ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
+                    <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
+                      <h3 className="text-xs font-bold uppercase flex items-center gap-2 tracking-wide text-slate-600 dark:text-slate-300">
+                        <Clock size={16} className="text-blue-500"/> Últimas Entradas
+                      </h3>
                     </div>
-                    
-                    {/* GRID HARMONIZADO 2x2 - LIMITE DE 7 CLIENTES POR QUADRO */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                      
-                      {/* LINHA 1 - COLUNA 1: ÚLTIMAS ENTRADAS (ATÉ 7) */}
-                      <div className="flex flex-col h-full">
-                        <RecentActivityCard 
-                          title="Últimas Entradas" 
-                          theme={theme} 
-                          items={clients.flatMap(c => c.paymentHistory?.map(h => ({...h, clientName: c.name})) || []).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 7)} 
-                        />
-                      </div>
+                    <div className="divide-y divide-slate-100 dark:divide-slate-800 flex-1">
+                      {(() => {
+                        const history = clients.flatMap(c => c.paymentHistory?.map(h => ({...h, clientName: c.name})) || [])
+                          .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                          .slice(0, 7);
+                        
+                        if (history.length === 0) return <div className="p-10 text-center text-xs text-slate-400">Nenhuma entrada recente.</div>;
 
-                      {/* LINHA 1 - COLUNA 2: PRIORIDADE DE COBRANÇA (ATÉ 7) */}
-                      <div className={`rounded-xl border shadow-sm overflow-hidden flex flex-col ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
-                        <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
-                          <h3 className="text-xs font-bold uppercase flex items-center gap-2 tracking-wide text-slate-600 dark:text-slate-300">
-                            <CreditCard size={16} className="text-amber-500"/> Prioridade de Cobrança
-                          </h3>
-                        </div>
-                        <div className="divide-y divide-slate-100 dark:divide-slate-800 flex-1">
-                          {clients.filter(c => c.paymentStatus === 'pending' || isExpired(c.expiresAt)).slice(0, 7).map(c => (
-                            <div key={c.id} className="p-3 flex justify-between items-center hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                              <div className="flex flex-col min-w-0 pr-3">
-                                <span className="font-semibold text-xs truncate">{c.name}</span>
-                                <span className="text-[10px] opacity-60 font-medium uppercase mt-0.5">{new Date(c.expiresAt).toLocaleDateString('pt-BR')}</span>
+                        return history.map((item) => (
+                          <div key={item.id} className="p-3 flex justify-between items-center hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                            <div className="flex items-center gap-3 min-w-0">
+                              <div className="w-8 h-8 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-600 shrink-0">
+                                <DollarSign size={16} />
                               </div>
-                              <button onClick={() => sendWhatsApp(`Olá ${c.name}, renovação pendente.`, c)} className="p-2 bg-emerald-500 text-white rounded-md shrink-0 active:scale-95 shadow-sm hover:bg-emerald-600">
-                                <MessageSquare size={14}/>
-                              </button>
+                              <div className="flex flex-col truncate">
+                                <span className="font-bold text-xs truncate text-slate-700 dark:text-slate-200">{item.clientName}</span>
+                                <span className="text-[10px] opacity-60 font-medium uppercase mt-0.5">
+                                  {new Date(item.date).toLocaleDateString('pt-BR')} • {item.method || 'CADASTRO'}
+                                </span>
+                              </div>
                             </div>
-                          ))}
-                          {clients.filter(c => c.paymentStatus === 'pending' || isExpired(c.expiresAt)).length === 0 && (
-                              <div className="p-10 text-center text-xs text-slate-400">Nenhuma pendência hoje.</div>
-                          )}
-                        </div>
-                      </div>
-
-                      {/* LINHA 2 - COLUNA 1: RANKING DE CLIENTES/FATURAMENTO (ATÉ 7) */}
-                      <div className={`rounded-xl border shadow-sm overflow-hidden flex flex-col ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
-                        <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
-                          <h3 className="text-xs font-bold uppercase flex items-center gap-2 tracking-wide text-slate-600 dark:text-slate-300">
-                            <DollarSign size={16} className="text-emerald-500"/> Top Clientes (Faturamento)
-                          </h3>
-                        </div>
-                        <div className="divide-y divide-slate-100 dark:divide-slate-800 flex-1">
-                          {clients.slice().sort((a,b) => (b.totalPaid || 0) - (a.totalPaid || 0)).slice(0, 7).map((c, i) => (
-                            <div key={c.id} className="p-3 flex justify-between items-center hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                              <div className="flex items-center gap-3 min-w-0 pr-3">
-                                <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-black ${
-                                  i === 0 ? 'bg-yellow-500 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
-                                }`}>
-                                  {i + 1}º
-                                </div>
-                                <div className="flex flex-col truncate">
-                                  <span className="font-bold text-xs truncate text-slate-700 dark:text-slate-200">{c.name}</span>
-                                  <span className="text-[9px] font-black text-emerald-600 uppercase">R$ {(c.totalPaid || 0).toFixed(2)}</span>
-                                </div>
-                              </div>
-                              <span className="px-2 py-0.5 rounded text-[9px] font-bold uppercase bg-blue-500/10 text-blue-500">{c.packageName || 'Plano'}</span>
+                            <div className="text-xs font-black text-emerald-600 dark:text-emerald-400">
+                              +R$ {(item.amount || 0).toFixed(2)}
                             </div>
-                          ))}
-                        </div>
-                      </div>
-
-                      {/* LINHA 2 - COLUNA 2: RANKING DE INDICAÇÕES (ATÉ 7) */}
-                      <div className={`rounded-xl border shadow-sm overflow-hidden flex flex-col ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
-                        <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
-                          <h3 className="text-xs font-bold uppercase flex items-center gap-2 tracking-wide text-slate-600 dark:text-slate-300">
-                            <Crown size={16} className="text-yellow-500"/> Top Indicações
-                          </h3>
-                        </div>
-                        <div className="divide-y divide-slate-100 dark:divide-slate-800 flex-1">
-                          {(() => {
-                            const counts = {};
-                            clients.forEach(c => { if (c.referred_by) counts[c.referred_by] = (counts[c.referred_by] || 0) + 1; });
-                            const ranking = Object.entries(counts).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count).slice(0, 7);
-                            
-                            if (ranking.length === 0) return <div className="p-10 text-center text-xs text-slate-400">Sem indicações registradas.</div>;
-
-                            return ranking.map((item, i) => (
-                              <div key={item.name} className="p-3 flex justify-between items-center hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                                <div className="flex items-center gap-3">
-                                  <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-black ${i === 0 ? 'bg-blue-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'}`}>{i + 1}º</div>
-                                  <span className="font-bold text-xs text-slate-700 dark:text-slate-200">{item.name}</span>
-                                </div>
-                                <div className="flex items-center gap-1">
-                                    <span className="text-[10px] font-bold text-blue-600">{item.count}</span>
-                                    <span className="text-[10px] text-slate-400 uppercase font-bold">Indicados</span>
-                                </div>
-                              </div>
-                            ));
-                          })()}
-                        </div>
-                      </div>
-
+                          </div>
+                        ));
+                      })()}
                     </div>
                   </div>
-                )}
+
+                  {/* CARD 2: PRIORIDADE DE COBRANÇA */}
+                  <div className={`rounded-xl border shadow-sm overflow-hidden flex flex-col ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
+                    <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
+                      <h3 className="text-xs font-bold uppercase flex items-center gap-2 tracking-wide text-slate-600 dark:text-slate-300">
+                        <CreditCard size={16} className="text-amber-500"/> Prioridade de Cobrança
+                      </h3>
+                    </div>
+                    <div className="divide-y divide-slate-100 dark:divide-slate-800 flex-1">
+                      {clients.filter(c => c.paymentStatus === 'pending' || isExpired(c.expiresAt)).slice(0, 7).map(c => (
+                        <div key={c.id} className="p-3 flex justify-between items-center hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                          <div className="flex flex-col min-w-0 pr-3">
+                            <span className="font-semibold text-xs truncate">{c.name}</span>
+                            <span className="text-[10px] opacity-60 font-medium uppercase mt-0.5">{new Date(c.expiresAt).toLocaleDateString('pt-BR')}</span>
+                          </div>
+                          <button onClick={() => sendWhatsApp(`Olá ${c.name}, renovação pendente.`, c)} className="p-2 bg-emerald-500 text-white rounded-md shrink-0 active:scale-95 shadow-sm hover:bg-emerald-600">
+                            <MessageSquare size={14}/>
+                          </button>
+                        </div>
+                      ))}
+                      {clients.filter(c => c.paymentStatus === 'pending' || isExpired(c.expiresAt)).length === 0 && (
+                          <div className="p-10 text-center text-xs text-slate-400">Nenhuma pendência hoje.</div>
+                      )}
+                    </div>
+                  </div>
+
+                  {/* CARD 3: TOP CLIENTES (FORMATO SINCRONIZADO COM ENTRADAS) */}
+                  <div className={`rounded-xl border shadow-sm overflow-hidden flex flex-col ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
+                    <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
+                      <h3 className="text-xs font-bold uppercase flex items-center gap-2 tracking-wide text-slate-600 dark:text-slate-300">
+                        <DollarSign size={16} className="text-emerald-500"/> Top Clientes (Faturamento)
+                      </h3>
+                    </div>
+                    <div className="divide-y divide-slate-100 dark:divide-slate-800 flex-1">
+                      {clients.slice().sort((a,b) => (b.totalPaid || 0) - (a.totalPaid || 0)).slice(0, 7).map((c, i) => (
+                        <div key={c.id} className="p-3 flex justify-between items-center hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                          <div className="flex items-center gap-3 min-w-0">
+                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-black shrink-0 ${
+                              i === 0 ? 'bg-yellow-500 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
+                            }`}>
+                              {i + 1}º
+                            </div>
+                            <div className="flex flex-col truncate">
+                              <span className="font-bold text-xs truncate text-slate-700 dark:text-slate-200">{c.name}</span>
+                              <span className="text-[10px] opacity-60 font-medium uppercase mt-0.5">{c.packageName || 'Plano'}</span>
+                            </div>
+                          </div>
+                          <div className="text-xs font-black text-emerald-600 dark:text-emerald-400">
+                            R$ {(c.totalPaid || 0).toFixed(2)}
+                          </div>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* CARD 4: TOP INDICAÇÕES */}
+                  <div className={`rounded-xl border shadow-sm overflow-hidden flex flex-col ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
+                    <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
+                      <h3 className="text-xs font-bold uppercase flex items-center gap-2 tracking-wide text-slate-600 dark:text-slate-300">
+                        <Crown size={16} className="text-yellow-500"/> Top Indicações
+                      </h3>
+                    </div>
+                    <div className="divide-y divide-slate-100 dark:divide-slate-800 flex-1">
+                      {(() => {
+                        const counts = {};
+                        clients.forEach(c => { if (c.referred_by) counts[c.referred_by] = (counts[c.referred_by] || 0) + 1; });
+                        const ranking = Object.entries(counts).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count).slice(0, 7);
+                        
+                        if (ranking.length === 0) return <div className="p-10 text-center text-xs text-slate-400">Sem indicações registradas.</div>;
+
+                        return ranking.map((item, i) => (
+                          <div key={item.name} className="p-3 flex justify-between items-center hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                            <div className="flex items-center gap-3">
+                              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-black shrink-0 ${i === 0 ? 'bg-blue-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'}`}>{i + 1}º</div>
+                              <span className="font-bold text-xs text-slate-700 dark:text-slate-200">{item.name}</span>
+                            </div>
+                            <div className="flex items-center gap-1">
+                                <span className="text-[10px] font-bold text-blue-600">{item.count}</span>
+                                <span className="text-[10px] text-slate-400 uppercase font-bold">Indicados</span>
+                            </div>
+                          </div>
+                        ));
+                      })()}
+                    </div>
+                  </div>
+
+                </div>
+              </div>
+            )}
             
 
             {view === 'clients' && (
@@ -2748,9 +2778,15 @@ const handleDeleteSaaSUser = async (id: string) => {
               </div>
             )}
 
-            <footer className="text-center py-4 text-[10px] text-slate-400 font-bold tracking-widest opacity-50">
-               <div className="uppercase">© {currentYear} {PANEL_NAME}. Todos os direitos reservados.</div>
-               <div className="mt-1">Desenvolvido por Eron Vasconcelos</div>
+            <footer className="fixed bottom-0 left-0 w-full bg-[#0a0f1d]/90 backdrop-blur-md border-t border-slate-800/50 py-4 z-50">
+              <div className="text-center">
+                <p className="text-[10px] text-slate-500 uppercase font-black tracking-widest leading-relaxed">
+                  © 2026 STREAM MANAGER. TODOS OS DIREITOS RESERVADOS.
+                </p>
+                <p className="text-[10px] text-slate-600 font-bold mt-1">
+                  Desenvolvido por Eron Vasconcelos
+                </p>
+              </div>
             </footer>
 
           </div>
