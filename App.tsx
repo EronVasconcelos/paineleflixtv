@@ -1018,6 +1018,42 @@ const SaaSDetailsModal = ({
   );
 };
 
+{/* --- COMPONENTE BOTTOM SHEET --- */}
+{isBottomSheetOpen && (
+  <div className="fixed inset-0 z-[100] md:hidden">
+    {/* Backdrop (Fundo escuro) */}
+    <div 
+      className="absolute inset-0 bg-black/60 backdrop-blur-sm animate-in fade-in duration-300"
+      onClick={() => setIsBottomSheetOpen(false)}
+    />
+    
+    {/* Painel Deslizante */}
+    <div className={`absolute bottom-0 left-0 w-full rounded-t-[32px] p-6 shadow-2xl transition-colors duration-300 animate-in slide-in-from-bottom-full duration-300 ${theme === 'dark' ? 'bg-slate-900 text-white' : 'bg-white text-slate-900'}`}>
+      
+      {/* Barrinha de arraste visual */}
+      <div className="w-12 h-1.5 bg-slate-300 dark:bg-slate-700 rounded-full mx-auto mb-8" />
+
+      <div className="grid grid-cols-3 gap-6">
+        <MenuIcon icon={<CalendarDays className="text-emerald-500"/>} label="Automação" onClick={() => {setView('scheduling'); setIsBottomSheetOpen(false);}} />
+        <MenuIcon icon={<Layers className="text-indigo-500"/>} label="Planos" onClick={() => {setView('packages'); setIsBottomSheetOpen(false);}} />
+        <MenuIcon icon={<MessageSquare className="text-emerald-500"/>} label="Mensagens" onClick={() => {setView('messages'); setIsBottomSheetOpen(false);}} />
+        <MenuIcon icon={<ServerIcon className="text-purple-500"/>} label="Servidores" onClick={() => {setView('servers'); setIsBottomSheetOpen(false);}} />
+        <MenuIcon icon={<Database className="text-slate-500"/>} label="Backup" onClick={() => {setView('database'); setIsBottomSheetOpen(false);}} />
+        <MenuIcon icon={<CreditCard className="text-yellow-500"/>} label="Assinatura" onClick={() => {setView('subscription'); setIsBottomSheetOpen(false);}} />
+        <MenuIcon icon={<History className="text-red-500"/>} label="Histórico" onClick={() => {setView('history'); setIsBottomSheetOpen(false);}} />
+        <MenuIcon icon={<LogOut className="text-red-500"/>} label="Sair" onClick={handleLogout} />
+      </div>
+
+      <button 
+        onClick={() => setIsBottomSheetOpen(false)}
+        className={`w-full mt-8 py-4 rounded-2xl font-black uppercase text-[11px] tracking-widest ${theme === 'dark' ? 'bg-slate-800 text-slate-400' : 'bg-slate-100 text-slate-500'}`}
+      >
+        Fechar Menu
+      </button>
+    </div>
+  </div>
+)}
+
 // --- INÍCIO DO COMPONENTE PRINCIPAL APP ---
 export default function App() {
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
@@ -1037,6 +1073,8 @@ export default function App() {
   const savedView = localStorage.getItem('painel_ultima_view');
   return savedView || 'dashboard';
 });
+
+  const [isBottomSheetOpen, setIsBottomSheetOpen] = useState(false);
   
   const [selectedClientForMsg, setSelectedClientForMsg] = useState<Client | null>(null);
   const [selectedClientForRenewal, setSelectedClientForRenewal] = useState<Client | null>(null);
@@ -2763,19 +2801,21 @@ return (
             )}
            
           </div>
-        </main>
+     </main>
 
-       <footer className="w-full bg-white/95 dark:bg-slate-950/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 py-3 shrink-0 z-50">
-        <div className="text-center">
-          <p className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-black tracking-widest leading-relaxed">
-            © 2026 STREAM MANAGER. TODOS OS DIREITOS RESERVADOS.
-          </p>
-          <p className="text-[10px] text-slate-400 dark:text-slate-600 font-bold mt-0.5">
-            Desenvolvido por Eron Vasconcelos
-          </p>
-        </div>
-      </footer>
+        {/* --- RODAPÉ DESKTOP --- */}
+        <footer className="w-full bg-white/95 dark:bg-slate-950/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 py-3 shrink-0 z-50">
+          <div className="text-center">
+            <p className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-black tracking-widest leading-relaxed">
+              © 2026 STREAM MANAGER. TODOS OS DIREITOS RESERVADOS.
+            </p>
+            <p className="text-[10px] text-slate-400 dark:text-slate-600 font-bold mt-0.5">
+              Desenvolvido por Eron Vasconcelos
+            </p>
+          </div>
+        </footer>
 
+        {/* --- BARRA DE NAVEGAÇÃO MOBILE --- */}
         <nav className={`md:hidden fixed bottom-0 left-0 right-0 border-t grid grid-cols-5 items-center justify-items-center py-2 z-[100] pb-safe shadow-xl transition-colors ${theme === 'dark' ? 'bg-slate-900/98 border-slate-800 backdrop-blur-xl' : 'bg-white/98 border-slate-100 backdrop-blur-xl'}`}>
           <BottomNavItem icon={<LayoutDashboard size={22}/>} label="Painel" active={view === 'dashboard'} onClick={() => setView('dashboard')} />
           <BottomNavItem icon={<DollarSign size={22}/>} label="Financ." active={view === 'finance'} onClick={() => setView('finance')} />
@@ -2785,97 +2825,73 @@ return (
               <Plus size={24} />
             </button>
           </div>
+
           <BottomNavItem icon={<Users size={22}/>} label="Clientes" active={view === 'clients'} onClick={() => setView('clients')} />
-          <div className="relative flex flex-col items-center justify-center">
-              <BottomNavItem icon={<MoreHorizontal size={22}/>} label="Mais" active={['scheduling', 'packages', 'messages', 'database', 'servers', 'subscription', 'history', 'saas_admin'].includes(view)} onClick={() => setShowMobileMenu(!showMobileMenu)} />
-              {showMobileMenu && (
-                <div className="absolute bottom-14 right-2 bg-slate-900 rounded-lg shadow-2xl p-1.5 w-48 flex flex-col z-[110] border border-slate-800 animate-in slide-in-from-bottom-2">
-                  {isAdmin && <MobileSubItem icon={<Crown size={16} className="text-yellow-500"/>} label="Painel SaaS" onClick={() => { setView('saas_admin'); setShowMobileMenu(false); }} />}
-                  <MobileSubItem icon={<History size={16} className="text-white"/>} label="Histórico" onClick={() => { setView('history'); setShowMobileMenu(false); }} />
-                  <MobileSubItem icon={<CreditCard size={16} className="text-yellow-500"/>} label="Minha Assinatura" onClick={() => { setView('subscription'); setShowMobileMenu(false); }} />
-                  <MobileSubItem icon={<ServerIcon size={16} className="text-purple-500"/>} label="Servidores" onClick={() => { setView('servers'); setShowMobileMenu(false); }} />
-                  <MobileSubItem icon={<Database size={16} className="text-blue-500"/>} label="Banco de Dados" onClick={() => { setView('database'); setShowMobileMenu(false); }} />
-                  <MobileSubItem icon={<BellRing size={16} className="text-emerald-500"/>} label="Automação Zap" onClick={() => { setView('scheduling'); setShowMobileMenu(false); }} />
-                  <MobileSubItem icon={<Layers size={16} className="text-amber-500"/>} label="Config Planos" onClick={() => { setView('packages'); setShowMobileMenu(false); }} />
-                  <MobileSubItem icon={<MessageSquare size={16} className="text-emerald-500"/>} label="Mensagens" onClick={() => { setView('messages'); setShowMobileMenu(false); }} />
-                  <div className="h-px bg-slate-800 my-1"></div>
-                  <MobileSubItem icon={theme === 'dark' ? <Sun size={16} className="text-amber-400"/> : <Moon size={16}/>} label="Alternar Tema" onClick={() => { toggleTheme(); setShowMobileMenu(false); }} />
-                  <MobileSubItem icon={<LogOut size={16} className="text-red-500"/>} label="Sair" onClick={() => { handleLogout(); setShowMobileMenu(false); }} />
-                </div>
-              )}
-          </div>
+          
+          {/* BOTÃO MAIS: Abre o Menu */}
+          <button 
+            onClick={() => setIsBottomSheetOpen(true)}
+            className="flex flex-col items-center gap-1 active:scale-95 transition-all"
+          >
+            <MoreHorizontal size={22} className={isBottomSheetOpen ? 'text-blue-500' : 'text-slate-400'} />
+            <span className={`text-[10px] font-bold uppercase ${isBottomSheetOpen ? 'text-blue-500' : 'text-slate-400'}`}>Mais</span>
+          </button>
         </nav>
-      </div>
-      
-      {showWelcomeModal && <WelcomeModal theme={theme} onClose={() => setShowWelcomeModal(false)} />}
-      {showSuccessModal && <PaymentSuccessModal theme={theme} onClose={() => setShowSuccessModal(false)} />}
-      
-      {selectedServerForCredit && (
-        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
-          <div className={`w-full max-w-sm rounded-lg shadow-2xl overflow-hidden border animate-in zoom-in-95 duration-200 ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
-             <div className="bg-purple-600 px-5 py-4 text-white flex justify-between items-center">
-              <h3 className="text-sm font-bold uppercase tracking-tight">Registrar Compra</h3>
-              <button onClick={() => setSelectedServerForCredit(null)} className="p-1.5 bg-white/10 rounded-md hover:bg-white/20 transition-all"><X size={18}/></button>
+
+        {/* --- MENU QUE SOBE (BOTTOM SHEET) --- */}
+        {isBottomSheetOpen && (
+          <div className="fixed inset-0 z-[200] md:hidden">
+            {/* Fundo escuro */}
+            <div className="absolute inset-0 bg-black/60 backdrop-blur-sm" onClick={() => setIsBottomSheetOpen(false)} />
+            
+            {/* Painel branco/escuro */}
+            <div className={`absolute bottom-0 left-0 w-full rounded-t-[32px] p-6 shadow-2xl transition-all duration-300 ${theme === 'dark' ? 'bg-slate-900 text-white' : 'bg-white text-slate-900'}`}>
+              <div className="w-12 h-1.5 bg-slate-300 dark:bg-slate-700 rounded-full mx-auto mb-8" />
+
+              <div className="grid grid-cols-3 gap-6 mb-4">
+                {isAdmin && <MenuIcon icon={<Crown className="text-yellow-500"/>} label="SaaS" onClick={() => {setView('saas_admin'); setIsBottomSheetOpen(false);}} />}
+                <MenuIcon icon={<History className="text-red-500"/>} label="Histórico" onClick={() => {setView('history'); setIsBottomSheetOpen(false);}} />
+                <MenuIcon icon={<CalendarDays className="text-emerald-500"/>} label="Zap" onClick={() => {setView('scheduling'); setIsBottomSheetOpen(false);}} />
+                <MenuIcon icon={<Layers className="text-indigo-500"/>} label="Planos" onClick={() => {setView('packages'); setIsBottomSheetOpen(false);}} />
+                <MenuIcon icon={<MessageSquare className="text-emerald-500"/>} label="Mensagens" onClick={() => {setView('messages'); setIsBottomSheetOpen(false);}} />
+                <MenuIcon icon={<ServerIcon className="text-purple-500"/>} label="Servers" onClick={() => {setView('servers'); setIsBottomSheetOpen(false);}} />
+                <MenuIcon icon={<Database className="text-slate-500"/>} label="Dados" onClick={() => {setView('database'); setIsBottomSheetOpen(false);}} />
+                <MenuIcon icon={<CreditCard className="text-yellow-500"/>} label="Conta" onClick={() => {setView('subscription'); setIsBottomSheetOpen(false);}} />
+                <MenuIcon icon={<LogOut className="text-red-500"/>} label="Sair" onClick={handleLogout} />
+              </div>
+
+              <button onClick={() => setIsBottomSheetOpen(false)} className={`w-full mt-4 py-4 rounded-2xl font-bold uppercase text-[11px] ${theme === 'dark' ? 'bg-slate-800' : 'bg-slate-100'}`}>
+                Fechar
+              </button>
             </div>
-            <form className="p-5 space-y-3" onSubmit={(e) => {
-                e.preventDefault();
-                const fd = new FormData(e.currentTarget);
-                // Passa a data para a função
-                handleAddCredits(
-                    Number(fd.get('amount')), 
-                    Number(fd.get('totalCost')),
-                    fd.get('purchaseDate') as string
-                );
-            }}>
-                <div className="p-3 bg-purple-50 dark:bg-purple-900/20 border border-purple-100 dark:border-purple-800 rounded-md mb-2">
-                    <span className="text-[10px] font-bold text-slate-400 uppercase">Servidor</span>
-                    <div className="font-bold text-slate-800 dark:text-white">{selectedServerForCredit.name}</div>
-                </div>
-                
-                <div className="grid grid-cols-2 gap-3">
-                    <FormInput theme={theme} name="amount" label="Qtd. Créditos" type="number" required autoFocus />
-                    <FormInput theme={theme} name="totalCost" label="Custo Total (R$)" type="number" step="0.01" required placeholder="0.00" />
-                </div>
-
-                {/* --- NOVO CAMPO DE DATA --- */}
-                <div className="space-y-1">
-                    <label className="text-[10px] font-bold text-slate-400 uppercase ml-1 tracking-wider">Data da Compra</label>
-                    <input 
-                        type="date" 
-                        name="purchaseDate"
-                        defaultValue={new Date().toISOString().split('T')[0]}
-                        className={`w-full px-3 py-2.5 rounded-md border text-[13px] font-medium outline-none ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50 border-slate-200 text-slate-800 shadow-sm'}`}
-                    />
-                </div>
-
-                <button type="submit" className="w-full bg-purple-600 text-white py-3 rounded-md font-bold uppercase text-[12px] shadow-sm mt-2 hover:bg-purple-700 transition-colors">
-                    Salvar Registro
-                </button>
-            </form>
           </div>
-        </div>
-      )}
+        )}
 
-      {selectedClientForRenewal && <RenewalModal theme={theme} client={selectedClientForRenewal} packages={packages} onRenew={registerRenewal} onClose={() => setSelectedClientForRenewal(null)} />}
-      {selectedClientForMsg && <MessageModal theme={theme} client={selectedClientForMsg} templates={templates} onSend={sendWhatsApp} onClose={() => setSelectedClientForMsg(null)} />}
-      {/* Lógica para escolher o modal correto (SaaS ou IPTV) */}
-      {selectedClientDetails && (
-        view === 'saas_admin' ? (
-          <SaaSDetailsModal 
-            user={selectedClientDetails} 
-            theme={theme} 
-            onClose={() => setSelectedClientDetails(null)} 
-            onUpdateExpiry={handleUpdateSaaSExpiry} // <--- ADICIONE ESTA LINHA PARA O BOTÃO FUNCIONAR
-          />
-        ) : (
-          <ClientDetailsModal 
-            theme={theme} 
-            client={selectedClientDetails} 
-            onClose={() => setSelectedClientDetails(null)} 
-          />
-        )
-      )}
-      {selectedClientForEdit && <EditClientModal theme={theme} client={selectedClientForEdit} packages={packages} onEdit={handleEditClient} onClose={() => setSelectedClientForEdit(null)} />}
-    </div>
+        {/* MODAIS (MANTENHA OS QUE VOCÊ JÁ TINHA) */}
+        {selectedClientForRenewal && <RenewalModal theme={theme} client={selectedClientForRenewal} packages={packages} onRenew={registerRenewal} onClose={() => setSelectedClientForRenewal(null)} />}
+        {selectedClientForMsg && <MessageModal theme={theme} client={selectedClientForMsg} templates={templates} onSend={sendWhatsApp} onClose={() => setSelectedClientForMsg(null)} />}
+        {selectedClientDetails && (
+          view === 'saas_admin' ? (
+            <SaaSDetailsModal user={selectedClientDetails} theme={theme} onClose={() => setSelectedClientDetails(null)} onUpdateExpiry={handleUpdateSaaSExpiry} />
+          ) : (
+            <ClientDetailsModal theme={theme} client={selectedClientDetails} onClose={() => setSelectedClientDetails(null)} />
+          )
+        )}
+        {selectedClientForEdit && <EditClientModal theme={theme} client={selectedClientForEdit} packages={packages} onEdit={handleEditClient} onClose={() => setSelectedClientForEdit(null)} />}
+      
+      </div> {/* FECHA AREA CONTEUDO */}
+    </div> {/* FECHA RAIZ */}
   );
 }
+
+// ESTE É O MOLDE QUE FICA FORA DE TUDO NO FINAL DO ARQUIVO
+const MenuIcon = ({ icon, label, onClick }) => (
+  <button onClick={onClick} className="flex flex-col items-center gap-2 active:scale-90 transition-all">
+    <div className="p-4 rounded-2xl bg-slate-100 dark:bg-slate-800 flex items-center justify-center">
+      {React.cloneElement(icon as React.ReactElement, { size: 24 })}
+    </div>
+    <span className="text-[10px] font-bold uppercase tracking-tight opacity-70 text-center leading-tight">
+      {label}
+    </span>
+  </button>
+);
