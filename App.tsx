@@ -1416,45 +1416,36 @@ const handleExportCSV = () => {
 
   const handleTogglePayment = (client: Client) => updateClientInSupabase(client.id, { paymentStatus: client.paymentStatus === 'paid' ? 'pending' : 'paid' });
 
-  const uniqueReferrers = useMemo(() => {
-  // Isso varre todos os seus clientes e pega os nomes de quem indicou, sem repetir.
-  return [...new Set(clients.map(c => c.referred_by).filter(Boolean))];
-}, [clients]);
 
-  // HANDLER ADICIONAR CLIENTE
-  // --- SUBSTITUIR A FUNÇÃO handleAddClient INTEIRA ---
+// HANDLER ADICIONAR CLIENTE
   const handleAddClient = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!session) return;
     
     const pkg = packages.find(p => p.id === addFormData.packageId);
-    
-    // CORREÇÃO AQUI:
-    // Se tiver pacote, usa a "credits_qty" (Quantidade de Créditos). 
-    // Se não tiver essa info definida (pacote antigo), assume 1.
     const creditsToDeduct = pkg ? (pkg.credits_qty || 1) : 1;
 
-    // 1. Validação de Créditos do Servidor (AGORA VERIFICA O CUSTO CORRETO)
+    // 1. Validação de Créditos do Servidor
     let selectedServer = null;
     if (addFormData.serverId) {
         selectedServer = servers.find(s => s.id === addFormData.serverId);
-        
-        // Verifica se existe o servidor E se os créditos são suficientes
-        if (selectedServer) {
-            if (selectedServer.credits < creditsToDeduct) {
-                showToast(`Saldo insuficiente! Este pacote consome ${creditsToDeduct} créditos.`, "error");
-                return; // Para tudo se não tiver saldo
-            }
+        if (selectedServer && selectedServer.credits < creditsToDeduct) {
+            showToast(`Saldo insuficiente! Este pacote consome ${creditsToDeduct} créditos.`, "error");
+            return;
         }
     }
     
-    // 2. Preparação dos Dados
+    // 2. Preparação dos Dados e Sincronização de Datas
     const expiryString = `${addFormData.expiryDate}T${addFormData.expiryTime || '23:59'}:00`;
     const expiryDateObj = new Date(expiryString);
+    
+    // Define a data base (ou a escolhida no calendário ou a de hoje)
     const dateOfPayment = addFormData.paymentDate || new Date().toISOString().split('T')[0];
+    // Transformamos em ISO completo para manter a compatibilidade com o banco
+    const synchronizedDate = new Date(dateOfPayment).toISOString();
   
     const newClient: Client = {
-      id: crypto.randomUUID(), // O banco pode gerar, mas enviamos por garantia local
+      id: crypto.randomUUID(),
       user_id: session.user.id,
       name: addFormData.name,
       username: addFormData.username, 
@@ -1465,21 +1456,19 @@ const handleExportCSV = () => {
       phone: addFormData.phone,
       packageName: pkg?.name || 'Personalizado',
       packageId: addFormData.packageId || null, 
-      
       serverId: addFormData.serverId ? addFormData.serverId : null, 
-      
       price: Number(addFormData.price) || 0,
       expenses: Number(addFormData.expenses) || 0,
       notes: addFormData.notes || '',
       appName: addFormData.appName || '',
       macKey: addFormData.macKey || '',
-      createdAt: new Date().toISOString(),
+      createdAt: synchronizedDate, // SINCRONIZADO: O registro agora "nasce" na data do pagamento
       expiresAt: expiryDateObj.toISOString(),
       
       paymentHistory: addFormData.isPaid ? [{ 
           id: crypto.randomUUID(), 
           amount: Number(addFormData.price), 
-          date: new Date(dateOfPayment).toISOString(), 
+          date: synchronizedDate, // SINCRONIZADO
           monthsPaid: pkg?.months || 1, 
           method: 'Cadastro' 
       }] : [],
@@ -1487,13 +1476,14 @@ const handleExportCSV = () => {
     };
   
     try {
-      // Inserção no Banco
+      // 3. Inserção no Banco (Tabela Clientes)
       const { error } = await supabase.from('clients').insert([{
         user_id: newClient.user_id,
         name: newClient.name,
         username: newClient.username,
         password: newClient.password,
         status: newClient.status,
+        referred_by: newClient.referred_by, // Inserido conforme discutimos
         payment_status: newClient.paymentStatus, 
         phone: newClient.phone,
         package_name: newClient.packageName,
@@ -1504,35 +1494,45 @@ const handleExportCSV = () => {
         notes: newClient.notes,
         app_name: newClient.appName,
         mac_key: newClient.macKey,
-        created_at: newClient.createdAt,
+        created_at: newClient.createdAt, // SINCRONIZADO
         expires_at: newClient.expiresAt,
         payment_history: newClient.paymentHistory,
         total_paid: newClient.totalPaid
       }]);
   
       if (error) throw error;
+
+      // 4. Registro Automático da Despesa no Financeiro (SINCRONIZADO)
+      // Se houver um custo (expenses) registrado no cadastro
+      if (newClient.expenses > 0) {
+        await supabase.from('financial').insert([{
+          user_id: session.user.id,
+          type: 'expense',
+          category: 'Painel',
+          amount: newClient.expenses,
+          description: `Custo de ativação: ${newClient.name}`,
+          date: synchronizedDate, // SINCRONIZADO: A despesa entra no mesmo mês da receita
+          created_at: synchronizedDate
+        }]);
+      }
   
       // Atualiza lista local
       setClients(prev => [...prev, newClient]);
       
-      // Lógica de Desconto de Crédito (CORRIGIDA)
+      // 5. Lógica de Desconto de Crédito
       if (selectedServer && session.user.id) {
           const newCredits = selectedServer.credits - creditsToDeduct;
-          
-          // Atualiza servidor localmente
           setServers(prev => prev.map(s => s.id === selectedServer.id ? { ...s, credits: newCredits } : s));
-          
-          // Atualiza no banco
           await supabase.from('servers').update({ credits: newCredits }).eq('id', selectedServer.id);
       }
   
       showToast(`Cliente cadastrado! ${creditsToDeduct} crédito(s) descontado(s).`, "success");
       setView('clients');
       
-      // Limpa o formulário
+      // Limpa o formulário mantendo a data de hoje para o próximo
       setAddFormData({
           name: '', username: '', password: '', phone: '', 
-          packageId: '', price: '', expenses: '',
+          packageId: '', price: '', expenses: '', referredBy: '',
           expiryDate: '', expiryTime: '23:59', 
           isPaid: true, 
           paymentDate: new Date().toISOString().split('T')[0],
@@ -1540,8 +1540,7 @@ const handleExportCSV = () => {
       });
   
     } catch (error: any) {
-      console.error("Erro detalhado:", error);
-      alert("ERRO DO SUPABASE:\n" + (error.message || JSON.stringify(error)));
+      console.error("Erro ao cadastrar:", error);
       showToast("Erro ao sincronizar dados.", "error");
     }
   };
@@ -2105,9 +2104,9 @@ const handleDeleteSaaSUser = async (id: string) => {
                 </div>
             )}
 
-            {view === 'dashboard' && (
+                {view === 'dashboard' && (
                   <div className="space-y-5 animate-in fade-in">
-                    {/* 1. CARTÕES DE ESTATÍSTICAS SUPERIORES */}
+                    {/* ESTATÍSTICAS SUPERIORES (MANTIDAS) */}
                     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
                       <StatCard title="Total Ativos" value={clients.filter(c => c.status === 'active').length} icon={<CheckCircle/>} color="emerald" theme={theme} />
                       <StatCard title="Pagamento Pendente" value={clients.filter(c => c.paymentStatus === 'pending').length} icon={<AlertCircle/>} color="amber" theme={theme} />
@@ -2115,18 +2114,27 @@ const handleDeleteSaaSUser = async (id: string) => {
                       <StatCard title="Bloqueados" value={clients.filter(c => c.status === 'blocked').length} icon={<UserX/>} color="blue" theme={theme} />
                     </div>
                     
-                    {/* 2. GRID DE RANKINGS E COBRANÇAS */}
-                    <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                    {/* GRID HARMONIZADO 2x2 - LIMITE DE 7 CLIENTES POR QUADRO */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                       
-                      {/* CARD: PRIORIDADE DE COBRANÇA */}
-                      <div className={`rounded-lg border shadow-sm overflow-hidden ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
+                      {/* LINHA 1 - COLUNA 1: ÚLTIMAS ENTRADAS (ATÉ 7) */}
+                      <div className="flex flex-col h-full">
+                        <RecentActivityCard 
+                          title="Últimas Entradas" 
+                          theme={theme} 
+                          items={clients.flatMap(c => c.paymentHistory?.map(h => ({...h, clientName: c.name})) || []).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 7)} 
+                        />
+                      </div>
+
+                      {/* LINHA 1 - COLUNA 2: PRIORIDADE DE COBRANÇA (ATÉ 7) */}
+                      <div className={`rounded-xl border shadow-sm overflow-hidden flex flex-col ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
                         <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
                           <h3 className="text-xs font-bold uppercase flex items-center gap-2 tracking-wide text-slate-600 dark:text-slate-300">
                             <CreditCard size={16} className="text-amber-500"/> Prioridade de Cobrança
                           </h3>
                         </div>
-                        <div className="divide-y divide-slate-100 dark:divide-slate-800">
-                          {clients.filter(c => c.paymentStatus === 'pending' || isExpired(c.expiresAt)).slice(0, 5).map(c => (
+                        <div className="divide-y divide-slate-100 dark:divide-slate-800 flex-1">
+                          {clients.filter(c => c.paymentStatus === 'pending' || isExpired(c.expiresAt)).slice(0, 7).map(c => (
                             <div key={c.id} className="p-3 flex justify-between items-center hover:bg-slate-50 dark:hover:bg-slate-800/50">
                               <div className="flex flex-col min-w-0 pr-3">
                                 <span className="font-semibold text-xs truncate">{c.name}</span>
@@ -2138,32 +2146,30 @@ const handleDeleteSaaSUser = async (id: string) => {
                             </div>
                           ))}
                           {clients.filter(c => c.paymentStatus === 'pending' || isExpired(c.expiresAt)).length === 0 && (
-                              <div className="p-6 text-center text-xs text-slate-400">Nenhuma pendência hoje.</div>
+                              <div className="p-10 text-center text-xs text-slate-400">Nenhuma pendência hoje.</div>
                           )}
                         </div>
                       </div>
 
-                      {/* CARD: RANKING DE FATURAMENTO (TOP CLIENTES) */}
-                      <div className={`rounded-lg border shadow-sm overflow-hidden ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
+                      {/* LINHA 2 - COLUNA 1: RANKING DE CLIENTES/FATURAMENTO (ATÉ 7) */}
+                      <div className={`rounded-xl border shadow-sm overflow-hidden flex flex-col ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
                         <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
                           <h3 className="text-xs font-bold uppercase flex items-center gap-2 tracking-wide text-slate-600 dark:text-slate-300">
-                            <Crown size={16} className="text-yellow-500"/> Top Clientes (Faturamento)
+                            <DollarSign size={16} className="text-emerald-500"/> Top Clientes (Faturamento)
                           </h3>
                         </div>
-                        <div className="divide-y divide-slate-100 dark:divide-slate-800">
-                          {clients.slice().sort((a,b) => (b.totalPaid || 0) - (a.totalPaid || 0)).slice(0, 5).map((c, i) => (
+                        <div className="divide-y divide-slate-100 dark:divide-slate-800 flex-1">
+                          {clients.slice().sort((a,b) => (b.totalPaid || 0) - (a.totalPaid || 0)).slice(0, 7).map((c, i) => (
                             <div key={c.id} className="p-3 flex justify-between items-center hover:bg-slate-50 dark:hover:bg-slate-800/50">
                               <div className="flex items-center gap-3 min-w-0 pr-3">
                                 <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-black ${
-                                  i === 0 ? 'bg-yellow-500 text-white' : 
-                                  i === 1 ? 'bg-slate-300 text-slate-700' : 
-                                  i === 2 ? 'bg-amber-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
+                                  i === 0 ? 'bg-yellow-500 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
                                 }`}>
                                   {i + 1}º
                                 </div>
                                 <div className="flex flex-col truncate">
                                   <span className="font-bold text-xs truncate text-slate-700 dark:text-slate-200">{c.name}</span>
-                                  <span className="text-[9px] opacity-60 font-medium uppercase">R$ {(c.totalPaid || 0).toFixed(2)}</span>
+                                  <span className="text-[9px] font-black text-emerald-600 uppercase">R$ {(c.totalPaid || 0).toFixed(2)}</span>
                                 </div>
                               </div>
                               <span className="px-2 py-0.5 rounded text-[9px] font-bold uppercase bg-blue-500/10 text-blue-500">{c.packageName || 'Plano'}</span>
@@ -2172,20 +2178,20 @@ const handleDeleteSaaSUser = async (id: string) => {
                         </div>
                       </div>
 
-                      {/* CARD: RANKING DE INDICAÇÕES */}
-                      <div className={`rounded-lg border shadow-sm overflow-hidden ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
+                      {/* LINHA 2 - COLUNA 2: RANKING DE INDICAÇÕES (ATÉ 7) */}
+                      <div className={`rounded-xl border shadow-sm overflow-hidden flex flex-col ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
                         <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
                           <h3 className="text-xs font-bold uppercase flex items-center gap-2 tracking-wide text-slate-600 dark:text-slate-300">
-                            <UserPlus size={16} className="text-blue-500"/> Top Indicações
+                            <Crown size={16} className="text-yellow-500"/> Top Indicações
                           </h3>
                         </div>
-                        <div className="divide-y divide-slate-100 dark:divide-slate-800">
+                        <div className="divide-y divide-slate-100 dark:divide-slate-800 flex-1">
                           {(() => {
                             const counts = {};
                             clients.forEach(c => { if (c.referred_by) counts[c.referred_by] = (counts[c.referred_by] || 0) + 1; });
-                            const ranking = Object.entries(counts).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count).slice(0, 5);
+                            const ranking = Object.entries(counts).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count).slice(0, 7);
                             
-                            if (ranking.length === 0) return <div className="p-6 text-center text-xs text-slate-400">Sem indicações registradas.</div>;
+                            if (ranking.length === 0) return <div className="p-10 text-center text-xs text-slate-400">Sem indicações registradas.</div>;
 
                             return ranking.map((item, i) => (
                               <div key={item.name} className="p-3 flex justify-between items-center hover:bg-slate-50 dark:hover:bg-slate-800/50">
@@ -2203,15 +2209,6 @@ const handleDeleteSaaSUser = async (id: string) => {
                         </div>
                       </div>
 
-                    </div>
-
-                    {/* 3. CARD DE ÚLTIMAS ENTRADAS (OCUPANDO LARGURA TOTAL) */}
-                    <div className="grid grid-cols-1 gap-4">
-                      <RecentActivityCard 
-                        title="Últimas Entradas" 
-                        theme={theme} 
-                        items={clients.flatMap(c => c.paymentHistory?.map(h => ({...h, clientName: c.name})) || []).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 5)} 
-                      />
                     </div>
                   </div>
                 )}
