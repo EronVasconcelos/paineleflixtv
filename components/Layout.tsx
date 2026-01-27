@@ -7,7 +7,6 @@ import {
 } from 'lucide-react';
 import { SidebarItem, BottomNavItem, MobileSubItem } from './UiKit';
 
-// Função auxiliar
 const checkIsExpired = (date: string | null | undefined) => {
   if (!date) return true;
   return new Date(date) < new Date();
