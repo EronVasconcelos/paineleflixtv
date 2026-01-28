@@ -92,17 +92,6 @@ const MobileSubItem = ({ icon, label, onClick }: { icon: React.ReactNode, label:
   </button>
 );
 
-const MenuIcon = ({ icon, label, onClick }: { icon: React.ReactNode, label: string, onClick: () => void }) => (
-  <button onClick={onClick} className="flex flex-col items-center gap-2 active:scale-95 transition-all group">
-    <div className="p-4 rounded-2xl bg-slate-100 dark:bg-slate-800 group-hover:bg-blue-50 dark:group-hover:bg-slate-700 border border-transparent group-hover:border-blue-100 dark:group-hover:border-slate-600 transition-colors flex items-center justify-center shadow-sm">
-      {React.cloneElement(icon as React.ReactElement, { size: 24, className: "group-hover:text-blue-500 transition-colors" })}
-    </div>
-    <span className="text-[10px] font-bold uppercase tracking-tight opacity-70 text-center leading-tight group-hover:opacity-100 group-hover:text-blue-600 dark:group-hover:text-blue-400">
-      {label}
-    </span>
-  </button>
-);
-
 const StatCard = ({ title, value, icon, color, theme, trend }: { title: string, value: string | number, icon: React.ReactNode, color: string, theme: 'light' | 'dark', trend?: string }) => {
   const getColors = () => {
     switch(color) {
@@ -1029,7 +1018,6 @@ const SaaSDetailsModal = ({
   );
 };
 
-
 // --- INÍCIO DO COMPONENTE PRINCIPAL APP ---
 export default function App() {
   const [theme, setTheme] = useState<'light' | 'dark'>(() => {
@@ -1037,20 +1025,18 @@ export default function App() {
     if (saved) return saved as 'light' | 'dark';
     return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light';
   });
-
-  const [finMonth, setFinMonth] = useState(new Date().getMonth());
-  const [finYear, setFinYear] = useState(new Date().getFullYear());
+  const [finMonth, setFinMonth] = React.useState(new Date().getMonth());
+  const [finYear, setFinYear] = React.useState(new Date().getFullYear());
   const [session, setSession] = useState<Session | null>(null);
   const [userProfile, setUserProfile] = useState<UserProfile | null>(null);
+  // Estados para o Painel SaaS
   const [allUsers, setAllUsers] = useState<UserProfile[]>([]); 
   
+  // 'finance' substitui 'reports' como solicitado
   const [view, setView] = useState<any>(() => {
-    const savedView = localStorage.getItem('painel_ultima_view');
-    return savedView || 'dashboard';
-  });
-
-  // AQUI: Apenas uma declaração correta para o menu
-  const [isBottomSheetOpen, setIsBottomSheetOpen] = useState(false);
+  const savedView = localStorage.getItem('painel_ultima_view');
+  return savedView || 'dashboard';
+});
   
   const [selectedClientForMsg, setSelectedClientForMsg] = useState<Client | null>(null);
   const [selectedClientForRenewal, setSelectedClientForRenewal] = useState<Client | null>(null);
@@ -1060,7 +1046,8 @@ export default function App() {
   const [showSuccessModal, setShowSuccessModal] = useState(false);
   const [simulationMode, setSimulationMode] = useState<'none' | 'trial_expired' | 'sub_expired' | 'payment_success'>('none'); 
   
-    const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
+  const [showMobileMenu, setShowMobileMenu] = useState(false);
+  const [currentYear, setCurrentYear] = useState(new Date().getFullYear());
   
   const [searchTerm, setSearchTerm] = useState('');
   const [statusFilter, setStatusFilter] = useState<'all' | 'active' | 'expired' | 'blocked' | 'archived'>('all');
@@ -1932,136 +1919,152 @@ const handleDeleteSaaSUser = async (id: string) => {
 
   /* --- PARTE 5: RENDERIZAÇÃO VISUAL E ROTEAMENTO --- */
 
-return (
-  <div className={`flex flex-col md:flex-row h-screen overflow-hidden font-normal transition-colors duration-300 ${theme === 'dark' ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-800'}`}>
-    
-    {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
-
-    {/* --- SIDEBAR DESKTOP --- */}
-    <aside className="w-56 bg-slate-50 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 hidden md:flex flex-col shrink-0">
-      <div className="p-5 flex items-center gap-3">
-        <div className="bg-gradient-to-br from-blue-600 to-cyan-500 p-1.5 rounded-lg shadow-lg shadow-blue-500/30">
-          <Tv size={20} className="text-white" />
-        </div>
-        <h1 className="text-sm font-black uppercase tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-cyan-500 dark:from-blue-400 dark:to-cyan-300 leading-none">
-            STREAM<br/>MANAGER
-        </h1>
-      </div>
+  return (
+    <div className={`flex flex-col md:flex-row h-screen overflow-hidden font-normal transition-colors duration-300 ${theme === 'dark' ? 'bg-slate-950 text-slate-100' : 'bg-slate-50 text-slate-800'}`}>
       
-      <nav className="flex-1 px-3 space-y-0.5 overflow-y-auto py-2 hide-scrollbar">
-        {isAdmin && (
-           <SidebarItem icon={<Crown size={18} className="text-yellow-500"/>} label="Painel SaaS" active={view === 'saas_admin'} onClick={() => setView('saas_admin')} />
-        )}
+      {toast && <Toast message={toast.message} type={toast.type} onClose={() => setToast(null)} />}
 
-        <div className="pt-2 pb-2 px-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Gestão</div>
-        <SidebarItem icon={<LayoutDashboard size={18} className="text-blue-500"/>} label="Visão Geral" active={view === 'dashboard'} onClick={() => setView('dashboard')} />
-        <SidebarItem icon={<DollarSign size={18} className="text-emerald-500"/>} label="Financeiro" active={view === 'finance'} onClick={() => setView('finance')} />
-        <SidebarItem icon={<Users size={18} className="text-orange-500"/>} label="Meus Clientes" active={view === 'clients'} onClick={() => setView('clients')} />
-        <SidebarItem icon={<UserPlus size={18} className="text-cyan-500"/>} label="Novo Cadastro" active={view === 'add'} onClick={() => setView('add')} />
-        <SidebarItem icon={<History size={18} className="text-red-500"/>} label="Histórico" active={view === 'history'} onClick={() => setView('history')} />
-        <SidebarItem icon={<ServerIcon size={18} className="text-purple-500"/>} label="Servidores" active={view === 'servers'} onClick={() => setView('servers')} />
-        
-        <div className="pt-4 pb-2 px-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Ferramentas</div>
-        <SidebarItem icon={<CalendarDays size={18} className="text-emerald-500"/>} label="Automação Zap" active={view === 'scheduling'} onClick={() => setView('scheduling')} />
-        <SidebarItem icon={<Layers size={18} className="text-indigo-500"/>} label="Planos e Preços" active={view === 'packages'} onClick={() => setView('packages')} />
-        <SidebarItem icon={<MessageSquare size={18} className="text-emerald-500"/>} label="Mensagens" active={view === 'messages'} onClick={() => setView('messages')} />
-        <SidebarItem icon={<Database size={18} className="text-slate-500"/>} label="Backup Dados" active={view === 'database'} onClick={() => setView('database')} />
-        
-        <div className="pt-4 pb-2 px-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Conta</div>
-        <SidebarItem icon={<CreditCard size={18} className="text-yellow-500"/>} label="Minha Assinatura" active={view === 'subscription'} onClick={() => setView('subscription')} />
-      </nav>
-
-      <div className="p-3 border-t border-slate-200 dark:border-slate-800 space-y-2">
-        <button onClick={toggleTheme} className="w-full flex items-center justify-between px-3 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-md transition-all">
-          <span className="text-[10px] font-bold uppercase">{theme === 'dark' ? 'Escuro' : 'Claro'}</span>
-          {theme === 'dark' ? <Moon size={14} className="text-blue-400" /> : <Sun size={14} className="text-amber-400" />}
-        </button>
-        
-        <button onClick={handleLogout} className="w-full flex items-center gap-3 px-3 py-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-all">
-          <LogOut size={16} />
-          <span className="text-[11px] font-bold uppercase">Sair</span>
-        </button>
-      </div>
-    </aside>
-
-    {/* --- ÁREA PRINCIPAL --- */}
-    <div className="flex-1 flex flex-col h-full relative overflow-hidden">
-      
-      {/* HEADER FIXO */}
-      <header className={`px-5 py-3 flex items-center justify-between pt-safe shrink-0 border-b z-20 transition-colors ${theme === 'dark' ? 'bg-slate-900/50 border-slate-800 backdrop-blur-md' : 'bg-white/80 border-slate-200 backdrop-blur-md'}`}>
-        <div className="flex items-center gap-3">
-           <h2 className={`text-sm font-bold uppercase tracking-tight ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
-            {view === 'dashboard' && 'Visão Geral'}
-            {view === 'saas_admin' && 'Painel SaaS'}
-            {view === 'finance' && 'Financeiro & Lucros'}
-            {view === 'history' && 'Histórico Anual'}
-            {view === 'clients' && 'Gestão de Clientes'}
-            {view === 'scheduling' && 'Automação'}
-            {view === 'add' && 'Cadastrar Cliente'}
-            {view === 'packages' && 'Gerenciar Planos'}
-            {view === 'messages' && 'Modelos de Mensagem'}
-            {view === 'database' && 'Segurança'}
-            {view === 'servers' && 'Meus Servidores'}
-            {view === 'subscription' && 'Minha Assinatura'}
-          </h2>
-          <div className="flex items-center gap-2">
-              {userProfile && (
-                  <div className="hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
-                    <Crown size={12} />
-                    <span className="text-[9px] font-bold uppercase">
-                      {isAdmin 
-                        ? 'Dono / Admin' 
-                        : (() => {
-                            const finalDate = userProfile.subscription_ends_at || userProfile.trial_ends_at;
-                            if (checkIsExpired(finalDate)) return 'Acesso Expirado';
-                            const diffInMs = new Date(finalDate).getTime() - Date.now();
-                            const daysLeft = Math.max(0, Math.ceil(diffInMs / 86400000));
-                            return `Acesso: ${daysLeft} dias`;
-                          })()
-                      }
-                    </span>
-                  </div>
-                )}
-              <button onClick={notificationsEnabled ? () => {} : requestPermission} className={`p-1.5 rounded-md transition-colors ${notificationsEnabled ? 'text-emerald-500 bg-emerald-500/10' : 'text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
-                {notificationsEnabled ? <Bell size={16}/> : <BellOff size={16}/>}
-              </button>
+      {/* --- SIDEBAR DESKTOP --- */}
+      <aside className="w-56 bg-slate-50 dark:bg-slate-900 border-r border-slate-200 dark:border-slate-800 hidden md:flex flex-col shrink-0">
+        <div className="p-5 flex items-center gap-3">
+          <div className="bg-gradient-to-br from-blue-600 to-cyan-500 p-1.5 rounded-lg shadow-lg shadow-blue-500/30">
+            <Tv size={20} className="text-white" />
           </div>
+          <h1 className="text-sm font-black uppercase tracking-tighter bg-clip-text text-transparent bg-gradient-to-r from-blue-600 to-cyan-500 dark:from-blue-400 dark:to-cyan-300 leading-none">
+              STREAM<br/>MANAGER
+          </h1>
         </div>
         
-        <div className="flex items-center gap-2">
-          <span className="hidden md:block text-[10px] font-bold uppercase text-slate-400">
-             {session.user.user_metadata.full_name || session.user.email}
-          </span>
-          <button onClick={handleRefreshData} className={`md:hidden p-2 rounded-md border transition-all shadow-sm ${isRefreshing ? 'animate-spin bg-blue-100 text-blue-600 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400' : 'bg-slate-50 text-slate-500 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700'}`}>
-            <RefreshCw size={16} />
-          </button>
-          <button onClick={() => handlePublicSignup({name: '', phone: '', username: ''})} className="p-2 text-blue-600 bg-blue-50 dark:bg-blue-900/30 dark:text-blue-400 rounded-md border border-blue-100 dark:border-blue-800/50 hover:bg-blue-100 transition-all shadow-sm" title="Link de Cadastro">
-            <Share2 size={16} />
-          </button>
-          <button onClick={() => geminiService.analyzeBusiness(clients).then(setAiAnalysis)} className="p-2 text-blue-600 bg-blue-50 dark:bg-blue-900/30 dark:text-blue-400 rounded-md border border-blue-100 dark:border-blue-800/50 hover:bg-blue-100 transition-all shadow-sm">
-            <TrendingUp size={16} />
-          </button>
-        </div>
-      </header>
-
-       {/* ÁREA DE CONTEÚDO SCROLLABLE */}
-      <main ref={mainRef} onTouchStart={handleTouchStart} onTouchMove={handleTouchMove} onTouchEnd={handleTouchEnd} className="flex-1 overflow-y-auto pb-40 p-4 md:p-6 hide-scrollbar bg-slate-50/50 dark:bg-slate-950 transition-all">
-        
-        {/* Refresh Indicator */}
-        <div style={{ height: `${pullDistance}px`, opacity: pullDistance > 0 ? 1 : 0 }} className="flex items-center justify-center overflow-hidden transition-all ease-out duration-200">
-           <div className={`p-2 rounded-full bg-white dark:bg-slate-800 shadow-md border border-slate-200 dark:border-slate-700 ${isRefreshing ? 'animate-spin' : ''} ${pullDistance > 60 ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400'}`}>
-              {isRefreshing ? <Loader2 size={20}/> : <ArrowUp size={20} className="rotate-180"/>}
-           </div>
-        </div>
-
-        <div className="max-w-6xl mx-auto space-y-5">
-          {aiAnalysis && (
-            <div className="p-4 bg-blue-600 text-white rounded-lg relative shadow-lg overflow-hidden animate-in fade-in">
-              <button onClick={() => setAiAnalysis(null)} className="absolute top-2 right-2 text-white/50 hover:text-white"><X size={16}/></button>
-              <h4 className="font-bold text-[10px] mb-1 uppercase tracking-widest opacity-80">Insight IA:</h4>
-              <p className="text-xs leading-relaxed font-medium">{aiAnalysis}</p>
-            </div>
+        <nav className="flex-1 px-3 space-y-0.5 overflow-y-auto py-2 hide-scrollbar">
+          
+          {isAdmin && (
+             <SidebarItem icon={<Crown size={18} className="text-yellow-500"/>} label="Painel SaaS" active={view === 'saas_admin'} onClick={() => setView('saas_admin')} />
           )}
+
+          <div className="pt-2 pb-2 px-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Gestão</div>
+          <SidebarItem icon={<LayoutDashboard size={18} className="text-blue-500"/>} label="Visão Geral" active={view === 'dashboard'} onClick={() => setView('dashboard')} />
+          
+          {/* NOVA ABA FINANCEIRO (Substitui Relatórios) */}
+          <SidebarItem icon={<DollarSign size={18} className="text-emerald-500"/>} label="Financeiro" active={view === 'finance'} onClick={() => setView('finance')} />
+          
+          <SidebarItem icon={<Users size={18} className="text-orange-500"/>} label="Meus Clientes" active={view === 'clients'} onClick={() => setView('clients')} />
+          <SidebarItem icon={<UserPlus size={18} className="text-cyan-500"/>} label="Novo Cadastro" active={view === 'add'} onClick={() => setView('add')} />
+          <SidebarItem icon={<History size={18} className="text-red-500"/>} label="Histórico" active={view === 'history'} onClick={() => setView('history')} />
+          <SidebarItem icon={<ServerIcon size={18} className="text-purple-500"/>} label="Servidores" active={view === 'servers'} onClick={() => setView('servers')} />
+          
+          <div className="pt-4 pb-2 px-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Ferramentas</div>
+          <SidebarItem icon={<CalendarDays size={18} className="text-emerald-500"/>} label="Automação Zap" active={view === 'scheduling'} onClick={() => setView('scheduling')} />
+          <SidebarItem icon={<Layers size={18} className="text-indigo-500"/>} label="Planos e Preços" active={view === 'packages'} onClick={() => setView('packages')} />
+          <SidebarItem icon={<MessageSquare size={18} className="text-emerald-500"/>} label="Mensagens" active={view === 'messages'} onClick={() => setView('messages')} />
+          <SidebarItem icon={<Database size={18} className="text-slate-500"/>} label="Backup Dados" active={view === 'database'} onClick={() => setView('database')} />
+          
+          <div className="pt-4 pb-2 px-3 text-[10px] font-bold text-slate-400 uppercase tracking-widest">Conta</div>
+          <SidebarItem icon={<CreditCard size={18} className="text-yellow-500"/>} label="Minha Assinatura" active={view === 'subscription'} onClick={() => setView('subscription')} />
+        </nav>
+
+        <div className="p-3 border-t border-slate-200 dark:border-slate-800 space-y-2">
+          <button onClick={toggleTheme} className="w-full flex items-center justify-between px-3 py-2 bg-slate-100 dark:bg-slate-800 hover:bg-slate-200 dark:hover:bg-slate-700 rounded-md transition-all">
+            <span className="text-[10px] font-bold uppercase">{theme === 'dark' ? 'Escuro' : 'Claro'}</span>
+            {theme === 'dark' ? <Moon size={14} className="text-blue-400" /> : <Sun size={14} className="text-amber-400" />}
+          </button>
+          
+          <button onClick={handleLogout} className="w-full flex items-center gap-3 px-3 py-2 text-red-500 hover:bg-red-50 dark:hover:bg-red-900/20 rounded-md transition-all">
+            <LogOut size={16} />
+            <span className="text-[11px] font-bold uppercase">Sair</span>
+          </button>
+        </div>
+      </aside>
+
+      {/* --- MAIN CONTENT AREA --- */}
+      <div className="flex-1 flex flex-col min-w-0 overflow-hidden relative">
+        <header className={`px-5 py-3 flex items-center justify-between pt-safe shrink-0 border-b z-20 transition-colors ${theme === 'dark' ? 'bg-slate-900/50 border-slate-800 backdrop-blur-md' : 'bg-white/80 border-slate-200 backdrop-blur-md'}`}>
+          <div className="flex items-center gap-3">
+             <h2 className={`text-sm font-bold uppercase tracking-tight ${theme === 'dark' ? 'text-white' : 'text-slate-900'}`}>
+              {view === 'dashboard' && 'Visão Geral'}
+              {view === 'saas_admin' && 'Painel SaaS'}
+              {view === 'finance' && 'Financeiro & Lucros'}
+              {view === 'history' && 'Histórico Anual'}
+              {view === 'clients' && 'Gestão de Clientes'}
+              {view === 'scheduling' && 'Automação'}
+              {view === 'add' && 'Cadastrar Cliente'}
+              {view === 'packages' && 'Gerenciar Planos'}
+              {view === 'messages' && 'Modelos de Mensagem'}
+              {view === 'database' && 'Segurança'}
+              {view === 'servers' && 'Meus Servidores'}
+              {view === 'subscription' && 'Minha Assinatura'}
+            </h2>
+            <div className="flex items-center gap-2">
+                {userProfile && (
+                    <div className="hidden sm:flex items-center gap-1.5 px-2 py-1 rounded-md bg-emerald-500/10 text-emerald-600 dark:text-emerald-400 border border-emerald-500/20">
+                      <Crown size={12} />
+                      <span className="text-[9px] font-bold uppercase">
+                        {isAdmin 
+                          ? 'Dono / Admin' 
+                          : (() => {
+                              const finalDate = userProfile.subscription_ends_at || userProfile.trial_ends_at;
+                              if (checkIsExpired(finalDate)) return 'Acesso Expirado';
+                              
+                              const diffInMs = new Date(finalDate).getTime() - Date.now();
+                              const daysLeft = Math.max(0, Math.ceil(diffInMs / 86400000));
+                              
+                              return `Acesso: ${daysLeft} dias`;
+                            })()
+                        }
+                      </span>
+                    </div>
+                  )}
+                <button onClick={notificationsEnabled ? () => {} : requestPermission} className={`p-1.5 rounded-md transition-colors ${notificationsEnabled ? 'text-emerald-500 bg-emerald-500/10' : 'text-slate-400 hover:bg-slate-100 dark:hover:bg-slate-800'}`}>
+                  {notificationsEnabled ? <Bell size={16}/> : <BellOff size={16}/>}
+                </button>
+            </div>
+          </div>
+          
+          <div className="flex items-center gap-2">
+            <span className="hidden md:block text-[10px] font-bold uppercase text-slate-400">
+               {session.user.user_metadata.full_name || session.user.email}
+            </span>
+            <button 
+              onClick={handleRefreshData} 
+              className={`md:hidden p-2 rounded-md border transition-all shadow-sm ${isRefreshing ? 'animate-spin bg-blue-100 text-blue-600 border-blue-200 dark:bg-blue-900/30 dark:text-blue-400' : 'bg-slate-50 text-slate-500 border-slate-200 dark:bg-slate-800 dark:text-slate-400 dark:border-slate-700'}`}
+            >
+              <RefreshCw size={16} />
+            </button>
+            <button 
+              onClick={() => handlePublicSignup({name: '', phone: '', username: ''})} 
+              className="p-2 text-blue-600 bg-blue-50 dark:bg-blue-900/30 dark:text-blue-400 rounded-md border border-blue-100 dark:border-blue-800/50 hover:bg-blue-100 transition-all shadow-sm" 
+              title="Link de Cadastro"
+            >
+              <Share2 size={16} />
+            </button>
+            <button onClick={() => geminiService.analyzeBusiness(clients).then(setAiAnalysis)} className="p-2 text-blue-600 bg-blue-50 dark:bg-blue-900/30 dark:text-blue-400 rounded-md border border-blue-100 dark:border-blue-800/50 hover:bg-blue-100 transition-all shadow-sm">
+              <TrendingUp size={16} />
+            </button>
+          </div>
+        </header>
+
+        <main 
+          ref={mainRef}
+          onTouchStart={handleTouchStart}
+          onTouchMove={handleTouchMove}
+          onTouchEnd={handleTouchEnd}
+          className="flex-1 overflow-y-auto pb-32 p-4 md:p-6 hide-scrollbar bg-slate-50/50 dark:bg-slate-950 transition-all"
+        >
+          {/* Refresh Indicator */}
+          <div style={{ height: `${pullDistance}px`, opacity: pullDistance > 0 ? 1 : 0 }} className="flex items-center justify-center overflow-hidden transition-all ease-out duration-200">
+             <div className={`p-2 rounded-full bg-white dark:bg-slate-800 shadow-md border border-slate-200 dark:border-slate-700 ${isRefreshing ? 'animate-spin' : ''} ${pullDistance > 60 ? 'text-blue-600 dark:text-blue-400' : 'text-slate-400'}`}>
+                {isRefreshing ? <Loader2 size={20}/> : <ArrowUp size={20} className="rotate-180"/>}
+             </div>
+          </div>
+
+          <div className="max-w-6xl mx-auto space-y-5">
+            
+            {aiAnalysis && (
+              <div className="p-4 bg-blue-600 text-white rounded-lg relative shadow-lg overflow-hidden animate-in fade-in">
+                <button onClick={() => setAiAnalysis(null)} className="absolute top-2 right-2 text-white/50 hover:text-white"><X size={16}/></button>
+                <h4 className="font-bold text-[10px] mb-1 uppercase tracking-widest opacity-80">Insight IA:</h4>
+                <p className="text-xs leading-relaxed font-medium">{aiAnalysis}</p>
+              </div>
+            )}
 
             {/* RENDERIZAÇÃO CONDICIONAL DAS VIEWS */}
             
@@ -2102,143 +2105,113 @@ return (
             )}
 
                 {view === 'dashboard' && (
-              <div className="space-y-5 animate-in fade-in">
-                {/* 1. ESTATÍSTICAS SUPERIORES (PADRÃO) */}
-                <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
-                  <StatCard title="Total Ativos" value={clients.filter(c => c.status === 'active').length} icon={<CheckCircle/>} color="emerald" theme={theme} />
-                  <StatCard title="Pagamento Pendente" value={clients.filter(c => c.paymentStatus === 'pending').length} icon={<AlertCircle/>} color="amber" theme={theme} />
-                  <StatCard title="Vencidos (Hoje)" value={clients.filter(c => isExpired(c.expiresAt) && c.status === 'active').length} icon={<Clock/>} color="red" theme={theme} />
-                  <StatCard title="Bloqueados" value={clients.filter(c => c.status === 'blocked').length} icon={<UserX/>} color="blue" theme={theme} />
-                </div>
-                
-                {/* 2. GRID 2x2 COM ALINHAMENTO E DIVISÓRIAS PADRONIZADAS */}
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                  
-                  {/* CARD 1: ÚLTIMAS ENTRADAS (CORRIGIDO ALINHAMENTO) */}
-                  <div className={`rounded-xl border shadow-sm overflow-hidden flex flex-col ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
-                    <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
-                      <h3 className="text-xs font-bold uppercase flex items-center gap-2 tracking-wide text-slate-600 dark:text-slate-300">
-                        <Clock size={16} className="text-blue-500"/> Últimas Entradas
-                      </h3>
+                  <div className="space-y-5 animate-in fade-in">
+                    {/* ESTATÍSTICAS SUPERIORES (MANTIDAS) */}
+                    <div className="grid grid-cols-2 lg:grid-cols-4 gap-3">
+                      <StatCard title="Total Ativos" value={clients.filter(c => c.status === 'active').length} icon={<CheckCircle/>} color="emerald" theme={theme} />
+                      <StatCard title="Pagamento Pendente" value={clients.filter(c => c.paymentStatus === 'pending').length} icon={<AlertCircle/>} color="amber" theme={theme} />
+                      <StatCard title="Vencidos (Hoje)" value={clients.filter(c => isExpired(c.expiresAt) && c.status === 'active').length} icon={<Clock/>} color="red" theme={theme} />
+                      <StatCard title="Bloqueados" value={clients.filter(c => c.status === 'blocked').length} icon={<UserX/>} color="blue" theme={theme} />
                     </div>
-                    <div className="divide-y divide-slate-100 dark:divide-slate-800 flex-1">
-                      {(() => {
-                        const history = clients.flatMap(c => c.paymentHistory?.map(h => ({...h, clientName: c.name})) || [])
-                          .sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime())
-                          .slice(0, 7);
-                        
-                        if (history.length === 0) return <div className="p-10 text-center text-xs text-slate-400">Nenhuma entrada recente.</div>;
+                    
+                    {/* GRID HARMONIZADO 2x2 - LIMITE DE 7 CLIENTES POR QUADRO */}
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                      
+                      {/* LINHA 1 - COLUNA 1: ÚLTIMAS ENTRADAS (ATÉ 7) */}
+                      <div className="flex flex-col h-full">
+                        <RecentActivityCard 
+                          title="Últimas Entradas" 
+                          theme={theme} 
+                          items={clients.flatMap(c => c.paymentHistory?.map(h => ({...h, clientName: c.name})) || []).sort((a,b) => new Date(b.date).getTime() - new Date(a.date).getTime()).slice(0, 7)} 
+                        />
+                      </div>
 
-                        return history.map((item) => (
-                          <div key={item.id} className="p-3 flex justify-between items-center hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                            <div className="flex items-center gap-3 min-w-0">
-                              <div className="w-8 h-8 rounded-full bg-emerald-500/10 flex items-center justify-center text-emerald-600 shrink-0">
-                                <DollarSign size={16} />
-                              </div>
-                              <div className="flex flex-col truncate">
-                                <span className="font-bold text-xs truncate text-slate-700 dark:text-slate-200">{item.clientName}</span>
-                                <span className="text-[10px] opacity-60 font-medium uppercase mt-0.5">
-                                  {new Date(item.date).toLocaleDateString('pt-BR')} • {item.method || 'CADASTRO'}
-                                </span>
-                              </div>
-                            </div>
-                            <div className="text-xs font-black text-emerald-600 dark:text-emerald-400">
-                              +R$ {(item.amount || 0).toFixed(2)}
-                            </div>
-                          </div>
-                        ));
-                      })()}
-                    </div>
-                  </div>
-
-                  {/* CARD 2: PRIORIDADE DE COBRANÇA */}
-                  <div className={`rounded-xl border shadow-sm overflow-hidden flex flex-col ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
-                    <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
-                      <h3 className="text-xs font-bold uppercase flex items-center gap-2 tracking-wide text-slate-600 dark:text-slate-300">
-                        <CreditCard size={16} className="text-amber-500"/> Prioridade de Cobrança
-                      </h3>
-                    </div>
-                    <div className="divide-y divide-slate-100 dark:divide-slate-800 flex-1">
-                      {clients.filter(c => c.paymentStatus === 'pending' || isExpired(c.expiresAt)).slice(0, 7).map(c => (
-                        <div key={c.id} className="p-3 flex justify-between items-center hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                          <div className="flex flex-col min-w-0 pr-3">
-                            <span className="font-semibold text-xs truncate">{c.name}</span>
-                            <span className="text-[10px] opacity-60 font-medium uppercase mt-0.5">{new Date(c.expiresAt).toLocaleDateString('pt-BR')}</span>
-                          </div>
-                          <button onClick={() => sendWhatsApp(`Olá ${c.name}, renovação pendente.`, c)} className="p-2 bg-emerald-500 text-white rounded-md shrink-0 active:scale-95 shadow-sm hover:bg-emerald-600">
-                            <MessageSquare size={14}/>
-                          </button>
+                      {/* LINHA 1 - COLUNA 2: PRIORIDADE DE COBRANÇA (ATÉ 7) */}
+                      <div className={`rounded-xl border shadow-sm overflow-hidden flex flex-col ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
+                        <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
+                          <h3 className="text-xs font-bold uppercase flex items-center gap-2 tracking-wide text-slate-600 dark:text-slate-300">
+                            <CreditCard size={16} className="text-amber-500"/> Prioridade de Cobrança
+                          </h3>
                         </div>
-                      ))}
-                      {clients.filter(c => c.paymentStatus === 'pending' || isExpired(c.expiresAt)).length === 0 && (
-                          <div className="p-10 text-center text-xs text-slate-400">Nenhuma pendência hoje.</div>
-                      )}
-                    </div>
-                  </div>
-
-                  {/* CARD 3: TOP CLIENTES (FORMATO SINCRONIZADO COM ENTRADAS) */}
-                  <div className={`rounded-xl border shadow-sm overflow-hidden flex flex-col ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
-                    <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
-                      <h3 className="text-xs font-bold uppercase flex items-center gap-2 tracking-wide text-slate-600 dark:text-slate-300">
-                        <DollarSign size={16} className="text-emerald-500"/> Top Clientes (Faturamento)
-                      </h3>
-                    </div>
-                    <div className="divide-y divide-slate-100 dark:divide-slate-800 flex-1">
-                      {clients.slice().sort((a,b) => (b.totalPaid || 0) - (a.totalPaid || 0)).slice(0, 7).map((c, i) => (
-                        <div key={c.id} className="p-3 flex justify-between items-center hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                          <div className="flex items-center gap-3 min-w-0">
-                            <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-black shrink-0 ${
-                              i === 0 ? 'bg-yellow-500 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
-                            }`}>
-                              {i + 1}º
+                        <div className="divide-y divide-slate-100 dark:divide-slate-800 flex-1">
+                          {clients.filter(c => c.paymentStatus === 'pending' || isExpired(c.expiresAt)).slice(0, 7).map(c => (
+                            <div key={c.id} className="p-3 flex justify-between items-center hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                              <div className="flex flex-col min-w-0 pr-3">
+                                <span className="font-semibold text-xs truncate">{c.name}</span>
+                                <span className="text-[10px] opacity-60 font-medium uppercase mt-0.5">{new Date(c.expiresAt).toLocaleDateString('pt-BR')}</span>
+                              </div>
+                              <button onClick={() => sendWhatsApp(`Olá ${c.name}, renovação pendente.`, c)} className="p-2 bg-emerald-500 text-white rounded-md shrink-0 active:scale-95 shadow-sm hover:bg-emerald-600">
+                                <MessageSquare size={14}/>
+                              </button>
                             </div>
-                            <div className="flex flex-col truncate">
-                              <span className="font-bold text-xs truncate text-slate-700 dark:text-slate-200">{c.name}</span>
-                              <span className="text-[10px] opacity-60 font-medium uppercase mt-0.5">{c.packageName || 'Plano'}</span>
-                            </div>
-                          </div>
-                          <div className="text-xs font-black text-emerald-600 dark:text-emerald-400">
-                            R$ {(c.totalPaid || 0).toFixed(2)}
-                          </div>
+                          ))}
+                          {clients.filter(c => c.paymentStatus === 'pending' || isExpired(c.expiresAt)).length === 0 && (
+                              <div className="p-10 text-center text-xs text-slate-400">Nenhuma pendência hoje.</div>
+                          )}
                         </div>
-                      ))}
+                      </div>
+
+                      {/* LINHA 2 - COLUNA 1: RANKING DE CLIENTES/FATURAMENTO (ATÉ 7) */}
+                      <div className={`rounded-xl border shadow-sm overflow-hidden flex flex-col ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
+                        <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
+                          <h3 className="text-xs font-bold uppercase flex items-center gap-2 tracking-wide text-slate-600 dark:text-slate-300">
+                            <DollarSign size={16} className="text-emerald-500"/> Top Clientes (Faturamento)
+                          </h3>
+                        </div>
+                        <div className="divide-y divide-slate-100 dark:divide-slate-800 flex-1">
+                          {clients.slice().sort((a,b) => (b.totalPaid || 0) - (a.totalPaid || 0)).slice(0, 7).map((c, i) => (
+                            <div key={c.id} className="p-3 flex justify-between items-center hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                              <div className="flex items-center gap-3 min-w-0 pr-3">
+                                <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-black ${
+                                  i === 0 ? 'bg-yellow-500 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'
+                                }`}>
+                                  {i + 1}º
+                                </div>
+                                <div className="flex flex-col truncate">
+                                  <span className="font-bold text-xs truncate text-slate-700 dark:text-slate-200">{c.name}</span>
+                                  <span className="text-[9px] font-black text-emerald-600 uppercase">R$ {(c.totalPaid || 0).toFixed(2)}</span>
+                                </div>
+                              </div>
+                              <span className="px-2 py-0.5 rounded text-[9px] font-bold uppercase bg-blue-500/10 text-blue-500">{c.packageName || 'Plano'}</span>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+
+                      {/* LINHA 2 - COLUNA 2: RANKING DE INDICAÇÕES (ATÉ 7) */}
+                      <div className={`rounded-xl border shadow-sm overflow-hidden flex flex-col ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
+                        <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
+                          <h3 className="text-xs font-bold uppercase flex items-center gap-2 tracking-wide text-slate-600 dark:text-slate-300">
+                            <Crown size={16} className="text-yellow-500"/> Top Indicações
+                          </h3>
+                        </div>
+                        <div className="divide-y divide-slate-100 dark:divide-slate-800 flex-1">
+                          {(() => {
+                            const counts = {};
+                            clients.forEach(c => { if (c.referred_by) counts[c.referred_by] = (counts[c.referred_by] || 0) + 1; });
+                            const ranking = Object.entries(counts).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count).slice(0, 7);
+                            
+                            if (ranking.length === 0) return <div className="p-10 text-center text-xs text-slate-400">Sem indicações registradas.</div>;
+
+                            return ranking.map((item, i) => (
+                              <div key={item.name} className="p-3 flex justify-between items-center hover:bg-slate-50 dark:hover:bg-slate-800/50">
+                                <div className="flex items-center gap-3">
+                                  <div className={`w-5 h-5 rounded-full flex items-center justify-center text-[9px] font-black ${i === 0 ? 'bg-blue-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'}`}>{i + 1}º</div>
+                                  <span className="font-bold text-xs text-slate-700 dark:text-slate-200">{item.name}</span>
+                                </div>
+                                <div className="flex items-center gap-1">
+                                    <span className="text-[10px] font-bold text-blue-600">{item.count}</span>
+                                    <span className="text-[10px] text-slate-400 uppercase font-bold">Indicados</span>
+                                </div>
+                              </div>
+                            ));
+                          })()}
+                        </div>
+                      </div>
+
                     </div>
                   </div>
-
-                  {/* CARD 4: TOP INDICAÇÕES */}
-                  <div className={`rounded-xl border shadow-sm overflow-hidden flex flex-col ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
-                    <div className="px-4 py-3 border-b border-slate-100 dark:border-slate-800 bg-slate-50/50 dark:bg-slate-800/30">
-                      <h3 className="text-xs font-bold uppercase flex items-center gap-2 tracking-wide text-slate-600 dark:text-slate-300">
-                        <Crown size={16} className="text-yellow-500"/> Top Indicações
-                      </h3>
-                    </div>
-                    <div className="divide-y divide-slate-100 dark:divide-slate-800 flex-1">
-                      {(() => {
-                        const counts = {};
-                        clients.forEach(c => { if (c.referred_by) counts[c.referred_by] = (counts[c.referred_by] || 0) + 1; });
-                        const ranking = Object.entries(counts).map(([name, count]) => ({ name, count })).sort((a, b) => b.count - a.count).slice(0, 7);
-                        
-                        if (ranking.length === 0) return <div className="p-10 text-center text-xs text-slate-400">Sem indicações registradas.</div>;
-
-                        return ranking.map((item, i) => (
-                          <div key={item.name} className="p-3 flex justify-between items-center hover:bg-slate-50 dark:hover:bg-slate-800/50">
-                            <div className="flex items-center gap-3">
-                              <div className={`w-8 h-8 rounded-full flex items-center justify-center text-[10px] font-black shrink-0 ${i === 0 ? 'bg-blue-600 text-white' : 'bg-slate-100 dark:bg-slate-800 text-slate-500'}`}>{i + 1}º</div>
-                              <span className="font-bold text-xs text-slate-700 dark:text-slate-200">{item.name}</span>
-                            </div>
-                            <div className="flex items-center gap-1">
-                                <span className="text-[10px] font-bold text-blue-600">{item.count}</span>
-                                <span className="text-[10px] text-slate-400 uppercase font-bold">Indicados</span>
-                            </div>
-                          </div>
-                        ));
-                      })()}
-                    </div>
-                  </div>
-
-                </div>
-              </div>
-            )}
+                )}
             
 
             {view === 'clients' && (
@@ -2774,95 +2747,115 @@ return (
                   </div>
               </div>
             )}
-           
+
+            <footer className="text-center py-4 text-[10px] text-slate-400 font-bold tracking-widest opacity-50">
+               <div className="uppercase">© {currentYear} {PANEL_NAME}. Todos os direitos reservados.</div>
+               <div className="mt-1">Desenvolvido por Eron Vasconcelos</div>
+            </footer>
+
           </div>
-     {/* --- FECHAMENTO DO MAIN (Conteúdo com Scroll) --- */}
-      </main>
+        </main>
 
-      {/* --- RODAPÉ DESKTOP (Fica dentro da área de conteúdo, fixo embaixo) --- */}
-      <footer className="w-full bg-white/95 dark:bg-slate-950/95 backdrop-blur-md border-t border-slate-200 dark:border-slate-800 py-3 shrink-0 z-50">
-        <div className="text-center">
-          <p className="text-[10px] text-slate-500 dark:text-slate-400 uppercase font-black tracking-widest leading-relaxed">
-            © 2026 STREAM MANAGER. TODOS OS DIREITOS RESERVADOS.
-          </p>
-        </div>
-      </footer>
-
-    </div> {/* FIM DA DIV 'CONTENT WRAPPER' (flex-1) */}
-
-    {/* --- ELEMENTOS FLUTUANTES / FIXED (Fora do fluxo principal para funcionar o z-index corretamente) --- */}
-
-    {/* NAVEGAÇÃO MOBILE */}
-    <nav className={`md:hidden fixed bottom-0 left-0 right-0 border-t grid grid-cols-5 items-center justify-items-center py-2 z-[100] pb-safe shadow-[0_-4px_6px_-1px_rgba(0,0,0,0.1)] transition-colors ${theme === 'dark' ? 'bg-slate-900/98 border-slate-800 backdrop-blur-xl' : 'bg-white/98 border-slate-100 backdrop-blur-xl'}`}>
-      <BottomNavItem icon={<LayoutDashboard size={22}/>} label="Painel" active={view === 'dashboard'} onClick={() => setView('dashboard')} />
-      <BottomNavItem icon={<DollarSign size={22}/>} label="Financ." active={view === 'finance'} onClick={() => setView('finance')} />
-      
-      <div className="relative flex items-center justify-center w-full h-full">
-        <button 
-          onClick={() => setView('add')} 
-          className="absolute -top-6 w-14 h-14 bg-gradient-to-tr from-blue-600 to-cyan-500 text-white rounded-full flex items-center justify-center shadow-lg shadow-blue-500/40 border-4 border-slate-50 dark:border-slate-950 transition-transform active:scale-90 z-[120]"
-        >
-          <Plus size={28} strokeWidth={2.5} />
-        </button>
+        <nav className={`md:hidden fixed bottom-0 left-0 right-0 border-t grid grid-cols-5 items-center justify-items-center py-2 z-[100] pb-safe shadow-xl transition-colors ${theme === 'dark' ? 'bg-slate-900/98 border-slate-800 backdrop-blur-xl' : 'bg-white/98 border-slate-100 backdrop-blur-xl'}`}>
+          <BottomNavItem icon={<LayoutDashboard size={22}/>} label="Painel" active={view === 'dashboard'} onClick={() => setView('dashboard')} />
+          <BottomNavItem icon={<DollarSign size={22}/>} label="Financ." active={view === 'finance'} onClick={() => setView('finance')} />
+          
+          <div className="relative flex items-center justify-center w-full h-full">
+            <button onClick={() => setView('add')} className="w-12 h-12 bg-blue-600 text-white rounded-full flex items-center justify-center shadow-lg -mt-8 border-4 border-slate-50 dark:border-slate-950 transition-all active:scale-95 z-[120]">
+              <Plus size={24} />
+            </button>
+          </div>
+          <BottomNavItem icon={<Users size={22}/>} label="Clientes" active={view === 'clients'} onClick={() => setView('clients')} />
+          <div className="relative flex flex-col items-center justify-center">
+              <BottomNavItem icon={<MoreHorizontal size={22}/>} label="Mais" active={['scheduling', 'packages', 'messages', 'database', 'servers', 'subscription', 'history', 'saas_admin'].includes(view)} onClick={() => setShowMobileMenu(!showMobileMenu)} />
+              {showMobileMenu && (
+                <div className="absolute bottom-14 right-2 bg-slate-900 rounded-lg shadow-2xl p-1.5 w-48 flex flex-col z-[110] border border-slate-800 animate-in slide-in-from-bottom-2">
+                  {isAdmin && <MobileSubItem icon={<Crown size={16} className="text-yellow-500"/>} label="Painel SaaS" onClick={() => { setView('saas_admin'); setShowMobileMenu(false); }} />}
+                  <MobileSubItem icon={<History size={16} className="text-white"/>} label="Histórico" onClick={() => { setView('history'); setShowMobileMenu(false); }} />
+                  <MobileSubItem icon={<CreditCard size={16} className="text-yellow-500"/>} label="Minha Assinatura" onClick={() => { setView('subscription'); setShowMobileMenu(false); }} />
+                  <MobileSubItem icon={<ServerIcon size={16} className="text-purple-500"/>} label="Servidores" onClick={() => { setView('servers'); setShowMobileMenu(false); }} />
+                  <MobileSubItem icon={<Database size={16} className="text-blue-500"/>} label="Banco de Dados" onClick={() => { setView('database'); setShowMobileMenu(false); }} />
+                  <MobileSubItem icon={<BellRing size={16} className="text-emerald-500"/>} label="Automação Zap" onClick={() => { setView('scheduling'); setShowMobileMenu(false); }} />
+                  <MobileSubItem icon={<Layers size={16} className="text-amber-500"/>} label="Config Planos" onClick={() => { setView('packages'); setShowMobileMenu(false); }} />
+                  <MobileSubItem icon={<MessageSquare size={16} className="text-emerald-500"/>} label="Mensagens" onClick={() => { setView('messages'); setShowMobileMenu(false); }} />
+                  <div className="h-px bg-slate-800 my-1"></div>
+                  <MobileSubItem icon={theme === 'dark' ? <Sun size={16} className="text-amber-400"/> : <Moon size={16}/>} label="Alternar Tema" onClick={() => { toggleTheme(); setShowMobileMenu(false); }} />
+                  <MobileSubItem icon={<LogOut size={16} className="text-red-500"/>} label="Sair" onClick={() => { handleLogout(); setShowMobileMenu(false); }} />
+                </div>
+              )}
+          </div>
+        </nav>
       </div>
       
-      <BottomNavItem icon={<Users size={22}/>} label="Clientes" active={view === 'clients'} onClick={() => setView('clients')} />
-      <button onClick={() => setIsBottomSheetOpen(true)} className="flex flex-col items-center gap-1 active:scale-95 transition-all">
-        <div className={isBottomSheetOpen ? 'text-blue-500' : 'text-slate-400'}>
-            <MoreHorizontal size={22} />
-        </div>
-        <span className={`text-[9px] font-bold uppercase ${isBottomSheetOpen ? 'text-blue-500' : 'text-slate-400 opacity-70'}`}>Mais</span>
-      </button>
-    </nav>
+      {showWelcomeModal && <WelcomeModal theme={theme} onClose={() => setShowWelcomeModal(false)} />}
+      {showSuccessModal && <PaymentSuccessModal theme={theme} onClose={() => setShowSuccessModal(false)} />}
+      
+      {selectedServerForCredit && (
+        <div className="fixed inset-0 z-[200] flex items-center justify-center p-4 bg-slate-950/80 backdrop-blur-sm">
+          <div className={`w-full max-w-sm rounded-lg shadow-2xl overflow-hidden border animate-in zoom-in-95 duration-200 ${theme === 'dark' ? 'bg-slate-900 border-slate-800' : 'bg-white border-slate-200'}`}>
+             <div className="bg-purple-600 px-5 py-4 text-white flex justify-between items-center">
+              <h3 className="text-sm font-bold uppercase tracking-tight">Registrar Compra</h3>
+              <button onClick={() => setSelectedServerForCredit(null)} className="p-1.5 bg-white/10 rounded-md hover:bg-white/20 transition-all"><X size={18}/></button>
+            </div>
+            <form className="p-5 space-y-3" onSubmit={(e) => {
+                e.preventDefault();
+                const fd = new FormData(e.currentTarget);
+                // Passa a data para a função
+                handleAddCredits(
+                    Number(fd.get('amount')), 
+                    Number(fd.get('totalCost')),
+                    fd.get('purchaseDate') as string
+                );
+            }}>
+                <div className="p-3 bg-purple-50 dark:bg-purple-900/20 border border-purple-100 dark:border-purple-800 rounded-md mb-2">
+                    <span className="text-[10px] font-bold text-slate-400 uppercase">Servidor</span>
+                    <div className="font-bold text-slate-800 dark:text-white">{selectedServerForCredit.name}</div>
+                </div>
+                
+                <div className="grid grid-cols-2 gap-3">
+                    <FormInput theme={theme} name="amount" label="Qtd. Créditos" type="number" required autoFocus />
+                    <FormInput theme={theme} name="totalCost" label="Custo Total (R$)" type="number" step="0.01" required placeholder="0.00" />
+                </div>
 
-    
-    {isBottomSheetOpen && (
-      <div className="fixed inset-0 z-[200] md:hidden flex flex-col justify-end">
-        <div 
-            className="absolute inset-0 bg-slate-950/60 backdrop-blur-sm animate-in fade-in duration-300" 
-            onClick={() => setIsBottomSheetOpen(false)} 
-        />
-        <div className={`relative w-full rounded-t-[32px] p-6 pb-safe shadow-2xl animate-in slide-in-from-bottom-full duration-300 border-t ${theme === 'dark' ? 'bg-slate-900 text-white border-slate-800' : 'bg-white text-slate-900 border-white'}`}>
-          <div className="w-12 h-1.5 bg-slate-200 dark:bg-slate-700 rounded-full mx-auto mb-8 opacity-50" />
-          <div className="grid grid-cols-4 gap-4 mb-6">
-            {isAdmin && (
-                <MenuIcon icon={<Crown className="text-yellow-500"/>} label="SaaS Admin" onClick={() => { setView('saas_admin'); setIsBottomSheetOpen(false); }} />
-            )}
-            <MenuIcon icon={<History className="text-red-500"/>} label="Histórico" onClick={() => { setView('history'); setIsBottomSheetOpen(false); }} />
-            <MenuIcon icon={<CalendarDays className="text-emerald-500"/>} label="Auto Zap" onClick={() => { setView('scheduling'); setIsBottomSheetOpen(false); }} />
-            <MenuIcon icon={<Layers className="text-indigo-500"/>} label="Planos" onClick={() => { setView('packages'); setIsBottomSheetOpen(false); }} />
-            <MenuIcon icon={<MessageSquare className="text-emerald-500"/>} label="Modelos" onClick={() => { setView('messages'); setIsBottomSheetOpen(false); }} />
-            <MenuIcon icon={<ServerIcon className="text-purple-500"/>} label="Servers" onClick={() => { setView('servers'); setIsBottomSheetOpen(false); }} />
-            <MenuIcon icon={<Database className="text-slate-500"/>} label="Backup" onClick={() => { setView('database'); setIsBottomSheetOpen(false); }} />
-            <MenuIcon icon={<CreditCard className="text-yellow-500"/>} label="Assinatura" onClick={() => { setView('subscription'); setIsBottomSheetOpen(false); }} />
+                {/* --- NOVO CAMPO DE DATA --- */}
+                <div className="space-y-1">
+                    <label className="text-[10px] font-bold text-slate-400 uppercase ml-1 tracking-wider">Data da Compra</label>
+                    <input 
+                        type="date" 
+                        name="purchaseDate"
+                        defaultValue={new Date().toISOString().split('T')[0]}
+                        className={`w-full px-3 py-2.5 rounded-md border text-[13px] font-medium outline-none ${theme === 'dark' ? 'bg-slate-800 border-slate-700 text-white' : 'bg-slate-50 border-slate-200 text-slate-800 shadow-sm'}`}
+                    />
+                </div>
+
+                <button type="submit" className="w-full bg-purple-600 text-white py-3 rounded-md font-bold uppercase text-[12px] shadow-sm mt-2 hover:bg-purple-700 transition-colors">
+                    Salvar Registro
+                </button>
+            </form>
           </div>
-          <div className="flex gap-3 mt-4">
-              <button onClick={handleLogout} className="flex-1 py-4 bg-red-50 dark:bg-red-900/10 text-red-600 dark:text-red-400 rounded-2xl font-bold uppercase text-[11px] flex items-center justify-center gap-2 hover:bg-red-100 transition-colors">
-                <LogOut size={16}/> Sair da Conta
-              </button>
-              <button onClick={() => setIsBottomSheetOpen(false)} className={`flex-1 py-4 rounded-2xl font-bold uppercase text-[11px] transition-colors ${theme === 'dark' ? 'bg-slate-800 text-slate-300' : 'bg-slate-100 text-slate-600'}`}>
-                Fechar Menu
-              </button>
-          </div>
         </div>
-      </div>
-    )}
+      )}
 
-    
-    {selectedClientForRenewal && <RenewalModal theme={theme} client={selectedClientForRenewal} packages={packages} onRenew={registerRenewal} onClose={() => setSelectedClientForRenewal(null)} />}
-    {selectedClientForMsg && <MessageModal theme={theme} client={selectedClientForMsg} templates={templates} onSend={sendWhatsApp} onClose={() => setSelectedClientForMsg(null)} />}
-    {selectedClientDetails && (
-      view === 'saas_admin' ? (
-        <SaaSDetailsModal user={selectedClientDetails} theme={theme} onClose={() => setSelectedClientDetails(null)} onUpdateExpiry={handleUpdateSaaSExpiry} />
-      ) : (
-        <ClientDetailsModal theme={theme} client={selectedClientDetails} onClose={() => setSelectedClientDetails(null)} />
-      )
-    )}
-    {selectedClientForEdit && <EditClientModal theme={theme} client={selectedClientForEdit} packages={packages} onEdit={handleEditClient} onClose={() => setSelectedClientForEdit(null)} />}
-    {showSuccessModal && <PaymentSuccessModal theme={theme} onClose={() => setShowSuccessModal(false)} />}
-    {showWelcomeModal && <WelcomeModal theme={theme} onClose={() => setShowWelcomeModal(false)} />}
-
-  </div> 
- );
+      {selectedClientForRenewal && <RenewalModal theme={theme} client={selectedClientForRenewal} packages={packages} onRenew={registerRenewal} onClose={() => setSelectedClientForRenewal(null)} />}
+      {selectedClientForMsg && <MessageModal theme={theme} client={selectedClientForMsg} templates={templates} onSend={sendWhatsApp} onClose={() => setSelectedClientForMsg(null)} />}
+      {/* Lógica para escolher o modal correto (SaaS ou IPTV) */}
+      {selectedClientDetails && (
+        view === 'saas_admin' ? (
+          <SaaSDetailsModal 
+            user={selectedClientDetails} 
+            theme={theme} 
+            onClose={() => setSelectedClientDetails(null)} 
+            onUpdateExpiry={handleUpdateSaaSExpiry} // <--- ADICIONE ESTA LINHA PARA O BOTÃO FUNCIONAR
+          />
+        ) : (
+          <ClientDetailsModal 
+            theme={theme} 
+            client={selectedClientDetails} 
+            onClose={() => setSelectedClientDetails(null)} 
+          />
+        )
+      )}
+      {selectedClientForEdit && <EditClientModal theme={theme} client={selectedClientForEdit} packages={packages} onEdit={handleEditClient} onClose={() => setSelectedClientForEdit(null)} />}
+    </div>
+  );
 }
-// NÃO ADICIONE NADA ABAIXO DAQUI. O MenuIcon JÁ FOI DEFINIDO NO TOPO.
