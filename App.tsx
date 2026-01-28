@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { 
   Users, LayoutDashboard, PlusCircle, Search, ChevronRight, CheckCircle, XCircle, Clock, 
-  MessageSquare, DollarSign, TrendingUp, CreditCard, Layers, Trash2, Archive, RotateCcw, 
+  MessageSquare, DollarSign, TrendingUp, CreditCard, Layers, LayoutGrid, Trash2, Archive, RotateCcw, 
   ClipboardCopy, Share2, Send, X, Activity, RefreshCw, BellRing, MoreHorizontal, Info, 
   Tag, ArrowUpRight, History, Smartphone, ChevronLeft, UserX, AlertCircle, Clock3, Eye, 
   CalendarDays, Calendar, Sun, Moon, Plus, Pencil, Save, Check, ChevronDown, UserPlus, 
@@ -1096,11 +1096,6 @@ export default function App() {
   const [rules, setRules] = useState<MessageRule[]>([]);
   const [servers, setServers] = useState<Server[]>([]);
 
-  // 1. Lista de nomes para o Dropdown
-  const uniqueReferrers = useMemo(() => {
-    return [...new Set(clients.map(c => c.referred_by).filter(Boolean))];
-  }, [clients]);
-
   // 2. Cálculo Automático de Custos no Cadastro
   useEffect(() => {
     const pkg = packages.find(p => p.id === addFormData.packageId);
@@ -1114,6 +1109,9 @@ export default function App() {
         }
     }
   }, [addFormData.packageId, addFormData.serverId, packages, servers]);
+
+  // Lógica para verificar retorno do Stripe
+// --- INÍCIO DA LÓGICA (Parte 4 Corrigida) ---
 
   // Lógica para verificar retorno do Stripe
   useEffect(() => {
@@ -1375,6 +1373,7 @@ export default function App() {
       }
   };
 
+  // !!! AQUI ESTAVA O ERRO DUPLICADO, AGORA CORRIGIDO !!!
   const handleTogglePayment = (client: Client) => updateClientInSupabase(client.id, { paymentStatus: client.paymentStatus === 'paid' ? 'pending' : 'paid' });
 
   // HANDLER ADICIONAR CLIENTE
@@ -2081,8 +2080,7 @@ export default function App() {
         </div>
       </main>
 
-      {/* MOBILE MENU OVERLAY */}
-      {showMobileMenu && (
+       {showMobileMenu && (
         <div className="fixed inset-0 z-50 bg-slate-950/80 backdrop-blur-sm lg:hidden flex" onClick={() => setShowMobileMenu(false)}>
            <div className={`w-3/4 max-w-xs h-full p-6 shadow-2xl flex flex-col ${theme === 'dark' ? 'bg-slate-900' : 'bg-white'}`} onClick={e => e.stopPropagation()}>
                <div className="flex justify-between items-center mb-8">
@@ -2103,7 +2101,6 @@ export default function App() {
         </div>
       )}
 
-      {/* MODAIS (Renderizados Condicionalmente) */}
       {showWelcomeModal && <WelcomeModal theme={theme} onClose={() => setShowWelcomeModal(false)} />}
       
       {showSuccessModal && (
@@ -2172,7 +2169,6 @@ export default function App() {
   );
 }
 
-// Helper Button Component para Sidebar
 const NavButton = ({ active, onClick, icon, label, theme, badge }: any) => (
   <button onClick={onClick} className={`w-full flex items-center justify-between px-4 py-3 rounded-xl transition-all group ${active ? 'bg-blue-600 text-white shadow-lg shadow-blue-600/20' : 'text-slate-500 hover:bg-slate-100 dark:hover:bg-slate-800 hover:text-slate-900 dark:hover:text-white'}`}>
      <div className="flex items-center gap-3">
